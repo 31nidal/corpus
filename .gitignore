@@ -1,0 +1,13 @@
+node_modules/
+dist/
+test-results/
+playwright-report/
+.model-cache/
+.venv/
+.venv-models/
+*.tsbuildinfo
+
+.DS_Store
+.env
+.env.*
+!.env.example

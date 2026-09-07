@@ -1,0 +1,14 @@
+Nomenclature anatomique : Z-Anatomy, TA2.csv
+Source : https://github.com/Z-Anatomy/Models-of-human-anatomy/blob/master/TA2.csv
+Projet : Z-Anatomy — The libre 3D atlas of anatomy
+Auteurs du projet : Gauthier Kervyn et contributeurs de Z-Anatomy.
+Licence : Creative Commons Attribution-ShareAlike 4.0 International
+https://creativecommons.org/licenses/by-sa/4.0/
+
+Adaptation du 7 septembre 2026 : extraction des colonnes English et Français,
+normalisation des clés anglaises et conversion en dictionnaire JSON pour la recherche.
+Le dictionnaire dérivé src/data/terminology.json conserve la licence CC BY-SA 4.0.
+Cette licence concerne la nomenclature, indépendamment des maillages BodyParts3D
+redistribués sous la licence CC BY-SA 2.1 Japan de leurs en-têtes OBJ.
+Complément du 7 septembre 2026 : src/data/french-labels.json couvre toutes les structures distribuées, avec des traductions descriptives composées (côtés, branches et portions) par scripts/complete-french.py. Ce fichier dérivé conserve CC BY-SA 4.0. Les noms sources anglais sont conservés dans le manifeste pour la traçabilité ; ils ne sont plus affichés dans les fiches. Ces libellés descriptifs ne constituent pas une nomenclature officielle supplémentaire.
+Aucun maillage Z-Anatomy n'est distribué dans ce projet.

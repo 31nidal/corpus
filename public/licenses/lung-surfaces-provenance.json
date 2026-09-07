@@ -1,0 +1,41 @@
+{
+  "archiveUrl": "https://dbarchive.biosciencedbc.jp/data/bodyparts3d/20110915/BodyParts3D_3.0_obj_99.zip",
+  "archiveBytes": 134113358,
+  "etag": "\"7fe684e-4aca5cf385740\"",
+  "retrieval": "HTTP byte ranges; ZIP CRC verified",
+  "version": "3.0",
+  "files": [
+    {
+      "file": "FMA7333.obj",
+      "member": "BodyParts3D_3.0_obj_99\\FMA7333.obj",
+      "bytes": 435927,
+      "sha256": "2ada44d1aa395d93567ce839cbe509138aa00be7ec9b42431a85d47a0188fccf"
+    },
+    {
+      "file": "FMA7337.obj",
+      "member": "BodyParts3D_3.0_obj_99\\FMA7337.obj",
+      "bytes": 882693,
+      "sha256": "c53ff9b414a238a2f625aea4d30630005dae0f6a0c6fa5523a6d94c6cdb82110"
+    },
+    {
+      "file": "FMA7370.obj",
+      "member": "BodyParts3D_3.0_obj_99\\FMA7370.obj",
+      "bytes": 574866,
+      "sha256": "8cc3f2f151842320cfb6efe78d86411e95d5c00017141b1d66c5489b74e5f24e"
+    },
+    {
+      "file": "FMA7371.obj",
+      "member": "BodyParts3D_3.0_obj_99\\FMA7371.obj",
+      "bytes": 655193,
+      "sha256": "f6670ae446a0feb83ee782c2931e8daf957ae6e36a32dbd3e42fc1c73bcc1f98"
+    },
+    {
+      "file": "FMA7383.obj",
+      "member": "BodyParts3D_3.0_obj_99\\FMA7383.obj",
+      "bytes": 374802,
+      "sha256": "ee68c9eec87ece782686603a24f3dbacb590e0a3773d4734b995a5c09e4508f7"
+    }
+  ],
+  "embeddedObjLicense": "CC BY-SA 2.1 Japan",
+  "changes": "Five lobe surfaces joined to corresponding 4.0 lung bronchovascular trees; common transform only, no deformation"
+}

@@ -1,0 +1,31 @@
+MODELES ANATOMIQUES DERIVES — CORPUS
+
+BodyParts3D, © The Database Center for Life Science licensed under CC Attribution-Share Alike 2.1 Japan.
+https://creativecommons.org/licenses/by-sa/2.1/jp/
+Texte juridique : https://creativecommons.org/licenses/by-sa/2.1/jp/legalcode
+
+Les fichiers skin.glb, skeleton.glb et organs.glb sont des adaptations des maillages OBJ de l’archive officielle BodyParts3D 4.0 et de cinq lobes pulmonaires de l’archive officielle BodyParts3D 3.0 et sont redistribués sous CC BY-SA 2.1 Japan. Conserver cette attribution et la licence ; signaler les adaptations ; partager les adaptations des modèles sous la même licence. Cette licence concerne les modèles, indépendamment du code de l’application.
+
+Modifications apportées le 6 septembre 2026 : sélection de structures, assemblage de maillages sources par fiche pédagogique, simplification géométrique, recalcul de normales, rotation et mise à l’échelle communes, conversion OBJ vers GLB, nouveaux matériaux. La jonction iléocæcale partagée par les concepts de petit et gros intestin est affectée une seule fois à l’intestin grêle. Le sacrum est séparé de l’assemblage de colonne. Les identifiants commençant par BP3D_ sont des identifiants locaux d’assemblage ; les éléments FJ et concepts FMA sources figurent dans manifest.json.
+
+DIVERGENCE DOCUMENTAIRE CONSERVEE
+La page officielle actuelle, mise à jour le 27 février 2025, indique CC BY 4.0 :
+https://dbarchive.biosciencedbc.jp/en/bodyparts3d/lic.html
+Attribution actuelle demandée : BodyParts3D, © The Database Center for Life Science licensed under CC Attribution 4.0 International.
+Les fichiers OBJ effectivement téléchargés portent encore CC BY-SA 2.1 Japan dans leur en-tête. Nous conservons pour les adaptations GLB les conditions d’attribution et de partage de ces fichiers. Les deux mentions sont documentées ; aucune prétention à un changement de licence rétroactif n’est faite.
+
+PROVENANCE VERIFIABLE
+Archive : https://dbarchive.biosciencedbc.jp/data/bodyparts3d/LATEST/partof_BP3D_4.0_obj_99.zip
+Catalogue : https://dbarchive.biosciencedbc.jp/en/bodyparts3d/download.html
+Empreintes SHA-256 archive et GLB, éléments sources et modifications : manifest.json et ../licenses/provenance.json.
+En-tête exact de la peau source : ../licenses/original-obj-header.txt.
+Pages officielles sauvegardées sous forme de texte : ../licenses/*-source.html.txt.
+Pipeline de reconstruction : scripts/build_anatomy.py dans le projet.
+
+COMPLEMENT PULMONAIRE OFFICIEL 3.0
+Archive : https://dbarchive.biosciencedbc.jp/data/bodyparts3d/20110915/BodyParts3D_3.0_obj_99.zip
+Maillages : FMA7333, FMA7337 et FMA7383 (poumon droit), FMA7370 et FMA7371 (poumon gauche). Les surfaces 3.0 sont assemblées aux ramifications internes 4.0 sans déformation, avec la transformation commune du corps. Leur en-tête indique explicitement CC Attribution-Share Alike 2.1 Japan, Copyright(C) 2010-2011 The Database Center for Life Science. Le détail des entrées ZIP extraites par requêtes HTTP Range, leurs CRC vérifiés, tailles et empreintes SHA-256 sont dans ../licenses/lung-surfaces-provenance.json. L’en-tête exact est dans ../licenses/original-lung-obj-header.txt.
+
+ATLAS DETAILLE — 7 septembre 2026
+Les fichiers detail-skin.glb, detail-skeleton.glb, detail-organs.glb, detail-muscles.glb, detail-arteries.glb, detail-veins.glb, detail-nerves.glb et detail-joints.glb sont également redistribués sous CC BY-SA 2.1 Japan, avec l’attribution DBCLS ci-dessus. Source : https://dbarchive.biosciencedbc.jp/data/bodyparts3d/LATEST/isa_BP3D_4.0_obj_99.zip et le complément pulmonaire 3.0. Adaptations : regroupement des OBJ portant le même concept FMA, exclusion de 17 fichiers non identifiés, simplification, transformation commune, nouvelles normales et conversion GLB. Les assemblages virtuels référencent les composants sans les dupliquer. Preuves : ../licenses/detailed-provenance.json et manifest.json. L’ancien manifeste est conservé dans overview.json. Pipeline : scripts/build_detailed_atlas.py.
+La nomenclature française issue de Z-Anatomy est un élément distinct sous CC BY-SA 4.0 ; voir ../licenses/terminology-LICENSE.txt.

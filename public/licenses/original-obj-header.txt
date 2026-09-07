@@ -1,0 +1,14 @@
+#
+# The license for this database is specified in the Creative Commons Attribution-Share Alike 2.1 Japan. If you use data from this database, please be sure attribute this database as follows: "BodyParts3D, (c)  The Database Center for Life Science licensed under CC Attribution-Share Alike 2.1 Japan".
+# http://dbarchive.biosciencedbc.jp/en/bodyparts3d/lic.html
+#
+#
+# Compatibility version : 4.0
+# File ID : FJ2810
+# Representation ID : BP10155
+# Build-up logic : FMA 3.0 part_of
+# Concept ID : FMA7163
+# English name : Skin
+# Bounds(mm): (-334.119000,-246.783000,-78.111200)-(332.825000,45.247600,1641.360000)
+# Volume(cm3): 3443.308100
+#
