@@ -47,3 +47,54 @@ Les descriptions génériques indiquent des repères de groupe et ne décrivent 
 ## Libellés français
 
 La totalité des structures distribuées possède un libellé français. Les traductions complémentaires décrivent les portions, les côtés et les relations à partir du nom source ; elles ne modifient ni les identifiants FMA ni les géométries et ne prétendent pas constituer une nomenclature officielle. Le dictionnaire source et les adaptations sont documentés dans licenses/terminology-LICENSE.txt. Les sources pédagogiques externes peuvent être en anglais.
+
+
+## Cours, pathologies et profils enrichis — 7 septembre 2026
+
+Synthèses françaises originales, concises, sans illustrations ni longs extraits des sources. Les liens sont aussi présents dans chaque fiche. Les neuf cours et huit pathologies sont un premier corpus pédagogique ; les petites branches vasculaires ne reçoivent pas un territoire précis déduit du nom.
+
+### Cours
+
+- [Le cœur](https://www.nhlbi.nih.gov/health/heart/blood-flow).
+- [Les poumons](https://www.nhlbi.nih.gov/health/lungs).
+- [Le foie](https://openstax.org/books/anatomy-and-physiology-2e/pages/23-6-accessory-organs-in-digestion-the-liver-pancreas-and-gallbladder).
+- [L’estomac](https://openstax.org/books/anatomy-and-physiology-2e/pages/23-4-the-stomach).
+- [Le pancréas](https://www.niddk.nih.gov/health-information/diabetes/overview/what-is-diabetes/type-2-diabetes).
+- [L’intestin grêle](https://www.niddk.nih.gov/health-information/digestive-diseases/digestive-system-how-it-works).
+- [Les reins](https://www.niddk.nih.gov/health-information/kidney-disease/kidneys-how-they-work).
+- [Le cerveau](https://openstax.org/books/anatomy-and-physiology-2e/pages/13-2-the-central-nervous-system).
+- [Le fémur](https://openstax.org/books/anatomy-and-physiology-2e/pages/8-4-bones-of-the-lower-limb).
+
+### Pathologies
+
+- [Infarctus du myocarde](https://www.nhlbi.nih.gov/health/heart-attack).
+- [Insuffisance cardiaque](https://www.nhlbi.nih.gov/health/heart-failure).
+- [Troubles du rythme cardiaque](https://www.nhlbi.nih.gov/health/arrhythmias/treatment).
+- [Maladies des valves](https://www.nhlbi.nih.gov/health/heart-valve-diseases/treatment).
+- [Asthme](https://www.nhlbi.nih.gov/health/asthma/treatment-action-plan).
+- [Diabète de type 2](https://www.niddk.nih.gov/health-information/diabetes/overview/what-is-diabetes/type-2-diabetes).
+- [Maladie rénale chronique](https://www.niddk.nih.gov/health-information/kidney-disease).
+- [Ostéoporose](https://www.niams.nih.gov/health-topics/osteoporosis/diagnosis-treatment-and-steps-to-take).
+
+### Profils musculaires et vasculaires
+
+- [Référence anatomique](https://www.ncbi.nlm.nih.gov/books/NBK537056/).
+- [Référence anatomique](https://www.ncbi.nlm.nih.gov/books/NBK482410/).
+- [Référence anatomique](https://www.ncbi.nlm.nih.gov/books/NBK500008/).
+- [Référence anatomique](https://www.ncbi.nlm.nih.gov/books/NBK546688/).
+- [Référence anatomique](https://www.ncbi.nlm.nih.gov/books/NBK537340/).
+- [Référence anatomique](https://www.ncbi.nlm.nih.gov/books/NBK539705/).
+- [Référence anatomique](https://openstax.org/books/anatomy-and-physiology-2e/pages/20-5-circulatory-pathways).
+
+## Campus première année — socle ajouté le 7 septembre 2026
+
+Quatre fiches originales de fondamentaux et vingt QCM originaux complètent les neuf fiches d’organes. Les propositions sont expliquées individuellement. Ce sont des exercices de révision, sans reproduction d’annales et sans promesse de couverture d’un programme universitaire complet.
+
+- Orientation : [OpenStax, Anatomical Terminology](https://openstax.org/books/anatomy-and-physiology-2e/pages/1-6-anatomical-terminology).
+- Régulation : [OpenStax, Homeostasis](https://openstax.org/books/anatomy-and-physiology-2e/pages/1-5-homeostasis).
+- Transports : [OpenStax, The Cell Membrane](https://openstax.org/books/anatomy-and-physiology-2e/pages/3-1-the-cell-membrane).
+- Histologie : [OpenStax, Types of Tissues](https://openstax.org/books/anatomy-and-physiology-2e/pages/4-1-types-of-tissues).
+- Complément cardiovasculaire : [OpenStax, Cardiac Cycle](https://openstax.org/books/anatomy-and-physiology-2e/pages/19-3-cardiac-cycle).
+- Complément respiratoire : [OpenStax, Gas Exchange](https://openstax.org/books/anatomy-and-physiology-2e/pages/22-4-gas-exchange).
+
+Les exercices sur les organes renvoient aux sources de leurs cours associés ci-dessus. Les aperçus sont des rendus des vrais maillages BodyParts3D ; leur attribution et leur licence CC BY-SA 2.1 Japon figurent dans `course-previews/LICENSE.txt`. Les dessins de livres et de repères sont des éléments d’interface, pas des représentations anatomiques.

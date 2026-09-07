@@ -1,0 +1,10 @@
+Aperçus des cours Corpus — rendus des maillages anatomiques BodyParts3D du projet.
+BodyParts3D, © The Database Center for Life Science (DBCLS).
+Creative Commons Attribution – Share Alike 2.1 Japan.
+https://creativecommons.org/licenses/by-sa/2.1/jp/
+Source : https://dbarchive.biosciencedbc.jp/en/bodyparts3d/download.html
+Adaptations : simplification et conversion des OBJ en GLB, matériaux et éclairages,
+isolation de l’organe et rendu PNG dans Three.js. Aucun organe de substitution.
+Les modèles comportent les mentions de licence documentées dans ../models/LICENSE.txt.
+Les rendus adaptés sont distribués sous CC BY-SA 2.1 Japon, avec cette attribution.
+Pipeline : tests/campus-thumbnails.mjs. Identifiants FMA conservés dans les noms de fichier.

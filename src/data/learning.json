@@ -1,0 +1,196 @@
+[
+  {
+    "id": "FMA7088",
+    "title": "Le cœur",
+    "system": "Cardiovasculaire",
+    "location": "Dans le thorax, entre les poumons, derrière le sternum.",
+    "levels": {
+      "discovery": "Le cœur est une pompe musculaire. Il fait circuler le sang vers les poumons et vers le reste du corps.",
+      "student": "Les atriums reçoivent le sang ; les ventricules l’éjectent. Les circuits pulmonaire et systémique sont reliés en série.",
+      "advanced": "Le ventricule gauche possède une paroi plus épaisse : il produit la pression nécessaire à la circulation systémique, plus résistante que la circulation pulmonaire. Les valves s’ouvrent et se ferment selon les différences de pression."
+    },
+    "anatomy": [
+      "Atriums droit et gauche",
+      "Ventricules droit et gauche",
+      "Valves tricuspide, pulmonaire, mitrale et aortique",
+      "Myocarde et artères coronaires"
+    ],
+    "mechanism": "Veines caves → cœur droit → artères pulmonaires → poumons → veines pulmonaires → cœur gauche → aorte. Le myocarde reçoit sa propre irrigation par les coronaires.",
+    "remember": "Une artère part du cœur ; une veine revient au cœur. Leur nom ne dépend pas de leur teneur en oxygène.",
+    "source": "https://www.nhlbi.nih.gov/health/heart/blood-flow",
+    "diseases": [
+      "infarctus",
+      "insuffisance-cardiaque",
+      "arythmie",
+      "valvulopathie"
+    ]
+  },
+  {
+    "id": "FMA7309",
+    "title": "Les poumons",
+    "system": "Respiratoire",
+    "location": "Dans la cage thoracique, de chaque côté du médiastin.",
+    "levels": {
+      "discovery": "Les poumons font entrer de l’oxygène dans le sang et permettent d’éliminer du dioxyde de carbone.",
+      "student": "L’air passe par la trachée, les bronches et les bronchioles. Les échanges se réalisent dans les alvéoles, au contact des capillaires.",
+      "advanced": "La ventilation amène l’air aux alvéoles ; la perfusion y amène le sang. Leur adéquation participe à l’efficacité des échanges par diffusion."
+    },
+    "anatomy": [
+      "Trois lobes à droite, deux à gauche",
+      "Bronches et bronchioles",
+      "Alvéoles et réseau capillaire"
+    ],
+    "mechanism": "À l’inspiration, la contraction du diaphragme augmente le volume thoracique. À l’expiration calme, le relâchement et le recul élastique favorisent la sortie d’air.",
+    "remember": "Ventilation et échanges gazeux sont deux processus liés, mais distincts.",
+    "source": "https://www.nhlbi.nih.gov/health/lungs",
+    "diseases": [
+      "asthme"
+    ]
+  },
+  {
+    "id": "FMA7197",
+    "title": "Le foie",
+    "system": "Digestif",
+    "location": "Sous le diaphragme, principalement dans la partie supérieure droite de l’abdomen.",
+    "levels": {
+      "discovery": "Le foie transforme et stocke des substances utiles au corps. Il produit aussi la bile.",
+      "student": "La veine porte amène au foie du sang provenant notamment du tube digestif. L’artère hépatique apporte du sang oxygéné.",
+      "advanced": "Le foie assure des fonctions métaboliques, de synthèse et d’excrétion biliaire. Le sang rejoint les veines hépatiques ; la bile suit un réseau de conduits distinct."
+    },
+    "anatomy": [
+      "Lobes hépatiques",
+      "Branches portales et artérielles",
+      "Voies biliaires et veines hépatiques"
+    ],
+    "mechanism": "La bile est transportée vers l’intestin ; elle contribue à la digestion des lipides. La vésicule biliaire peut la stocker et la concentrer.",
+    "remember": "Ne confondez pas réseau sanguin hépatique et voies biliaires.",
+    "source": "https://openstax.org/books/anatomy-and-physiology-2e/pages/23-6-accessory-organs-in-digestion-the-liver-pancreas-and-gallbladder",
+    "diseases": []
+  },
+  {
+    "id": "FMA7148",
+    "title": "L’estomac",
+    "system": "Digestif",
+    "location": "Dans la partie supérieure de l’abdomen, entre l’œsophage et le duodénum.",
+    "levels": {
+      "discovery": "L’estomac est une poche musculaire qui mélange les aliments aux sécrétions digestives.",
+      "student": "Les contractions brassent le contenu. L’acidité et les enzymes participent à la digestion, notamment des protéines.",
+      "advanced": "La muqueuse gastrique associe des cellules sécrétrices et une protection par le mucus. La vidange vers le duodénum est régulée."
+    },
+    "anatomy": [
+      "Cardia",
+      "Fundus et corps",
+      "Antre et pylore"
+    ],
+    "mechanism": "Le bol alimentaire devient un mélange appelé chyme, délivré progressivement à l’intestin.",
+    "remember": "La digestion ne se limite pas à l’estomac : l’absorption des nutriments se fait surtout dans l’intestin grêle.",
+    "source": "https://openstax.org/books/anatomy-and-physiology-2e/pages/23-4-the-stomach",
+    "diseases": []
+  },
+  {
+    "id": "FMA7198",
+    "title": "Le pancréas",
+    "system": "Digestif et endocrinien",
+    "location": "En arrière de l’estomac, au voisinage du duodénum.",
+    "levels": {
+      "discovery": "Le pancréas aide à digérer et participe au contrôle du sucre dans le sang.",
+      "student": "Sa partie exocrine libère des sécrétions digestives dans le duodénum. Sa partie endocrine libère des hormones dans le sang.",
+      "advanced": "Les cellules bêta des îlots sécrètent l’insuline. Son action favorise la régulation de la glycémie ; les mécanismes du diabète varient selon le type."
+    },
+    "anatomy": [
+      "Tête, corps et queue",
+      "Conduits pancréatiques",
+      "Îlots endocrines, non visibles dans ce modèle"
+    ],
+    "mechanism": "Les enzymes digestives empruntent les conduits ; les hormones rejoignent la circulation sanguine.",
+    "remember": "Fonctions exocrine et endocrine utilisent deux voies de sécrétion différentes.",
+    "source": "https://www.niddk.nih.gov/health-information/diabetes/overview/what-is-diabetes/type-2-diabetes",
+    "diseases": [
+      "diabete2"
+    ]
+  },
+  {
+    "id": "FMA7200",
+    "title": "L’intestin grêle",
+    "system": "Digestif",
+    "location": "Dans l’abdomen, entre l’estomac et le gros intestin.",
+    "levels": {
+      "discovery": "L’intestin grêle poursuit la digestion et absorbe la plupart des nutriments.",
+      "student": "Il comporte le duodénum, le jéjunum et l’iléon. Les mouvements de sa paroi mélangent et font progresser le contenu.",
+      "advanced": "Les replis et les villosités augmentent la surface d’échange. Selon leur nature, les nutriments absorbés rejoignent le sang ou la lymphe."
+    },
+    "anatomy": [
+      "Duodénum",
+      "Jéjunum",
+      "Iléon"
+    ],
+    "mechanism": "Les sécrétions intestinales, pancréatiques et biliaires contribuent à la digestion. Les produits absorbables traversent ensuite l’épithélium.",
+    "remember": "Les villosités et cellules ne sont pas représentées à cette échelle 3D.",
+    "source": "https://www.niddk.nih.gov/health-information/digestive-diseases/digestive-system-how-it-works",
+    "diseases": []
+  },
+  {
+    "id": "FMA7204",
+    "title": "Les reins",
+    "system": "Urinaire",
+    "location": "À l’arrière de l’abdomen, de part et d’autre de la colonne.",
+    "levels": {
+      "discovery": "Les reins filtrent le sang et produisent l’urine. Ils aident à régler l’eau et les sels du corps.",
+      "student": "Chaque rein contient des néphrons. La filtration est suivie de réabsorptions et de sécrétions dans les tubules.",
+      "advanced": "Le glomérule produit un ultrafiltrat. Les échanges tubulaires modifient sa composition avant l’excrétion. La filtration seule ne décrit donc pas toute la fonction rénale."
+    },
+    "anatomy": [
+      "Cortex et médulla",
+      "Bassinet",
+      "Vaisseaux rénaux et uretère"
+    ],
+    "mechanism": "L’urine rejoint le bassinet, puis l’uretère et la vessie.",
+    "remember": "Le néphron est microscopique : il n’est pas détaillé par ces maillages.",
+    "source": "https://www.niddk.nih.gov/health-information/kidney-disease/kidneys-how-they-work",
+    "diseases": [
+      "maladie-renale"
+    ]
+  },
+  {
+    "id": "FMA50801",
+    "title": "Le cerveau",
+    "system": "Nerveux",
+    "location": "À l’intérieur du crâne.",
+    "levels": {
+      "discovery": "Le cerveau reçoit des informations et participe à la pensée, aux sensations et aux mouvements.",
+      "student": "Les hémisphères cérébraux comportent plusieurs lobes. Le cerveau fonctionne avec le cervelet, le tronc cérébral et la moelle épinière.",
+      "advanced": "La substance grise et la substance blanche ont des organisations différentes. Les fonctions reposent sur des réseaux ; un relief visible ne correspond pas à lui seul à une fonction isolée."
+    },
+    "anatomy": [
+      "Hémisphères cérébraux",
+      "Lobes frontaux, pariétaux, temporaux et occipitaux",
+      "Structures profondes"
+    ],
+    "mechanism": "Les neurones échangent des signaux au sein de circuits connectés. Le modèle montre des structures macroscopiques, pas l’activité de ces réseaux.",
+    "remember": "Une localisation anatomique ne permet pas à elle seule de poser un diagnostic neurologique.",
+    "source": "https://openstax.org/books/anatomy-and-physiology-2e/pages/13-2-the-central-nervous-system",
+    "diseases": []
+  },
+  {
+    "id": "FMA24474",
+    "title": "Le fémur",
+    "system": "Squelette",
+    "location": "Dans la cuisse, entre la hanche et le genou.",
+    "levels": {
+      "discovery": "Le fémur est le long os de la cuisse. Il participe aux appuis et aux mouvements.",
+      "student": "Sa tête s’articule avec l’acétabulum ; ses condyles participent à l’articulation du genou.",
+      "advanced": "La géométrie du col, du corps et des extrémités répartit les contraintes. L’os est un tissu vivant qui se remodèle."
+    },
+    "anatomy": [
+      "Tête et col",
+      "Trochanters",
+      "Diaphyse et condyles"
+    ],
+    "mechanism": "Les muscles appliquent des forces par leurs attaches ; les articulations guident les mouvements.",
+    "remember": "Le modèle montre la forme osseuse, pas la densité ni la résistance de l’os.",
+    "source": "https://openstax.org/books/anatomy-and-physiology-2e/pages/8-4-bones-of-the-lower-limb",
+    "diseases": [
+      "osteoporose"
+    ]
+  }
+]

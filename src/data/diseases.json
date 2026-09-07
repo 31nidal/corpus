@@ -1,0 +1,106 @@
+[
+  {
+    "id": "infarctus",
+    "name": "Infarctus du myocarde",
+    "sections": {
+      "Définition": "Une interruption prolongée de l’apport sanguin peut léser le muscle cardiaque.",
+      "Causes et facteurs": "Une obstruction coronaire, souvent liée à une plaque et un caillot.",
+      "Symptômes possibles": "Gêne thoracique, essoufflement, malaise ; des formes peu symptomatiques existent.",
+      "Diagnostic médical": "Évaluation urgente, électrocardiogramme et dosages de troponine.",
+      "Principes de traitement": "Prise en charge urgente visant notamment à rétablir la circulation. Les décisions dépendent du bilan.",
+      "Prévention et suivi": "Agir sur les facteurs cardiovasculaires avec les soignants. Des symptômes suspects nécessitent les urgences locales."
+    },
+    "source": "https://www.nhlbi.nih.gov/health/heart-attack"
+  },
+  {
+    "id": "insuffisance-cardiaque",
+    "name": "Insuffisance cardiaque",
+    "sections": {
+      "Définition": "Le cœur ne remplit plus suffisamment sa fonction de remplissage ou d’éjection.",
+      "Causes et facteurs": "Plusieurs maladies cardiaques peuvent y contribuer.",
+      "Symptômes possibles": "Essoufflement, fatigue et gonflements sont possibles.",
+      "Diagnostic médical": "Examen clinique, échocardiographie et examens complémentaires selon le contexte.",
+      "Principes de traitement": "Médicaments, suivi et parfois dispositifs ou interventions, selon le type.",
+      "Prévention et suivi": "Suivi régulier et prise en charge des facteurs aggravants."
+    },
+    "source": "https://www.nhlbi.nih.gov/health/heart-failure"
+  },
+  {
+    "id": "arythmie",
+    "name": "Troubles du rythme cardiaque",
+    "sections": {
+      "Définition": "Le rythme est trop rapide, trop lent ou irrégulier.",
+      "Causes et facteurs": "Des anomalies électriques, maladies cardiaques ou facteurs réversibles peuvent intervenir.",
+      "Symptômes possibles": "Palpitations, fatigue, malaise ; parfois aucun symptôme.",
+      "Diagnostic médical": "Enregistrement du rythme par ECG, parfois prolongé.",
+      "Principes de traitement": "Surveillance, médicaments ou interventions selon le trouble identifié.",
+      "Prévention et suivi": "Suivre le traitement prescrit et les facteurs cardiovasculaires ; ne pas modifier seul ses médicaments."
+    },
+    "source": "https://www.nhlbi.nih.gov/health/arrhythmias/treatment"
+  },
+  {
+    "id": "valvulopathie",
+    "name": "Maladies des valves",
+    "sections": {
+      "Définition": "Une valve peut se rétrécir ou laisser refluer le sang.",
+      "Causes et facteurs": "Causes congénitales ou acquises ; leur fréquence varie selon la valve.",
+      "Symptômes possibles": "Essoufflement, fatigue ou autres signes ; certaines atteintes restent silencieuses.",
+      "Diagnostic médical": "L’échocardiographie évalue notamment la valve et ses conséquences.",
+      "Principes de traitement": "Surveillance, médicaments symptomatiques, réparation ou remplacement selon la situation.",
+      "Prévention et suivi": "Suivi adapté à la valve atteinte et aux autres facteurs cardiaques."
+    },
+    "source": "https://www.nhlbi.nih.gov/health/heart-valve-diseases/treatment"
+  },
+  {
+    "id": "asthme",
+    "name": "Asthme",
+    "sections": {
+      "Définition": "Maladie inflammatoire des voies aériennes avec gêne respiratoire variable.",
+      "Causes et facteurs": "Des facteurs individuels et environnementaux participent aux symptômes.",
+      "Symptômes possibles": "Sifflements, toux, oppression et essoufflement.",
+      "Diagnostic médical": "Histoire clinique et exploration de la fonction respiratoire, notamment spirométrie.",
+      "Principes de traitement": "Traitements inhalés et plan d’action personnalisé élaboré avec les soignants.",
+      "Prévention et suivi": "Limiter les déclencheurs identifiés et vérifier régulièrement la technique d’inhalation."
+    },
+    "source": "https://www.nhlbi.nih.gov/health/asthma/treatment-action-plan"
+  },
+  {
+    "id": "diabete2",
+    "name": "Diabète de type 2",
+    "sections": {
+      "Définition": "La glycémie reste trop élevée.",
+      "Causes et facteurs": "Une résistance à l’insuline et une sécrétion insuffisante interviennent.",
+      "Symptômes possibles": "Soif, urines fréquentes, fatigue ; début parfois silencieux.",
+      "Diagnostic médical": "Analyses sanguines, notamment glycémie et HbA1c.",
+      "Principes de traitement": "Habitudes de vie, médicaments et suivi individualisés.",
+      "Prévention et suivi": "Activité adaptée et suivi des risques métaboliques."
+    },
+    "source": "https://www.niddk.nih.gov/health-information/diabetes/overview/what-is-diabetes/type-2-diabetes"
+  },
+  {
+    "id": "maladie-renale",
+    "name": "Maladie rénale chronique",
+    "sections": {
+      "Définition": "Une atteinte rénale persistante altère la structure ou la fonction des reins.",
+      "Causes et facteurs": "Le diabète et l’hypertension sont des causes fréquentes.",
+      "Symptômes possibles": "Elle peut rester longtemps silencieuse.",
+      "Diagnostic médical": "Analyses sanguines et urinaires, dont créatinine et albuminurie, interprétées dans le temps.",
+      "Principes de traitement": "Traitement des causes et protection rénale ; suppléance dans certaines formes avancées.",
+      "Prévention et suivi": "Suivi des maladies associées et médicaments revus avec les soignants."
+    },
+    "source": "https://www.niddk.nih.gov/health-information/kidney-disease"
+  },
+  {
+    "id": "osteoporose",
+    "name": "Ostéoporose",
+    "sections": {
+      "Définition": "Fragilisation du tissu osseux augmentant le risque de fracture.",
+      "Causes et facteurs": "Âge, facteurs hormonaux, certaines maladies et certains traitements.",
+      "Symptômes possibles": "Souvent silencieuse jusqu’à une fracture.",
+      "Diagnostic médical": "Évaluation du risque et mesure de densité osseuse lorsqu’indiquée.",
+      "Principes de traitement": "Prévention des chutes, mesures nutritionnelles et médicaments selon le risque.",
+      "Prévention et suivi": "Activité adaptée, santé osseuse et suivi médical."
+    },
+    "source": "https://www.niams.nih.gov/health-topics/osteoporosis/diagnosis-treatment-and-steps-to-take"
+  }
+]

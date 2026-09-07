@@ -1,6 +1,6 @@
 # Corpus — Explorer le corps humain
 
-Prototype fonctionnel dans `SAAS/medecine`, en React, TypeScript et Three.js. Interface sur fond blanc avec commandes agrandies, panneaux compacts et vues rapides Organes / Squelette / Muscles, adaptée à l’ordinateur et au téléphone. Matériaux et éclairage de studio retravaillés pour mieux distinguer les tissus. Modèles et polices hébergés localement, sans backend ni compte.
+Prototype fonctionnel dans `SAAS/medecine`, en React, TypeScript et Three.js. Interface sur fond blanc avec commandes agrandies, panneaux compacts et vues rapides Organes / Squelette / Muscles, adaptée à l’ordinateur et au téléphone. Matériaux et éclairage de studio retravaillés pour mieux distinguer les tissus. Modèles et polices hébergés localement, API de conversation légère, sans compte.
 
 ## Lancer
 
@@ -9,7 +9,7 @@ npm install
 npm run dev
 ```
 
-Ouvrir http://localhost:5173. Production : `npm run build`, puis `npm run preview` (http://localhost:4173). Le dossier `dist/` peut être servi par un hébergement statique. Aucun secret requis.
+Ouvrir http://localhost:5173. Production complète : `npm run build`, puis `npm start` (http://localhost:4173, Node 22.9+). `npm run preview` permet également une prévisualisation avec l’API. Aucun secret requis pour le mode ressources locales ; un hébergement statique seul ne fournit pas l’assistant.
 
 ## Explorer
 
@@ -66,3 +66,44 @@ Transformation commune : rotation `(x,y,z) → (x,z,−y)`, centrage et échelle
 ## Compléter les noms français
 
 `python3 scripts/complete-french.py` compose les libellés à partir de la nomenclature et de correspondances explicites, puis échoue si un nom source reste non traduit. `node scripts/audit-french.mjs` vérifie la couverture du catalogue. Seuls les libellés nécessaires sont chargés dans le navigateur, sans le dictionnaire de travail complet.
+
+## Présence, partage et étude
+
+Le cadrage initial est rapproché, avec un halo et une ombre de présentation au sol. Le bouton Isoler est l’action principale de la fiche. Une explication distingue les 48 repères de la vue d’ensemble des 1 663 structures détaillées.
+
+Chaque sélection dispose d’un lien stable, par exemple `/#structure=FMA7088` (cœur), ou `/#structure=FMA7088&mode=overview`. Ces fragments fonctionnent sur un hébergement statique sans configuration de réécriture. Le bouton Copier le lien fournit l’URL ; si le presse-papiers est indisponible, un champ sélectionnable est proposé. Rechargement et navigation précédent/suivant restaurent la sélection et activent ses couches. La copie ajoute aussi un état versionné : caméra, couches, opacités, structures masquées, isolation, coupe, repères et thème. Les URL peuvent être longues après de nombreux masquages ; elles ne contiennent ni conversation ni progression. Les animations et le parcours courant ne sont pas partagés.
+
+Un thème sombre facultatif est mémorisé localement. Le blanc reste le choix initial. La visite guidée comporte cinq étapes avec consignes d’observation et fiches sourcées : poumon, cœur, intestin grêle, cerveau et fémur. Un quiz 3D distinct complète cette visite.
+
+### Visage en vue Muscles
+
+Les principaux muscles faciaux sont absents des modèles distribués. Le shader de l’enveloppe corporelle rend donc opaque sa région faciale réelle en vue musculaire, avec une transition progressive sur le cou. Aucun muscle facial n’est inventé ni ajouté au compteur. Cette présentation nécessite la couche Enveloppe ; elle disparaît lorsque celle-ci est masquée, et devient transparente pendant une sélection pour préserver l’exploration interne.
+
+
+## Plateforme d’apprentissage
+
+Navigation Atlas 3D / Cours / Entraînement / Ma progression. La conversation contextuelle accompagne l’atlas ; les cours disposent d’un espace de lecture indépendant.
+
+- Treize fiches de cours, dont neuf sur les organes et quatre sur les fondamentaux, avec rappel actif et approfondissement. Huit fiches de pathologies en six rubriques, avec sources.
+- Quiz spatial de dix structures : sélection sur les maillages ou repères, indices, réponse dévoilée et bilan. Le score récompense le premier essai sans aide. Vingt QCM théoriques complètent cet entraînement.
+- Progression des cours mémorisée sur cet appareil, effaçable dans Profil. Pas de compte ni synchronisation.
+- Neuf filtres de systèmes combinables, construits à partir des structures réellement présentes ; réseau lymphatique partiel et anatomie reproductrice masculine uniquement.
+- Coupe mobile suivant trois axes, inversion du côté conservé et plan de repère ; opacité par couche ; étiquettes nominatives ou numérotées.
+- Cinquante profils anatomiques enrichissent 80 structures musculaires et donnent des repères de réseau à 280 artères et 142 veines. Les autres structures conservent une fiche générale : leurs attaches, innervation ou territoires précis restent à documenter.
+- Deux animations illustratives sur les vrais modèles : battement et respiration. Pas de simulation du débit sanguin, des valves ou de la mécanique articulaire.
+
+L’API `/api/chat` comprend notamment « Montre-moi le pancréas », « Isole le cœur » et des questions sur les cours. **Le mode livré utilise des ressources locales, sans IA générative.** L’adaptateur de fournisseur est prêt, mais aucun fournisseur externe n’a été configuré. Voir [contrat API et extension](server/README.md).
+
+Les coupes ouvrent les maillages de surface sans remplir les tissus internes : ce ne sont pas des coupes histologiques ou radiologiques. Le contenu médical est une introduction sourcée, pas un cursus complet ni une validation clinique. Les données et composants sont séparés pour enrichir progressivement la plateforme.
+
+## Corpus Campus — espaces séparés
+
+La navigation comprend **Atlas 3D**, **Cours** et **Entraînement**, utilisables sur ordinateur et téléphone. Les cours sont des pages de lecture indépendantes, avec un lien profond (`#tab=cours&cours=orientation`), recherche et filtres par matière. Une ouverture directe des cours ou de l’entraînement ne télécharge aucun GLB avant utilisation de l’atlas.
+
+Le socle comporte 13 fiches : quatre fondamentaux (orientation, homéostasie, membrane, tissus) et neuf organes. Chaque cours présente objectifs, notions, point de vigilance, rappel actif dévoilable et source. Il est possible de marquer un cours terminé, ouvrir son modèle 3D et lancer ses QCM. Les supports de la faculté restent la référence du programme ; la biochimie complète, la biophysique, les statistiques et les autres matières du PASS/L.AS ne sont pas couvertes.
+
+L’entraînement propose 20 QCM originaux à réponses multiples, filtrés par matière ou cours, tirés sans doublon. Sessions de 5, 10 ou 20 questions, réduites au nombre disponible dans le filtre. Mode apprentissage avec correction par proposition ; mode examen avec 75 secondes par question, navigation arrière et correction différée. Le chronomètre termine la session à échéance. Barème interne : 1 point pour une sélection entièrement correcte, sinon 0 ; aucun point négatif. Bilan détaillé, lien vers le cours et reprise des erreurs. Le carnet d’erreurs mémorise la dernière réussite ou erreur de chaque question localement (`corpus-practice-v1`). Il ne s’agit ni d’annales ni d’un barème officiel.
+
+Le quiz spatial comprend désormais 10 structures réelles, avec indices, repères numérotés prioritaires et bilan par structure. Il reste distinct des QCM théoriques. Les vues de l’atlas bénéficient d’un environnement de studio calculé localement, de matériaux physiques, d’ombres et de couleurs cardiaques affinées. L’enveloppe réelle du visage est opaque en vue Organes ou Muscles sans sélection ; elle devient transparente pour explorer l’intérieur. Les ombres et reflets sont des choix de présentation, sans valeur diagnostique.
+
+Organisation : `src/study/curriculum.ts`, `questions.ts`, `CoursesWorkspace.tsx`, `PracticeWorkspace.tsx` et `study.css`. Les rendus de cours sont générés depuis les GLB via `tests/campus-thumbnails.mjs`, avec attribution dans `public/course-previews/LICENSE.txt`. Aucun nouveau modèle IA ou service payant n’a été activé par cette refonte.

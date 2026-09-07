@@ -1,0 +1,501 @@
+[
+  {
+    "pattern": "clavicular part of .*deltoid",
+    "kind": "muscle",
+    "fields": {
+      "Action": "Flexion et rotation médiale du bras",
+      "Attache proximale": "Clavicule latérale",
+      "Attache distale": "Tubérosité deltoïdienne",
+      "Innervation": "Nerf axillaire"
+    },
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK537056/"
+  },
+  {
+    "pattern": "acromial part of .*deltoid",
+    "kind": "muscle",
+    "fields": {
+      "Action": "Abduction du bras",
+      "Attache proximale": "Acromion",
+      "Attache distale": "Tubérosité deltoïdienne",
+      "Innervation": "Nerf axillaire"
+    },
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK537056/"
+  },
+  {
+    "pattern": "spinal part of .*deltoid",
+    "kind": "muscle",
+    "fields": {
+      "Action": "Extension et rotation latérale du bras",
+      "Attache proximale": "Épine scapulaire",
+      "Attache distale": "Tubérosité deltoïdienne",
+      "Innervation": "Nerf axillaire"
+    },
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK537056/"
+  },
+  {
+    "pattern": "supraspinatus",
+    "kind": "muscle",
+    "fields": {
+      "Action": "Initiation de l’abduction",
+      "Attache proximale": "Fosse supra-épineuse",
+      "Attache distale": "Tubercule majeur huméral",
+      "Innervation": "Nerf suprascapulaire"
+    },
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK482410/"
+  },
+  {
+    "pattern": "infraspinatus",
+    "kind": "muscle",
+    "fields": {
+      "Action": "Rotation latérale du bras",
+      "Attache proximale": "Fosse infra-épineuse",
+      "Attache distale": "Tubercule majeur huméral",
+      "Innervation": "Nerf suprascapulaire"
+    },
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK482410/"
+  },
+  {
+    "pattern": "teres minor",
+    "kind": "muscle",
+    "fields": {
+      "Action": "Rotation latérale du bras",
+      "Attache proximale": "Bord latéral scapulaire",
+      "Attache distale": "Tubercule majeur huméral",
+      "Innervation": "Nerf axillaire"
+    },
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK482410/"
+  },
+  {
+    "pattern": "subscapularis",
+    "kind": "muscle",
+    "fields": {
+      "Action": "Rotation médiale du bras",
+      "Attache proximale": "Fosse subscapulaire",
+      "Attache distale": "Tubercule mineur huméral",
+      "Innervation": "Nerfs subscapulaires"
+    },
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK482410/"
+  },
+  {
+    "pattern": "teres major",
+    "kind": "muscle",
+    "fields": {
+      "Action": "Adduction et rotation médiale",
+      "Attache proximale": "Angle inférieur scapulaire",
+      "Attache distale": "Lèvre médiale du sillon intertuberculaire",
+      "Innervation": "Nerf subscapulaire inférieur"
+    },
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK482410/"
+  },
+  {
+    "pattern": "biceps brachii",
+    "kind": "muscle",
+    "fields": {
+      "Action": "Flexion du coude et supination",
+      "Attache proximale": "Scapula : deux chefs",
+      "Attache distale": "Tubérosité radiale et aponévrose",
+      "Innervation": "Nerf musculocutané"
+    },
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK482410/"
+  },
+  {
+    "pattern": "brachialis",
+    "kind": "muscle",
+    "fields": {
+      "Action": "Flexion du coude",
+      "Attache proximale": "Humérus antérieur",
+      "Attache distale": "Tubérosité ulnaire",
+      "Innervation": "Principalement nerf musculocutané"
+    },
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK482410/"
+  },
+  {
+    "pattern": "triceps brachii",
+    "kind": "muscle",
+    "fields": {
+      "Action": "Extension du coude",
+      "Attache proximale": "Scapula et humérus : trois chefs",
+      "Attache distale": "Olécrane",
+      "Innervation": "Nerf radial"
+    },
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK482410/"
+  },
+  {
+    "pattern": "rectus femoris",
+    "kind": "muscle",
+    "fields": {
+      "Action": "Extension du genou ; flexion de hanche",
+      "Attache proximale": "Bassin antérieur",
+      "Attache distale": "Patella puis tubérosité tibiale",
+      "Innervation": "Nerf fémoral"
+    },
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK500008/"
+  },
+  {
+    "pattern": "vastus lateralis",
+    "kind": "muscle",
+    "fields": {
+      "Action": "Extension du genou",
+      "Attache proximale": "Fémur proximal et latéral",
+      "Attache distale": "Patella puis tubérosité tibiale",
+      "Innervation": "Nerf fémoral"
+    },
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK500008/"
+  },
+  {
+    "pattern": "vastus medialis",
+    "kind": "muscle",
+    "fields": {
+      "Action": "Extension du genou",
+      "Attache proximale": "Fémur médial",
+      "Attache distale": "Patella puis tubérosité tibiale",
+      "Innervation": "Nerf fémoral"
+    },
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK500008/"
+  },
+  {
+    "pattern": "vastus intermedius",
+    "kind": "muscle",
+    "fields": {
+      "Action": "Extension du genou",
+      "Attache proximale": "Fémur antérieur",
+      "Attache distale": "Patella puis tubérosité tibiale",
+      "Innervation": "Nerf fémoral"
+    },
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK500008/"
+  },
+  {
+    "pattern": "sartorius",
+    "kind": "muscle",
+    "fields": {
+      "Action": "Flexion hanche/genou ; abduction de hanche",
+      "Attache proximale": "Épine iliaque antérosupérieure",
+      "Attache distale": "Tibia médial, patte d’oie",
+      "Innervation": "Nerf fémoral"
+    },
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK500008/"
+  },
+  {
+    "pattern": "pectineus",
+    "kind": "muscle",
+    "fields": {
+      "Action": "Adduction et flexion de hanche",
+      "Attache proximale": "Pubis supérieur",
+      "Attache distale": "Ligne pectinée fémorale",
+      "Innervation": "Principalement nerf fémoral"
+    },
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK500008/"
+  },
+  {
+    "pattern": "iliacus",
+    "kind": "muscle",
+    "fields": {
+      "Action": "Flexion de hanche",
+      "Attache proximale": "Fosse iliaque",
+      "Attache distale": "Petit trochanter",
+      "Innervation": "Nerf fémoral"
+    },
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK500008/"
+  },
+  {
+    "pattern": "psoas major",
+    "kind": "muscle",
+    "fields": {
+      "Action": "Flexion de hanche",
+      "Attache proximale": "Rachis thoracolombaire",
+      "Attache distale": "Petit trochanter",
+      "Innervation": "Rameaux lombaires antérieurs"
+    },
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK500008/"
+  },
+  {
+    "pattern": "semitendinosus",
+    "kind": "muscle",
+    "fields": {
+      "Action": "Extension de hanche ; flexion du genou",
+      "Attache proximale": "Tubérosité ischiatique",
+      "Attache distale": "Patte d’oie tibiale",
+      "Innervation": "Division tibiale du sciatique"
+    },
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK546688/"
+  },
+  {
+    "pattern": "semimembranosus",
+    "kind": "muscle",
+    "fields": {
+      "Action": "Extension de hanche ; flexion du genou",
+      "Attache proximale": "Tubérosité ischiatique",
+      "Attache distale": "Condyle tibial médial",
+      "Innervation": "Division tibiale du sciatique"
+    },
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK546688/"
+  },
+  {
+    "pattern": "long head of .*biceps femoris",
+    "kind": "muscle",
+    "fields": {
+      "Action": "Extension de hanche ; flexion du genou",
+      "Attache proximale": "Tubérosité ischiatique",
+      "Attache distale": "Tête fibulaire",
+      "Innervation": "Division tibiale du sciatique"
+    },
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK546688/"
+  },
+  {
+    "pattern": "short head of .*biceps femoris",
+    "kind": "muscle",
+    "fields": {
+      "Action": "Flexion du genou",
+      "Attache proximale": "Ligne âpre fémorale",
+      "Attache distale": "Tête fibulaire",
+      "Innervation": "Division fibulaire commune du sciatique"
+    },
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK546688/"
+  },
+  {
+    "pattern": "gastrocnemius",
+    "kind": "muscle",
+    "fields": {
+      "Action": "Flexion plantaire ; flexion du genou",
+      "Attache proximale": "Condyles fémoraux",
+      "Attache distale": "Calcanéus via tendon calcanéen",
+      "Innervation": "Nerf tibial"
+    },
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK537340/"
+  },
+  {
+    "pattern": "soleus",
+    "kind": "muscle",
+    "fields": {
+      "Action": "Flexion plantaire",
+      "Attache proximale": "Tibia et fibula postérieurs",
+      "Attache distale": "Calcanéus via tendon calcanéen",
+      "Innervation": "Nerf tibial"
+    },
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK537340/"
+  },
+  {
+    "pattern": "popliteus",
+    "kind": "muscle",
+    "fields": {
+      "Action": "Déverrouillage du genou",
+      "Attache proximale": "Condyle fémoral latéral",
+      "Attache distale": "Tibia postérieur proximal",
+      "Innervation": "Nerf tibial"
+    },
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK537340/"
+  },
+  {
+    "pattern": "tibialis posterior",
+    "kind": "muscle",
+    "fields": {
+      "Action": "Inversion et soutien de voûte",
+      "Attache proximale": "Tibia, fibula, membrane interosseuse",
+      "Attache distale": "Tarse et métatarse, dont naviculaire",
+      "Innervation": "Nerf tibial"
+    },
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK537340/"
+  },
+  {
+    "pattern": "flexor digitorum longus",
+    "kind": "muscle",
+    "fields": {
+      "Action": "Flexion des orteils II à V",
+      "Attache proximale": "Tibia postérieur",
+      "Attache distale": "Phalanges distales II à V",
+      "Innervation": "Nerf tibial"
+    },
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK537340/"
+  },
+  {
+    "pattern": "flexor hallucis longus",
+    "kind": "muscle",
+    "fields": {
+      "Action": "Flexion du gros orteil",
+      "Attache proximale": "Fibula postérieure",
+      "Attache distale": "Phalange distale du gros orteil",
+      "Innervation": "Nerf tibial"
+    },
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK537340/"
+  },
+  {
+    "pattern": "abductor hallucis",
+    "kind": "muscle",
+    "fields": {
+      "Action": "Abduction du gros orteil",
+      "Attache proximale": "Calcanéus médial",
+      "Attache distale": "Phalange proximale du gros orteil",
+      "Innervation": "Nerf plantaire médial"
+    },
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK539705/"
+  },
+  {
+    "pattern": "flexor digitorum brevis",
+    "kind": "muscle",
+    "fields": {
+      "Action": "Flexion des orteils II à V",
+      "Attache proximale": "Calcanéus",
+      "Attache distale": "Phalanges moyennes II à V",
+      "Innervation": "Nerf plantaire médial"
+    },
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK539705/"
+  },
+  {
+    "pattern": "flexor accessorius",
+    "kind": "muscle",
+    "fields": {
+      "Action": "Assiste la flexion des orteils",
+      "Attache proximale": "Calcanéus",
+      "Attache distale": "Tendon du long fléchisseur des orteils",
+      "Innervation": "Nerf plantaire latéral"
+    },
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK539705/"
+  },
+  {
+    "pattern": "plantar interosseous",
+    "kind": "muscle",
+    "fields": {
+      "Action": "Adduction des orteils vers le deuxième",
+      "Attache proximale": "Métatarsiens III à V",
+      "Attache distale": "Phalanges proximales III à V",
+      "Innervation": "Nerf plantaire latéral"
+    },
+    "source": "https://www.ncbi.nlm.nih.gov/books/NBK539705/"
+  },
+  {
+    "pattern": "coronary|interventricular|cardiac vein",
+    "kind": "vessel",
+    "fields": {
+      "Territoire du réseau": "Myocarde et territoires coronaires."
+    },
+    "source": "https://openstax.org/books/anatomy-and-physiology-2e/pages/20-5-circulatory-pathways"
+  },
+  {
+    "pattern": "pulmonary|lingular|(?:apical|basal) segmental",
+    "kind": "vessel",
+    "fields": {
+      "Territoire du réseau": "Réseau pulmonaire ; territoire exact dépendant du segment."
+    },
+    "source": "https://openstax.org/books/anatomy-and-physiology-2e/pages/20-5-circulatory-pathways"
+  },
+  {
+    "pattern": "cerebral|cerebellar|choroidal|pontine|callosomarginal|pericallosal",
+    "kind": "vessel",
+    "fields": {
+      "Territoire du réseau": "Encéphale ; distribution propre à chaque branche."
+    },
+    "source": "https://openstax.org/books/anatomy-and-physiology-2e/pages/20-5-circulatory-pathways"
+  },
+  {
+    "pattern": "renal",
+    "kind": "vessel",
+    "fields": {
+      "Territoire du réseau": "Rein, selon la branche rénale."
+    },
+    "source": "https://openstax.org/books/anatomy-and-physiology-2e/pages/20-5-circulatory-pathways"
+  },
+  {
+    "pattern": "portal",
+    "kind": "vessel",
+    "fields": {
+      "Territoire du réseau": "Retour portal des viscères digestifs vers le foie."
+    },
+    "source": "https://openstax.org/books/anatomy-and-physiology-2e/pages/20-5-circulatory-pathways"
+  },
+  {
+    "pattern": "hepatic",
+    "kind": "vessel",
+    "fields": {
+      "Territoire du réseau": "Réseau hépatique ; apport ou drainage selon le vaisseau."
+    },
+    "source": "https://openstax.org/books/anatomy-and-physiology-2e/pages/20-5-circulatory-pathways"
+  },
+  {
+    "pattern": "gastric|gastroepiploic|gastro-epiploic",
+    "kind": "vessel",
+    "fields": {
+      "Territoire du réseau": "Estomac et territoires voisins."
+    },
+    "source": "https://openstax.org/books/anatomy-and-physiology-2e/pages/20-5-circulatory-pathways"
+  },
+  {
+    "pattern": "mesenteric|ileocolic|colic|ileal|sigmoid",
+    "kind": "vessel",
+    "fields": {
+      "Territoire du réseau": "Intestins, selon le réseau concerné."
+    },
+    "source": "https://openstax.org/books/anatomy-and-physiology-2e/pages/20-5-circulatory-pathways"
+  },
+  {
+    "pattern": "pancreatic",
+    "kind": "vessel",
+    "fields": {
+      "Territoire du réseau": "Pancréas et territoires voisins."
+    },
+    "source": "https://openstax.org/books/anatomy-and-physiology-2e/pages/20-5-circulatory-pathways"
+  },
+  {
+    "pattern": "femoral|popliteal|genicular",
+    "kind": "vessel",
+    "fields": {
+      "Territoire du réseau": "Cuisse ou région du genou."
+    },
+    "source": "https://openstax.org/books/anatomy-and-physiology-2e/pages/20-5-circulatory-pathways"
+  },
+  {
+    "pattern": "tibial|fibular|plantar",
+    "kind": "vessel",
+    "fields": {
+      "Territoire du réseau": "Jambe ou pied."
+    },
+    "source": "https://openstax.org/books/anatomy-and-physiology-2e/pages/20-5-circulatory-pathways"
+  },
+  {
+    "pattern": "brachial|radial|ulnar|palmar",
+    "kind": "vessel",
+    "fields": {
+      "Territoire du réseau": "Bras, avant-bras ou main."
+    },
+    "source": "https://openstax.org/books/anatomy-and-physiology-2e/pages/20-5-circulatory-pathways"
+  },
+  {
+    "pattern": "carotid|jugular",
+    "kind": "vessel",
+    "fields": {
+      "Territoire du réseau": "Tête et cou."
+    },
+    "source": "https://openstax.org/books/anatomy-and-physiology-2e/pages/20-5-circulatory-pathways"
+  },
+  {
+    "pattern": "intercostal|thoracic",
+    "kind": "vessel",
+    "fields": {
+      "Territoire du réseau": "Paroi ou contenu thoracique selon le vaisseau."
+    },
+    "source": "https://openstax.org/books/anatomy-and-physiology-2e/pages/20-5-circulatory-pathways"
+  },
+  {
+    "pattern": "iliac|gluteal|obturator",
+    "kind": "vessel",
+    "fields": {
+      "Territoire du réseau": "Bassin ou membre inférieur."
+    },
+    "source": "https://openstax.org/books/anatomy-and-physiology-2e/pages/20-5-circulatory-pathways"
+  },
+  {
+    "pattern": "aorta",
+    "kind": "vessel",
+    "fields": {
+      "Territoire du réseau": "Circulation artérielle systémique."
+    },
+    "source": "https://openstax.org/books/anatomy-and-physiology-2e/pages/20-5-circulatory-pathways"
+  },
+  {
+    "pattern": "vena cava",
+    "kind": "vessel",
+    "fields": {
+      "Territoire du réseau": "Retour veineux systémique vers le cœur droit."
+    },
+    "source": "https://openstax.org/books/anatomy-and-physiology-2e/pages/20-5-circulatory-pathways"
+  }
+]
