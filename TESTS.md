@@ -115,3 +115,21 @@ Les limites de validation clinique, de performance mobile physique et de couvert
 Validation finale de Corpus Campus : compilation TypeScript/Vite réussie ; 27 scénarios réussis dans la suite complète, puis les deux scénarios restants réussis après ajustement des assertions (attente de la caméra animée et enveloppe faciale désormais présente en vue Organes). Les 29 scénarios ont ainsi été validés. `git diff --check` sans erreur.
 
 Le parcours navigateur sur la version compilée servie à `http://127.0.0.1:4175` confirme le chargement, la sélection du poumon, le rechargement du lien profond, les muscles, les thèmes, la visite mobile, la commande locale de sélection du cœur, l’animation et le cours séparé. Résultat : aucune erreur JavaScript, aucune réponse HTTP en échec et aucune requête externe. L’instrumentation réservée aux tests est absente du build de production.
+
+## Bibliothèque étendue — 8 septembre 2026
+
+Compilation TypeScript/Vite réussie. Neuf scénarios ciblés ont été validés : huit dans l’exécution principale puis le parcours de recherche / cours / atlas après adaptation de sa recherche à la bibliothèque enrichie. La recherche porte désormais aussi sur les objectifs ; « membranaires » renvoie légitimement plusieurs chapitres.
+
+Les contrôles couvrent la banque de 68 questions (identifiants, propositions, corrections et quatre QCM par nouveau chapitre), les 25 cours, les favoris, les notes isolées par cours après rechargement, le chapitre suivant, la sélection d’un quiz par URL, le filtre de niveau, la navigation entre questions sans révéler les corrections d’examen, le score, la fin du chronomètre et le carnet d’erreurs. La lecture directe des cours et des quiz sur téléphone ne déclenche aucun chargement GLB.
+
+Les captures de la version compilée ont été réalisées avec `tests/library-preview.mjs` à 1440 × 1000 et 393 × 852, et inspectées : bibliothèque, article, application, accueil des quiz, banque par chapitre et lecture mobile sombre. Aucune erreur JavaScript, réponse HTTP en échec ou débordement horizontal dans ce parcours. Les fichiers se trouvent dans `tests/artifacts/library-*.png`.
+
+Les validations sont effectuées dans Chromium, avec téléphone émulé. Elles ne remplacent pas une relecture médicale ou une vérification sur appareils physiques. Le serveur de production conserve l’écoute Railway sur `0.0.0.0` et le port d’environnement.
+
+## Approfondissements, cerveau et schémas — 8 septembre 2026
+
+Build TypeScript/Vite réussi, avec l’avertissement existant sur les bundles de plus de 500 ko. Quatorze scénarios distincts validés dans les suites ciblées `campus`, `library`, `depth` et `diagrams`, au fil des exécutions ; la suite historique complète n’a pas été relancée pour cette extension.
+
+Couverture : 25 cours avec 6 à 8 sections, 143 questions et leurs corrections, réponse exclusive des vrai/faux, notes et favoris, filtres et examen, 25 schémas avec sélection et explications, navigation entre cours sans duplication de schéma. Une collision de clés React entre le schéma et les notes a été corrigée puis les parcours concernés ont été rejoués avec succès.
+
+Sur téléphone émulé à 393 × 852 : cerveau réel FMA50801 isolé, rapprochement effectif de la caméra avec le zoom, recadrage, diagrammes au clavier, thème sombre et absence de débordement horizontal. Captures inspectées : `brain-mobile-zoom.png`, `diagram-mobile-pancreas.png`, `diagram-mobile-cycle.png`. Les schémas restent des représentations fonctionnelles ; aucune validation médicale supplémentaire n’est revendiquée.

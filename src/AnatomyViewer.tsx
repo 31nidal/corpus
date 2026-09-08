@@ -101,7 +101,9 @@ export default function AnatomyViewer(props: Props) {
     const controls = new OrbitControls(camera, renderer.domElement)
     controls.enableDamping = true
     controls.dampingFactor = 0.085
-    controls.enablePan = false
+    controls.enablePan = true
+    controls.screenSpacePanning = true
+    controls.zoomToCursor = true
     controls.rotateSpeed = 0.65
     controls.zoomSpeed = 0.75
     controls.minDistance = 0.05
@@ -296,6 +298,7 @@ export default function AnatomyViewer(props: Props) {
 
     runtimeRef.current = { setVisibility, select: focus, reset, refresh: updateMaterials, restore:()=>{} }
     const api: ViewerApi = {
+      frame: (id) => focus(id),
       capture: () => ({position: camera.position.toArray() as CameraPose['position'], target:controls.target.toArray() as CameraPose['target']}),
       reset,
       zoom: (step) => {
@@ -390,7 +393,7 @@ export default function AnatomyViewer(props: Props) {
     }
     const handlePointerDown = (event: PointerEvent) => {
       activePointers.add(event.pointerId)
-      pointerDown = activePointers.size === 1 ? { x: event.clientX, y: event.clientY, time: performance.now() } : null
+      pointerDown = activePointers.size === 1 && event.button === 0 ? { x: event.clientX, y: event.clientY, time: performance.now() } : null
       pendingHover = null
       hoveredId = null
       latest.current.onHover(null)

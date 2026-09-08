@@ -1,15 +1,16 @@
 import {test,expect} from '@playwright/test'
 import {questions} from '../src/study/questions'
 import fs from 'node:fs'
-const courseCount=4+JSON.parse(fs.readFileSync('src/data/learning.json','utf8')).length
-async function answer(page:any,correct=true){const title=await page.locator('.question-layout h1').innerText();const q=questions.find(q=>q.prompt===title)!;const picks=correct?q.correct:[q.options.findIndex((_,i)=>!q.correct.includes(i))];for(const i of picks)await page.getByRole('button',{name:new RegExp(q.options[i].replace(/[.*+?^${}()|[\]\\]/g,'\\$&'))}).click();return q}
+import {chapters} from '../src/study/chapters'
+const courseCount=4+chapters.length+JSON.parse(fs.readFileSync('src/data/learning.json','utf8')).length
+async function answer(page:any,correct=true){const title=await page.locator('.question-layout h1').innerText();const q=questions.find(q=>q.prompt===title)!;const picks=correct?q.correct:[q.options.findIndex((_,i)=>!q.correct.includes(i))];for(const i of picks)await page.locator('.answer-options button').nth(i).click();return q}
 
 test('cours dédiés : recherche, lien profond, rappel actif et retour au modèle',async({page})=>{
  const glbs:string[]=[];page.on('request',r=>{if(r.url().endsWith('.glb'))glbs.push(r.url())})
  await page.goto('/#tab=cours')
  await expect(page.locator('.course-tile')).toHaveCount(courseCount)
  expect(glbs).toHaveLength(0)
- await page.getByLabel('Rechercher un cours').fill('membranaires');await expect(page.locator('.course-tile')).toHaveCount(1)
+ await page.getByLabel('Rechercher un cours').fill('Les échanges membranaires');await expect(page.locator('.course-tile')).toHaveCount(1)
  await page.locator('.course-tile').click();await expect(page).toHaveURL(/cours=membrane/)
  await page.getByRole('button',{name:'Vérifier ma réponse'}).click();await expect(page.locator('.recall-answer')).toContainText('Non')
  await page.reload();await expect(page.locator('.course-article>h1')).toHaveText('Les échanges membranaires')

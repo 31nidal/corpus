@@ -1,5 +1,7 @@
-export type Question={id:string;course:string;topic:string;prompt:string;options:string[];correct:number[];why:string[]}
-export const questions:Question[]=[
+import {reasoningQuestions} from './reasoningQuestions'
+import {chapterQuestions} from './chapterQuestions'
+export type Question={id:string;course:string;topic:string;prompt:string;options:string[];correct:number[];why:string[];difficulty?:'essentiel'|'application';format?:'boolean'}
+export const questions:Question[]=[...reasoningQuestions,...chapterQuestions,
  {id:'orientation-1',course:'orientation',topic:'Anatomie',prompt:'Quels plans sont correctement associés ?',options:['Sagittal : droite / gauche','Frontal : haut / bas','Transversal : avant / arrière','Frontal : avant / arrière'],correct:[0,3],why:['Le plan sagittal sépare les côtés.','Cette séparation est transversale.','Le transversal sépare le haut et le bas.','Le plan frontal est aussi appelé coronal.']},
  {id:'orientation-2',course:'orientation',topic:'Anatomie',prompt:'Concernant les repères anatomiques :',options:['La droite est celle du sujet','Distal signifie proche du tronc','Le coude est proximal au poignet','Médial signifie vers le plan médian'],correct:[0,2,3],why:['Le point de vue reste celui du sujet.','Distal signifie plus éloigné de l’attache.','Il est plus proche de l’attache.','Médial s’oppose à latéral.']},
  {id:'homeostasis-1',course:'homeostasis',topic:'Physiologie',prompt:'Une boucle de régulation comprend :',options:['Un capteur','Un centre intégrateur','Un effecteur','Obligatoirement un organe unique'],correct:[0,1,2],why:['Il détecte la variation.','Il organise la réponse.','Il réalise la réponse.','Plusieurs structures peuvent participer.']},

@@ -5,5 +5,7 @@ import '@fontsource-variable/dm-sans/wght.css'
 import '@fontsource-variable/manrope/wght.css'
 import './styles.css'
 import './study/study.css'
+import './study/library.css'
+import './study/diagrams.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><App /></React.StrictMode>)

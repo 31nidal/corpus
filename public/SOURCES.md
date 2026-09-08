@@ -98,3 +98,13 @@ Quatre fiches originales de fondamentaux et vingt QCM originaux complètent les 
 - Complément respiratoire : [OpenStax, Gas Exchange](https://openstax.org/books/anatomy-and-physiology-2e/pages/22-4-gas-exchange).
 
 Les exercices sur les organes renvoient aux sources de leurs cours associés ci-dessus. Les aperçus sont des rendus des vrais maillages BodyParts3D ; leur attribution et leur licence CC BY-SA 2.1 Japon figurent dans `course-previews/LICENSE.txt`. Les dessins de livres et de repères sont des éléments d’interface, pas des représentations anatomiques.
+
+## Extension des cours — septembre 2026
+
+Douze nouveaux chapitres et 48 QCM ont été rédigés en français à partir des notions d’**OpenStax, Anatomy and Physiology 2e**. Références : chapitres 2.3 et 2.5 (réactions, composés organiques), 3.2–3.5 (organites, ADN, expression et division), 10.2–10.3 (muscle), 12.4–12.5 (signal neuronal), 17.1–17.2 (endocrinologie), 18.1–18.2 (sang), 20.1–20.2 (vaisseaux), 21.2–21.4 (immunité), 22.3–22.4 (respiration), 24.1 (métabolisme), 26.1–26.2 (eau). Les liens exacts figurent dans chaque cours et dans ses corrections. [Manuel de référence](https://openstax.org/details/books/anatomy-and-physiology-2e).
+
+Les exercices sont originaux, sans reprise d’annales. Les 13 cours préexistants ont reçu des applications et lexiques liés à leurs sources déjà indiquées. Aucun programme de faculté ni validation clinique ne sont revendiqués.
+
+### Approfondissements et schémas interactifs
+
+Les 25 schémas sont des créations originales en SVG et HTML : ils expliquent des relations et des mécanismes, sans reproduire les illustrations du manuel ni prétendre représenter des coupes anatomiques à l’échelle. Leurs explications et les 75 vrai/faux supplémentaires s’appuient sur les sources accessibles dans chaque cours. Les approfondissements ajoutent notamment les sections OpenStax 4.2–4.3 (tissus), 6.3 et 8.4 (os), 13.2 et 16.2 (système nerveux), 17.9 (pancréas endocrine), 19.1–19.2 (cœur), 22.1 (voies respiratoires), 23.4–23.7 (digestion), 25.3 et 25.5 (rein). Les URL exactes sont regroupées dans `src/study/deepCourses.ts` et affichées avec les références du cours.
