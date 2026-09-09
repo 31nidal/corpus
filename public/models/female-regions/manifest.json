@@ -1,0 +1,2419 @@
+{
+  "version": 3,
+  "sex": "female",
+  "groups": [
+    {
+      "id": "skeleton",
+      "label": "Os disponibles",
+      "url": "models/female-regions/skeleton.glb",
+      "bytes": 613136,
+      "structures": 14,
+      "sha256": "8ad71266bfdc3bc7dff95dcd65ad8b2fc3440873e4efe8265c39bf89e8fe5d10"
+    },
+    {
+      "id": "organs",
+      "label": "Organes et tissus",
+      "url": "models/female-regions/organs.glb",
+      "bytes": 2311588,
+      "structures": 47,
+      "sha256": "2a1c71578b66567d8f1212137091fafb7e7cd462160d557ec7b126ca1a5d3c24"
+    },
+    {
+      "id": "joints",
+      "label": "Articulations",
+      "url": "models/female-regions/joints.glb",
+      "bytes": 537852,
+      "structures": 13,
+      "sha256": "720124df2f1a2a7db434e6b194b047973feb3b9e91f7d857c73049bd4ea45c35"
+    }
+  ],
+  "structures": [
+    {
+      "id": "HRA-VH_F_fat_L",
+      "name": "interlobar adipose tissue of left mammary gland",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_fat_L"
+      ],
+      "sourceNode": "VH_F_fat_L",
+      "ontologyId": "FMA:73166",
+      "triangles": 1800,
+      "originalTriangles": 66420,
+      "bounds": [
+        [
+          0.03429566821801604,
+          0.6636166738060303,
+          0.07623011242213032
+        ],
+        [
+          0.31337951479996906,
+          1.0559029525637245,
+          0.30474235698690066
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_areolar_tubercles_L",
+      "name": "areolar tubercle",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_areolar_tubercles_L"
+      ],
+      "sourceNode": "VH_F_areolar_tubercles_L",
+      "ontologyId": "UBERON:0011828",
+      "triangles": 1800,
+      "originalTriangles": 4621,
+      "bounds": [
+        [
+          0.21215337448461344,
+          0.7415116757051732,
+          0.293434535190225
+        ],
+        [
+          0.25509543621124736,
+          0.7894207267213809,
+          0.31414524787703724
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_nipple_L",
+      "name": "left nipple",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_nipple_L"
+      ],
+      "sourceNode": "VH_F_nipple_L",
+      "ontologyId": "UBERON:0013772",
+      "triangles": 1800,
+      "originalTriangles": 9696,
+      "bounds": [
+        [
+          0.22540387300582573,
+          0.7522634444056384,
+          0.3046617894668767
+        ],
+        [
+          0.24612342257758468,
+          0.7744034306786884,
+          0.31831255541608583
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_areola_L",
+      "name": "left female areola",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_areola_L"
+      ],
+      "sourceNode": "VH_F_areola_L",
+      "ontologyId": "FMA:223679",
+      "triangles": 1800,
+      "originalTriangles": 23785,
+      "bounds": [
+        [
+          0.20751607021776977,
+          0.7370913660575769,
+          0.2906777329171085
+        ],
+        [
+          0.2583817111500062,
+          0.7917668633375834,
+          0.3140990997000932
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_mammary_lobes_L",
+      "name": "mammary lobe",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_mammary_lobes_L"
+      ],
+      "sourceNode": "VH_F_mammary_lobes_L",
+      "ontologyId": "UBERON:0018140",
+      "triangles": 1800,
+      "originalTriangles": 75788,
+      "bounds": [
+        [
+          0.1401000785715502,
+          0.6908052757616032,
+          0.17461239591219047
+        ],
+        [
+          0.28794495441591,
+          0.9300709054049472,
+          0.2868953530039543
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_main_lactiferous_ducts_L",
+      "name": "main lactiferous duct",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_main_lactiferous_ducts_L"
+      ],
+      "sourceNode": "VH_F_main_lactiferous_ducts_L",
+      "ontologyId": "UBERON:0015134",
+      "triangles": 1800,
+      "originalTriangles": 34755,
+      "bounds": [
+        [
+          0.16199339664174767,
+          0.697253143470091,
+          0.1944531100326491
+        ],
+        [
+          0.28566323531074,
+          0.9164706014490132,
+          0.3170588766893814
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_main_lactiferous_sinuses_L",
+      "name": "lactiferous sinus",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_main_lactiferous_sinuses_L"
+      ],
+      "sourceNode": "VH_F_main_lactiferous_sinuses_L",
+      "ontologyId": "FMA:58088",
+      "triangles": 1800,
+      "originalTriangles": 11456,
+      "bounds": [
+        [
+          0.2089265110983835,
+          0.7523616964014761,
+          0.2850572165497167
+        ],
+        [
+          0.2473294078797042,
+          0.7754321792956562,
+          0.31287334810523315
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_suspensory_ligaments_L",
+      "name": "suspensory ligament of left breast",
+      "group": "joints",
+      "groups": [
+        "joints"
+      ],
+      "meshNames": [
+        "HRA-VH_F_suspensory_ligaments_L"
+      ],
+      "sourceNode": "VH_F_suspensory_ligaments_L",
+      "ontologyId": "FMA:73119",
+      "triangles": 1800,
+      "originalTriangles": 44278,
+      "bounds": [
+        [
+          0.14287666323373688,
+          0.6863443389781134,
+          0.19958127187044072
+        ],
+        [
+          0.29029121980274913,
+          0.846274572477909,
+          0.3012046197968257
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_fat_R",
+      "name": "interlobar adipose tissue of right mammary gland",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_fat_R"
+      ],
+      "sourceNode": "VH_F_fat_R",
+      "ontologyId": "FMA:73165",
+      "triangles": 2993,
+      "originalTriangles": 373649,
+      "bounds": [
+        [
+          -0.32248072087461,
+          0.6680787058485811,
+          0.07393576568308317
+        ],
+        [
+          -0.034238716156262984,
+          1.0624339197606287,
+          0.30694429003507173
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_areolar_tubercles_R",
+      "name": "areolar tubercle",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_areolar_tubercles_R"
+      ],
+      "sourceNode": "VH_F_areolar_tubercles_R",
+      "ontologyId": "UBERON:0011828",
+      "triangles": 1800,
+      "originalTriangles": 4621,
+      "bounds": [
+        [
+          -0.25601147832840265,
+          0.7428258444384892,
+          0.2929340681105098
+        ],
+        [
+          -0.21303836678198318,
+          0.790760070114181,
+          0.3134827229509766
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_nipple_R",
+      "name": "right nipple",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_nipple_R"
+      ],
+      "sourceNode": "VH_F_nipple_R",
+      "ontologyId": "UBERON:0013773",
+      "triangles": 1800,
+      "originalTriangles": 9696,
+      "bounds": [
+        [
+          -0.24700778711810029,
+          0.753559070167263,
+          0.303996576453774
+        ],
+        [
+          -0.22636661057513116,
+          0.7758203583801284,
+          0.31768062961258214
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_areola_R",
+      "name": "right female areola",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_areola_R"
+      ],
+      "sourceNode": "VH_F_areola_R",
+      "ontologyId": "FMA:223677",
+      "triangles": 1800,
+      "originalTriangles": 23785,
+      "bounds": [
+        [
+          -0.2590842998404246,
+          0.7384121664786854,
+          0.2904130287769465
+        ],
+        [
+          -0.2086406563811359,
+          0.7930729195207844,
+          0.31305056869405545
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_main_lactiferous_sinuses_R",
+      "name": "lactiferous sinus",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_main_lactiferous_sinuses_R"
+      ],
+      "sourceNode": "VH_F_main_lactiferous_sinuses_R",
+      "ontologyId": "FMA:58088",
+      "triangles": 1800,
+      "originalTriangles": 11449,
+      "bounds": [
+        [
+          -0.24861576215548314,
+          0.75750440932122,
+          0.28418067482538345
+        ],
+        [
+          -0.20939193646857404,
+          0.7804727127151418,
+          0.31234083323329764
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_main_lactiferous_ducts_R",
+      "name": "main lactiferous duct",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_main_lactiferous_ducts_R"
+      ],
+      "sourceNode": "VH_F_main_lactiferous_ducts_R",
+      "ontologyId": "UBERON:0015134",
+      "triangles": 1800,
+      "originalTriangles": 34660,
+      "bounds": [
+        [
+          -0.2867056980005211,
+          0.7015601349573506,
+          0.1928063669854408
+        ],
+        [
+          -0.16313617165755426,
+          0.9201912358418474,
+          0.31643749398176124
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_mammary_lobes_R",
+      "name": "mammary lobe",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_mammary_lobes_R"
+      ],
+      "sourceNode": "VH_F_mammary_lobes_R",
+      "ontologyId": "UBERON:0018140",
+      "triangles": 1799,
+      "originalTriangles": 75788,
+      "bounds": [
+        [
+          -0.2915135106867467,
+          0.6961222797381836,
+          0.17358083446162645
+        ],
+        [
+          -0.14444419624301652,
+          0.9319536608848176,
+          0.28678188997665105
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_suspensory_ligaments_R",
+      "name": "suspensory ligament of right breast",
+      "group": "joints",
+      "groups": [
+        "joints"
+      ],
+      "meshNames": [
+        "HRA-VH_F_suspensory_ligaments_R"
+      ],
+      "sourceNode": "VH_F_suspensory_ligaments_R",
+      "ontologyId": "FMA:73118",
+      "triangles": 1800,
+      "originalTriangles": 51682,
+      "bounds": [
+        [
+          -0.29096076272851246,
+          0.6910675171633374,
+          0.2013058245749031
+        ],
+        [
+          -0.14453071401458056,
+          0.8498677883256827,
+          0.29976564012384305
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_vagina",
+      "name": "vagina",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_vagina"
+      ],
+      "sourceNode": "VH_F_vagina",
+      "ontologyId": "UBERON:0000996",
+      "triangles": 1800,
+      "originalTriangles": 8780,
+      "bounds": [
+        [
+          -0.06193552632382609,
+          -0.1957297936825535,
+          -0.052907098173731903
+        ],
+        [
+          0.03455169915105027,
+          -0.06904924194514629,
+          -0.002167876941227536
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_cervicovaginal_junction",
+      "name": "cervicovaginal junction",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_cervicovaginal_junction"
+      ],
+      "sourceNode": "VH_F_cervicovaginal_junction",
+      "ontologyId": null,
+      "triangles": 1800,
+      "originalTriangles": 3766,
+      "bounds": [
+        [
+          -0.05530512130837835,
+          -0.07724136426551877,
+          -0.06999213987422459
+        ],
+        [
+          0.027150823473467027,
+          -0.027416786911705914,
+          -0.015323544809534628
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_ampulla_of_uterine_tube_R",
+      "name": "ampulla of right uterine tube",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_ampulla_of_uterine_tube_R"
+      ],
+      "sourceNode": "VH_F_ampulla_of_uterine_tube_R",
+      "ontologyId": "FMA:18491",
+      "triangles": 1799,
+      "originalTriangles": 10440,
+      "bounds": [
+        [
+          -0.14667128635891075,
+          0.009745965401333004,
+          0.013053133375903959
+        ],
+        [
+          -0.08947176393487868,
+          0.0995848145671852,
+          0.04508603496854713
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_isthmus_of_fallopian_tube_R",
+      "name": "isthmus of right uterine tube",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_isthmus_of_fallopian_tube_R"
+      ],
+      "sourceNode": "VH_F_isthmus_of_fallopian_tube_R",
+      "ontologyId": "FMA:18493",
+      "triangles": 1600,
+      "originalTriangles": 1600,
+      "bounds": [
+        [
+          -0.0907509211392882,
+          0.0031965861902649023,
+          0.033830734360341175
+        ],
+        [
+          -0.07233313060304292,
+          0.012994204713262847,
+          0.041922149994613106
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_fibria_of_uterine_tube_R",
+      "name": "fimbria of right uterine tube",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_fibria_of_uterine_tube_R"
+      ],
+      "sourceNode": "VH_F_fibria_of_uterine_tube_R",
+      "ontologyId": "FMA:18497",
+      "triangles": 1800,
+      "originalTriangles": 3530,
+      "bounds": [
+        [
+          -0.14239815959575178,
+          0.070296716245327,
+          0.0010438791667853053
+        ],
+        [
+          -0.12724141732685093,
+          0.07978000895957475,
+          0.013500051291407866
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_uterine_tube_infundibulum_R",
+      "name": "infundibulum of right uterine tube",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_uterine_tube_infundibulum_R"
+      ],
+      "sourceNode": "VH_F_uterine_tube_infundibulum_R",
+      "ontologyId": "FMA:18489",
+      "triangles": 1800,
+      "originalTriangles": 2200,
+      "bounds": [
+        [
+          -0.143965748942185,
+          0.07564336492840137,
+          -7.21920382260044e-06
+        ],
+        [
+          -0.1275909850395705,
+          0.0993779501889423,
+          0.0153604536932921
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_uterine_tube_infundibulum_L",
+      "name": "infundibulum of left uterine tube",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_uterine_tube_infundibulum_L"
+      ],
+      "sourceNode": "VH_F_uterine_tube_infundibulum_L",
+      "ontologyId": "FMA:18490",
+      "triangles": 1800,
+      "originalTriangles": 2116,
+      "bounds": [
+        [
+          0.0914247939777121,
+          0.07719033487662558,
+          0.013617003897887184
+        ],
+        [
+          0.10970622445780767,
+          0.10104607721001532,
+          0.03003429430328719
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_fibria_of_uterine_tube_L",
+      "name": "fimbria of left uterine tube",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_fibria_of_uterine_tube_L"
+      ],
+      "sourceNode": "VH_F_fibria_of_uterine_tube_L",
+      "ontologyId": "FMA:18498",
+      "triangles": 1799,
+      "originalTriangles": 2871,
+      "bounds": [
+        [
+          0.08923310296993972,
+          0.07041868949836827,
+          0.01284429207619324
+        ],
+        [
+          0.1051942623095071,
+          0.08165375049487272,
+          0.030658669609750985
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_isthmus_of_fallopian_tube_L",
+      "name": "isthmus of left uterine tube",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_isthmus_of_fallopian_tube_L"
+      ],
+      "sourceNode": "VH_F_isthmus_of_fallopian_tube_L",
+      "ontologyId": "FMA:18494",
+      "triangles": 1799,
+      "originalTriangles": 1870,
+      "bounds": [
+        [
+          0.03868392259969029,
+          0.005345269131346184,
+          0.03498748903839956
+        ],
+        [
+          0.06053396971185854,
+          0.014581520111612664,
+          0.043471268802838
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_ampulla_of_uterine_tube_L",
+      "name": "ampulla of left uterine tube",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_ampulla_of_uterine_tube_L"
+      ],
+      "sourceNode": "VH_F_ampulla_of_uterine_tube_L",
+      "ontologyId": "FMA:18492",
+      "triangles": 1799,
+      "originalTriangles": 11424,
+      "bounds": [
+        [
+          0.05967160985991758,
+          0.009822036654990977,
+          0.0202950289991474
+        ],
+        [
+          0.122175275529032,
+          0.10178769260867103,
+          0.05291111566340226
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_uterovesical_pouch",
+      "name": "uterovesical pouch",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_uterovesical_pouch"
+      ],
+      "sourceNode": "VH_F_uterovesical_pouch",
+      "ontologyId": "FMA:14729",
+      "triangles": 1800,
+      "originalTriangles": 25352,
+      "bounds": [
+        [
+          -0.07399682872850709,
+          -0.05484798359600856,
+          -0.008846035710100675
+        ],
+        [
+          0.03792338812875662,
+          0.004969977170754578,
+          0.12980024048921468
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_right_round_ligament_of_uterus",
+      "name": "right round ligament of uterus",
+      "group": "joints",
+      "groups": [
+        "joints"
+      ],
+      "meshNames": [
+        "HRA-VH_F_right_round_ligament_of_uterus"
+      ],
+      "sourceNode": "VH_F_right_round_ligament_of_uterus",
+      "ontologyId": "FMA:57789",
+      "triangles": 902,
+      "originalTriangles": 902,
+      "bounds": [
+        [
+          0.017087109986828195,
+          -0.11547904429581135,
+          0.04137884253368533
+        ],
+        [
+          0.11841746145572916,
+          0.01779209401229416,
+          0.14674048856259206
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_left_round_ligament_of_uterus",
+      "name": "left round ligament of uterus",
+      "group": "joints",
+      "groups": [
+        "joints"
+      ],
+      "meshNames": [
+        "HRA-VH_F_left_round_ligament_of_uterus"
+      ],
+      "sourceNode": "VH_F_left_round_ligament_of_uterus",
+      "ontologyId": "FMA:57790",
+      "triangles": 1024,
+      "originalTriangles": 1024,
+      "bounds": [
+        [
+          -0.18490178949692318,
+          -0.11843512315337543,
+          0.0373092316671033
+        ],
+        [
+          -0.053487789360140134,
+          0.02578600613005462,
+          0.13476289885184525
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_right_uterosacral_ligament",
+      "name": "right uterosacral ligament",
+      "group": "joints",
+      "groups": [
+        "joints"
+      ],
+      "meshNames": [
+        "HRA-VH_F_right_uterosacral_ligament"
+      ],
+      "sourceNode": "VH_F_right_uterosacral_ligament",
+      "ontologyId": "FMA:19119",
+      "triangles": 1800,
+      "originalTriangles": 1990,
+      "bounds": [
+        [
+          -0.06412020377667109,
+          -0.038742231553642065,
+          -0.21989898672688368
+        ],
+        [
+          -0.03418538076618815,
+          0.08053157173040859,
+          -0.04788673345522665
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_left_uterosacral_ligament",
+      "name": "left uterosacral ligament",
+      "group": "joints",
+      "groups": [
+        "joints"
+      ],
+      "meshNames": [
+        "HRA-VH_F_left_uterosacral_ligament"
+      ],
+      "sourceNode": "VH_F_left_uterosacral_ligament",
+      "ontologyId": "FMA:19120",
+      "triangles": 1800,
+      "originalTriangles": 1948,
+      "bounds": [
+        [
+          0.013669928943971413,
+          -0.03578100187060813,
+          -0.22181606859105302
+        ],
+        [
+          0.02742224129210031,
+          0.07638046414946781,
+          -0.04424654851769974
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_right_cardinal_ligament_of_uterus",
+      "name": "cardinal ligament",
+      "group": "joints",
+      "groups": [
+        "joints"
+      ],
+      "meshNames": [
+        "HRA-VH_F_right_cardinal_ligament_of_uterus"
+      ],
+      "sourceNode": "VH_F_right_cardinal_ligament_of_uterus",
+      "ontologyId": "FMA:77064",
+      "triangles": 1800,
+      "originalTriangles": 4056,
+      "bounds": [
+        [
+          -0.16854426448038434,
+          -0.04378164559199133,
+          -0.12409350671567974
+        ],
+        [
+          -0.024401474090539388,
+          0.01124282308566621,
+          -0.008829891560324018
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_left_cardinal_ligament_of_uterus",
+      "name": "cardinal ligament",
+      "group": "joints",
+      "groups": [
+        "joints"
+      ],
+      "meshNames": [
+        "HRA-VH_F_left_cardinal_ligament_of_uterus"
+      ],
+      "sourceNode": "VH_F_left_cardinal_ligament_of_uterus",
+      "ontologyId": "FMA:77064",
+      "triangles": 1800,
+      "originalTriangles": 4056,
+      "bounds": [
+        [
+          -0.002661277096422863,
+          -0.03953323416362974,
+          -0.11250785141217959
+        ],
+        [
+          0.13245195931145337,
+          0.0010543030144322704,
+          -0.0031431222315207175
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_suspensory_ligament_of_ovary_R",
+      "name": "suspensory ligament of right ovary",
+      "group": "joints",
+      "groups": [
+        "joints"
+      ],
+      "meshNames": [
+        "HRA-VH_F_suspensory_ligament_of_ovary_R"
+      ],
+      "sourceNode": "VH_F_suspensory_ligament_of_ovary_R",
+      "ontologyId": "FMA:19823",
+      "triangles": 880,
+      "originalTriangles": 880,
+      "bounds": [
+        [
+          -0.1583003674541659,
+          0.07071423420603101,
+          -0.006329632119460221
+        ],
+        [
+          -0.14117606186770937,
+          0.137279462399761,
+          0.022921615989936445
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_suspensory_ligament_of_ovary_L",
+      "name": "suspensory ligament of left ovary",
+      "group": "joints",
+      "groups": [
+        "joints"
+      ],
+      "meshNames": [
+        "HRA-VH_F_suspensory_ligament_of_ovary_L"
+      ],
+      "sourceNode": "VH_F_suspensory_ligament_of_ovary_L",
+      "ontologyId": "FMA:19824",
+      "triangles": 1270,
+      "originalTriangles": 1270,
+      "bounds": [
+        [
+          0.09289050965414926,
+          0.07051874428312027,
+          -0.0237137002728936
+        ],
+        [
+          0.11627496755337652,
+          0.1480703129884789,
+          0.0215941919292002
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_ovarian_ligament_L",
+      "name": "left ovarian ligament",
+      "group": "joints",
+      "groups": [
+        "joints"
+      ],
+      "meshNames": [
+        "HRA-VH_F_ovarian_ligament_L"
+      ],
+      "sourceNode": "VH_F_ovarian_ligament_L",
+      "ontologyId": "FMA:55424",
+      "triangles": 208,
+      "originalTriangles": 208,
+      "bounds": [
+        [
+          0.02855453659132106,
+          -2.119081790959154e-05,
+          0.0287709819233211
+        ],
+        [
+          0.0987765027855235,
+          0.02475089946289767,
+          0.03639774481122297
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_ovarian_ligament_R",
+      "name": "right ovarian ligament",
+      "group": "joints",
+      "groups": [
+        "joints"
+      ],
+      "meshNames": [
+        "HRA-VH_F_ovarian_ligament_R"
+      ],
+      "sourceNode": "VH_F_ovarian_ligament_R",
+      "ontologyId": "FMA:55423",
+      "triangles": 198,
+      "originalTriangles": 198,
+      "bounds": [
+        [
+          -0.1301251106890932,
+          -0.0016089649616528312,
+          0.024641331747356027
+        ],
+        [
+          -0.05817545099411647,
+          0.027276035312342475,
+          0.03359866552842963
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_broad_ligament",
+      "name": "broad ligament of uterus",
+      "group": "joints",
+      "groups": [
+        "joints"
+      ],
+      "meshNames": [
+        "HRA-VH_F_broad_ligament"
+      ],
+      "sourceNode": "VH_F_broad_ligament",
+      "ontologyId": "UBERON:0012332",
+      "triangles": 1799,
+      "originalTriangles": 29442,
+      "bounds": [
+        [
+          -0.16864309575463307,
+          -0.04564526769425989,
+          -0.16626920552163155
+        ],
+        [
+          0.1328379985624909,
+          0.08811552543212922,
+          0.10697901273594088
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_mesosalpinx_L",
+      "name": "left mesosalpinx",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_mesosalpinx_L"
+      ],
+      "sourceNode": "VH_F_mesosalpinx_L",
+      "ontologyId": "FMA:19810",
+      "triangles": 1799,
+      "originalTriangles": 1914,
+      "bounds": [
+        [
+          0.03350775547092781,
+          -0.009874188762873312,
+          0.02137686733519613
+        ],
+        [
+          0.1299626464104255,
+          0.10012057045105921,
+          0.05702680081800833
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_mesosalpinx_R",
+      "name": "right mesosalpinx",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_mesosalpinx_R"
+      ],
+      "sourceNode": "VH_F_mesosalpinx_R",
+      "ontologyId": "FMA:19809",
+      "triangles": 1755,
+      "originalTriangles": 1755,
+      "bounds": [
+        [
+          -0.15792538735996015,
+          -0.0051263992897011695,
+          0.0124414648031934
+        ],
+        [
+          -0.057597528376398296,
+          0.09982282054624217,
+          0.052450356773356965
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_mesovarium_R",
+      "name": "right mesovarium",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_mesovarium_R"
+      ],
+      "sourceNode": "VH_F_mesovarium_R",
+      "ontologyId": "FMA:19817",
+      "triangles": 183,
+      "originalTriangles": 183,
+      "bounds": [
+        [
+          -0.15761609638682472,
+          0.022034563362378745,
+          0.02695591150939075
+        ],
+        [
+          -0.1310294185819749,
+          0.0676430223269684,
+          0.03861639044888157
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_mesovarium_L",
+      "name": "left mesovarium",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_mesovarium_L"
+      ],
+      "sourceNode": "VH_F_mesovarium_L",
+      "ontologyId": "FMA:19818",
+      "triangles": 644,
+      "originalTriangles": 644,
+      "bounds": [
+        [
+          0.09044382731514225,
+          0.020382009540187235,
+          0.019751347298556585
+        ],
+        [
+          0.12833754085427299,
+          0.07537872517355779,
+          0.04109273832332906
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_left_ovary",
+      "name": "left ovary",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_left_ovary"
+      ],
+      "sourceNode": "VH_F_left_ovary",
+      "ontologyId": "FMA:7214",
+      "triangles": 424,
+      "originalTriangles": 424,
+      "bounds": [
+        [
+          0.09518093687362923,
+          0.022821770457469123,
+          0.015639998649339112
+        ],
+        [
+          0.1217051770159866,
+          0.07455715241478567,
+          0.03839815641225548
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_right_ovary",
+      "name": "right ovary",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_right_ovary"
+      ],
+      "sourceNode": "VH_F_right_ovary",
+      "ontologyId": "FMA:7213",
+      "triangles": 410,
+      "originalTriangles": 410,
+      "bounds": [
+        [
+          -0.15312259672856768,
+          0.022675157039368468,
+          0.015467920837821836
+        ],
+        [
+          -0.1265285950937529,
+          0.07449674288982197,
+          0.03842774951421278
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_abdominal_ostium_of_uterine_tube",
+      "name": "abdominal ostium of uterine tube",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_abdominal_ostium_of_uterine_tube"
+      ],
+      "sourceNode": "VH_F_abdominal_ostium_of_uterine_tube",
+      "ontologyId": "FMA:77049",
+      "triangles": 546,
+      "originalTriangles": 546,
+      "bounds": [
+        [
+          -0.07324775624319393,
+          0.002276198064119467,
+          0.03428631682498541
+        ],
+        [
+          0.04014714938116409,
+          0.01016833308986144,
+          0.039102129387018875
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_body_of_uterus",
+      "name": "body of uterus",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_body_of_uterus"
+      ],
+      "sourceNode": "VH_F_body_of_uterus",
+      "ontologyId": "UBERON:0009853",
+      "triangles": 1799,
+      "originalTriangles": 5344,
+      "bounds": [
+        [
+          -0.061146366643483184,
+          -0.03658386264622801,
+          -0.016679652529606154
+        ],
+        [
+          0.03192270361892705,
+          0.02829416839994328,
+          0.04133452129015016
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_fundus_of_uterus",
+      "name": "fundus of uterus",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_fundus_of_uterus"
+      ],
+      "sourceNode": "VH_F_fundus_of_uterus",
+      "ontologyId": "FMA:17561",
+      "triangles": 1799,
+      "originalTriangles": 3062,
+      "bounds": [
+        [
+          -0.05947143892315698,
+          -0.013641912967932823,
+          0.018192997245309928
+        ],
+        [
+          0.029868099700236267,
+          0.031997883061907345,
+          0.06586984649637063
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_cornua",
+      "name": "cornua",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_cornua"
+      ],
+      "sourceNode": "VH_F_cornua",
+      "ontologyId": null,
+      "triangles": 660,
+      "originalTriangles": 660,
+      "bounds": [
+        [
+          -0.07324375630529001,
+          -0.002944928125238319,
+          0.026047635871264282
+        ],
+        [
+          0.04010998094409194,
+          0.017180336909770832,
+          0.046910209379624576
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_lower_uterine_segment",
+      "name": "lower uterine segment",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_lower_uterine_segment"
+      ],
+      "sourceNode": "VH_F_lower_uterine_segment",
+      "ontologyId": "FMA:17752",
+      "triangles": 1408,
+      "originalTriangles": 1408,
+      "bounds": [
+        [
+          -0.032511672342828646,
+          -0.04478157441705176,
+          -0.029073617064169693
+        ],
+        [
+          0.0064438667645633505,
+          -0.0008193675616178231,
+          0.002409878081391925
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_posterior_wall_of_uterus",
+      "name": "posterior wall of uterus",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_posterior_wall_of_uterus"
+      ],
+      "sourceNode": "VH_F_posterior_wall_of_uterus",
+      "ontologyId": "FMA:224878",
+      "triangles": 1799,
+      "originalTriangles": 12022,
+      "bounds": [
+        [
+          -0.060869252233204774,
+          -0.03651780783666977,
+          -0.007324602588776263
+        ],
+        [
+          0.03172499441457363,
+          0.018878386001537233,
+          0.06572756452136404
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_anterior_wall_of_uterus",
+      "name": "anterior wall of uterus",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_anterior_wall_of_uterus"
+      ],
+      "sourceNode": "VH_F_anterior_wall_of_uterus",
+      "ontologyId": "FMA:224876",
+      "triangles": 1800,
+      "originalTriangles": 10148,
+      "bounds": [
+        [
+          -0.060869252233204774,
+          -0.021601749155944254,
+          -0.016628413888428242
+        ],
+        [
+          0.03172499441457363,
+          0.03157559811519998,
+          0.060847856187092875
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_cervix",
+      "name": "uterine cervix",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_cervix"
+      ],
+      "sourceNode": "VH_F_cervix",
+      "ontologyId": "UBERON:0000002",
+      "triangles": 1800,
+      "originalTriangles": 3508,
+      "bounds": [
+        [
+          -0.040654673726784094,
+          -0.0695530238627371,
+          -0.060932722938909556
+        ],
+        [
+          0.018435122259134882,
+          -0.00709768458233459,
+          -0.0085603902451378
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_internal_cervical_os",
+      "name": "internal cervical os",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_internal_cervical_os"
+      ],
+      "sourceNode": "VH_F_internal_cervical_os",
+      "ontologyId": "UBERON:0013759",
+      "triangles": 216,
+      "originalTriangles": 216,
+      "bounds": [
+        [
+          -0.014441309008607748,
+          -0.03296902540372815,
+          -0.0251506679046771
+        ],
+        [
+          -0.00698255960900084,
+          -0.024805317129170265,
+          -0.015978077907952165
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_external_cervical_os",
+      "name": "external cervical os",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_external_cervical_os"
+      ],
+      "sourceNode": "VH_F_external_cervical_os",
+      "ontologyId": "UBERON:0013760",
+      "triangles": 270,
+      "originalTriangles": 270,
+      "bounds": [
+        [
+          -0.018108066974252025,
+          -0.05479692396637599,
+          -0.05651209653476785
+        ],
+        [
+          -0.0021961510170519522,
+          -0.03954807015023671,
+          -0.0439699652862979
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_fundus_of_urinary_bladder_dome",
+      "name": "fundus of urinary bladder",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_fundus_of_urinary_bladder_dome"
+      ],
+      "sourceNode": "VH_F_fundus_of_urinary_bladder_dome",
+      "ontologyId": "UBERON:0006082",
+      "triangles": 1800,
+      "originalTriangles": 11916,
+      "bounds": [
+        [
+          -0.07491612068512846,
+          -0.06607504063250134,
+          -0.0012622339258833437
+        ],
+        [
+          0.0365140890815234,
+          -0.026329127984382552,
+          0.13016627051289417
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_urinary_bladder_neck_smooth_muscle",
+      "name": "urinary bladder neck smooth muscle",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_urinary_bladder_neck_smooth_muscle"
+      ],
+      "sourceNode": "VH_F_urinary_bladder_neck_smooth_muscle",
+      "ontologyId": "UBERON:0004230",
+      "triangles": 1790,
+      "originalTriangles": 1790,
+      "bounds": [
+        [
+          -0.022114904167461348,
+          -0.12186268764922192,
+          0.006564743157664921
+        ],
+        [
+          -0.007249187260549213,
+          -0.1127074253513042,
+          0.01886746564792878
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_fundus_of_urinary_bladder_base",
+      "name": "fundus of urinary bladder",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_fundus_of_urinary_bladder_base"
+      ],
+      "sourceNode": "VH_F_fundus_of_urinary_bladder_base",
+      "ontologyId": "UBERON:0006082",
+      "triangles": 1799,
+      "originalTriangles": 25526,
+      "bounds": [
+        [
+          -0.0747640138915438,
+          -0.11577368886654263,
+          -0.0030991074427542094
+        ],
+        [
+          0.0367893116433378,
+          -0.03948708015138706,
+          0.13035896998616683
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_trigone_of_urinary_bladder",
+      "name": "trigone of urinary bladder",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_trigone_of_urinary_bladder"
+      ],
+      "sourceNode": "VH_F_trigone_of_urinary_bladder",
+      "ontologyId": "UBERON:0001257",
+      "triangles": 1684,
+      "originalTriangles": 1684,
+      "bounds": [
+        [
+          -0.06110190053298167,
+          -0.11394514859129933,
+          0.005026247926971608
+        ],
+        [
+          0.031333489425999166,
+          -0.05700853349596112,
+          0.015362683034940774
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_ureteral_orifice_R",
+      "name": "right ureteral orifice",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_ureteral_orifice_R"
+      ],
+      "sourceNode": "VH_F_ureteral_orifice_R",
+      "ontologyId": "FMA:15939",
+      "triangles": 180,
+      "originalTriangles": 180,
+      "bounds": [
+        [
+          -0.06636501399808362,
+          -0.06222438210125351,
+          0.0042575033219247466
+        ],
+        [
+          -0.05894206283549222,
+          -0.05488811369760449,
+          0.00899238353876304
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_ureteral_orifice_L",
+      "name": "left ureteral orifice",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_ureteral_orifice_L"
+      ],
+      "sourceNode": "VH_F_ureteral_orifice_L",
+      "ontologyId": "FMA:15940",
+      "triangles": 194,
+      "originalTriangles": 194,
+      "bounds": [
+        [
+          0.030304477231634486,
+          -0.06470008612251726,
+          0.012879156197494676
+        ],
+        [
+          0.035380060408809574,
+          -0.05738882940301505,
+          0.01929222364140183
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_sacrum",
+      "name": "fused sacrum",
+      "group": "skeleton",
+      "groups": [
+        "skeleton"
+      ],
+      "meshNames": [
+        "HRA-VH_F_sacrum"
+      ],
+      "sourceNode": "VH_F_sacrum",
+      "ontologyId": "UBERON:0003690",
+      "triangles": 1800,
+      "originalTriangles": 19636,
+      "bounds": [
+        [
+          -0.14256220391353724,
+          0.012187808906290992,
+          -0.26954445819599265
+        ],
+        [
+          0.13259519476727102,
+          0.22702084753834723,
+          -0.042400170805565136
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_coccyx",
+      "name": "coccyx",
+      "group": "skeleton",
+      "groups": [
+        "skeleton"
+      ],
+      "meshNames": [
+        "HRA-VH_F_coccyx"
+      ],
+      "sourceNode": "VH_F_coccyx",
+      "ontologyId": "UBERON:0001350",
+      "triangles": 1390,
+      "originalTriangles": 1390,
+      "bounds": [
+        [
+          -0.0384137336352194,
+          -0.04362434087318797,
+          -0.2599801813047642
+        ],
+        [
+          0.030519266653727603,
+          0.014595507822029244,
+          -0.17791346337784555
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_pubis_spongy_bone_L",
+      "name": "trabecular bone tissue",
+      "group": "skeleton",
+      "groups": [
+        "skeleton"
+      ],
+      "meshNames": [
+        "HRA-VH_F_pubis_spongy_bone_L"
+      ],
+      "sourceNode": "VH_F_pubis_spongy_bone_L",
+      "ontologyId": "UBERON:0002483",
+      "triangles": 1799,
+      "originalTriangles": 2312,
+      "bounds": [
+        [
+          -0.006811592444225504,
+          -0.16306391523400987,
+          -0.03595915202246447
+        ],
+        [
+          0.19184962529890887,
+          0.029483212315165847,
+          0.10397276014565963
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_pubis_spongy_bone_R",
+      "name": "trabecular bone tissue",
+      "group": "skeleton",
+      "groups": [
+        "skeleton"
+      ],
+      "meshNames": [
+        "HRA-VH_F_pubis_spongy_bone_R"
+      ],
+      "sourceNode": "VH_F_pubis_spongy_bone_R",
+      "ontologyId": "UBERON:0002483",
+      "triangles": 1800,
+      "originalTriangles": 2172,
+      "bounds": [
+        [
+          -0.20517642042239345,
+          -0.16689030251227222,
+          -0.04096090133579504
+        ],
+        [
+          -0.007536326099645972,
+          0.029701848760031763,
+          0.1044841131857669
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_pubis_compact_bone_R",
+      "name": "compact bone tissue",
+      "group": "skeleton",
+      "groups": [
+        "skeleton"
+      ],
+      "meshNames": [
+        "HRA-VH_F_pubis_compact_bone_R"
+      ],
+      "sourceNode": "VH_F_pubis_compact_bone_R",
+      "ontologyId": "UBERON:0001439",
+      "triangles": 1800,
+      "originalTriangles": 5080,
+      "bounds": [
+        [
+          -0.20684086736205723,
+          -0.16966503551671977,
+          -0.04503000982642033
+        ],
+        [
+          -0.0048263625505064,
+          0.030955401804203957,
+          0.10741876167600459
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_pubis_compact_bone_L",
+      "name": "compact bone tissue",
+      "group": "skeleton",
+      "groups": [
+        "skeleton"
+      ],
+      "meshNames": [
+        "HRA-VH_F_pubis_compact_bone_L"
+      ],
+      "sourceNode": "VH_F_pubis_compact_bone_L",
+      "ontologyId": "UBERON:0001439",
+      "triangles": 1800,
+      "originalTriangles": 5376,
+      "bounds": [
+        [
+          -0.009404254408355442,
+          -0.16600604225474105,
+          -0.04089069467479864
+        ],
+        [
+          0.19309562607639735,
+          0.03032918292448681,
+          0.10660258652277932
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_ilium_compact_bone_R",
+      "name": "compact bone tissue",
+      "group": "skeleton",
+      "groups": [
+        "skeleton"
+      ],
+      "meshNames": [
+        "HRA-VH_F_ilium_compact_bone_R"
+      ],
+      "sourceNode": "VH_F_ilium_compact_bone_R",
+      "ontologyId": "UBERON:0001439",
+      "triangles": 1800,
+      "originalTriangles": 11810,
+      "bounds": [
+        [
+          -0.3478182854454576,
+          -0.028498648028427834,
+          -0.23284486623341238
+        ],
+        [
+          -0.09973167032229761,
+          0.2728675371107943,
+          0.1166559504827323
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_ilium_compact_bone_L",
+      "name": "compact bone tissue",
+      "group": "skeleton",
+      "groups": [
+        "skeleton"
+      ],
+      "meshNames": [
+        "HRA-VH_F_ilium_compact_bone_L"
+      ],
+      "sourceNode": "VH_F_ilium_compact_bone_L",
+      "ontologyId": "UBERON:0001439",
+      "triangles": 1800,
+      "originalTriangles": 12684,
+      "bounds": [
+        [
+          0.07938767531547664,
+          -0.02598227429076523,
+          -0.23223229611615845
+        ],
+        [
+          0.33571034434361396,
+          0.2709522290640644,
+          0.1259717322421164
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_ilium_spongy_bone_L",
+      "name": "trabecular bone tissue",
+      "group": "skeleton",
+      "groups": [
+        "skeleton"
+      ],
+      "meshNames": [
+        "HRA-VH_F_ilium_spongy_bone_L"
+      ],
+      "sourceNode": "VH_F_ilium_spongy_bone_L",
+      "ontologyId": "UBERON:0002483",
+      "triangles": 1800,
+      "originalTriangles": 6022,
+      "bounds": [
+        [
+          0.08241094598343639,
+          -0.02454432319297955,
+          -0.22970983268885006
+        ],
+        [
+          0.3334721780255234,
+          0.2686125727359517,
+          0.12330847173528389
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_ilium_spongy_bone_R",
+      "name": "trabecular bone tissue",
+      "group": "skeleton",
+      "groups": [
+        "skeleton"
+      ],
+      "meshNames": [
+        "HRA-VH_F_ilium_spongy_bone_R"
+      ],
+      "sourceNode": "VH_F_ilium_spongy_bone_R",
+      "ontologyId": "UBERON:0002483",
+      "triangles": 1799,
+      "originalTriangles": 5597,
+      "bounds": [
+        [
+          -0.34546715019256535,
+          -0.027948978587732376,
+          -0.23008832184551428
+        ],
+        [
+          -0.1021450284104063,
+          0.26976724810950387,
+          0.11416800432958783
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_ischium_compact_bone_R",
+      "name": "compact bone tissue",
+      "group": "skeleton",
+      "groups": [
+        "skeleton"
+      ],
+      "meshNames": [
+        "HRA-VH_F_ischium_compact_bone_R"
+      ],
+      "sourceNode": "VH_F_ischium_compact_bone_R",
+      "ontologyId": "UBERON:0001439",
+      "triangles": 1800,
+      "originalTriangles": 5390,
+      "bounds": [
+        [
+          -0.2617298236556868,
+          -0.18397420702403244,
+          -0.14771838827406267
+        ],
+        [
+          -0.08718032316892584,
+          0.021137069623722447,
+          -0.001111439630866448
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_ischium_compact_bone_L",
+      "name": "compact bone tissue",
+      "group": "skeleton",
+      "groups": [
+        "skeleton"
+      ],
+      "meshNames": [
+        "HRA-VH_F_ischium_compact_bone_L"
+      ],
+      "sourceNode": "VH_F_ischium_compact_bone_L",
+      "ontologyId": "UBERON:0001439",
+      "triangles": 1800,
+      "originalTriangles": 5392,
+      "bounds": [
+        [
+          0.0709463785647087,
+          -0.18066163037331665,
+          -0.14245253845542455
+        ],
+        [
+          0.2495263210106043,
+          0.0236885088383181,
+          -0.002713489999229847
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_ischium_spongy_bone_R",
+      "name": "trabecular bone tissue",
+      "group": "skeleton",
+      "groups": [
+        "skeleton"
+      ],
+      "meshNames": [
+        "HRA-VH_F_ischium_spongy_bone_R"
+      ],
+      "sourceNode": "VH_F_ischium_spongy_bone_R",
+      "ontologyId": "UBERON:0002483",
+      "triangles": 1799,
+      "originalTriangles": 2291,
+      "bounds": [
+        [
+          -0.2592801277862568,
+          -0.1812754232583521,
+          -0.14493037783021764
+        ],
+        [
+          -0.0891346725884944,
+          0.019949919668584434,
+          -0.003083115114796864
+        ]
+      ]
+    },
+    {
+      "id": "HRA-VH_F_ischium_spongy_bone_L",
+      "name": "trabecular bone tissue",
+      "group": "skeleton",
+      "groups": [
+        "skeleton"
+      ],
+      "meshNames": [
+        "HRA-VH_F_ischium_spongy_bone_L"
+      ],
+      "sourceNode": "VH_F_ischium_spongy_bone_L",
+      "ontologyId": "UBERON:0002483",
+      "triangles": 1799,
+      "originalTriangles": 2296,
+      "bounds": [
+        [
+          0.07262662705276492,
+          -0.17809822509708234,
+          -0.1399007899148554
+        ],
+        [
+          0.24723909137435615,
+          0.022834977495900438,
+          -0.004562086118654135
+        ]
+      ]
+    },
+    {
+      "id": "HRA-uterine-tubes",
+      "name": "uterine tube",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_ampulla_of_uterine_tube_R",
+        "HRA-VH_F_isthmus_of_fallopian_tube_R",
+        "HRA-VH_F_fibria_of_uterine_tube_R",
+        "HRA-VH_F_uterine_tube_infundibulum_R",
+        "HRA-VH_F_uterine_tube_infundibulum_L",
+        "HRA-VH_F_fibria_of_uterine_tube_L",
+        "HRA-VH_F_isthmus_of_fallopian_tube_L",
+        "HRA-VH_F_ampulla_of_uterine_tube_L"
+      ],
+      "aggregate": true
+    },
+    {
+      "id": "HRA-ovaries",
+      "name": "ovary",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_left_ovary",
+        "HRA-VH_F_right_ovary"
+      ],
+      "aggregate": true
+    },
+    {
+      "id": "HRA-uterus",
+      "name": "uterus",
+      "group": "organs",
+      "groups": [
+        "organs"
+      ],
+      "meshNames": [
+        "HRA-VH_F_abdominal_ostium_of_uterine_tube",
+        "HRA-VH_F_body_of_uterus",
+        "HRA-VH_F_fundus_of_uterus",
+        "HRA-VH_F_cornua",
+        "HRA-VH_F_lower_uterine_segment",
+        "HRA-VH_F_posterior_wall_of_uterus",
+        "HRA-VH_F_anterior_wall_of_uterus",
+        "HRA-VH_F_cervix",
+        "HRA-VH_F_internal_cervical_os",
+        "HRA-VH_F_external_cervical_os"
+      ],
+      "aggregate": true
+    },
+    {
+      "id": "HRA-region-pelvis",
+      "name": "female pelvic region",
+      "aggregate": true,
+      "meshNames": [
+        "HRA-VH_F_vagina",
+        "HRA-VH_F_cervicovaginal_junction",
+        "HRA-VH_F_ampulla_of_uterine_tube_R",
+        "HRA-VH_F_isthmus_of_fallopian_tube_R",
+        "HRA-VH_F_fibria_of_uterine_tube_R",
+        "HRA-VH_F_uterine_tube_infundibulum_R",
+        "HRA-VH_F_uterine_tube_infundibulum_L",
+        "HRA-VH_F_fibria_of_uterine_tube_L",
+        "HRA-VH_F_isthmus_of_fallopian_tube_L",
+        "HRA-VH_F_ampulla_of_uterine_tube_L",
+        "HRA-VH_F_uterovesical_pouch",
+        "HRA-VH_F_right_round_ligament_of_uterus",
+        "HRA-VH_F_left_round_ligament_of_uterus",
+        "HRA-VH_F_right_uterosacral_ligament",
+        "HRA-VH_F_left_uterosacral_ligament",
+        "HRA-VH_F_right_cardinal_ligament_of_uterus",
+        "HRA-VH_F_left_cardinal_ligament_of_uterus",
+        "HRA-VH_F_suspensory_ligament_of_ovary_R",
+        "HRA-VH_F_suspensory_ligament_of_ovary_L",
+        "HRA-VH_F_ovarian_ligament_L",
+        "HRA-VH_F_ovarian_ligament_R",
+        "HRA-VH_F_broad_ligament",
+        "HRA-VH_F_mesosalpinx_L",
+        "HRA-VH_F_mesosalpinx_R",
+        "HRA-VH_F_mesovarium_R",
+        "HRA-VH_F_mesovarium_L",
+        "HRA-VH_F_left_ovary",
+        "HRA-VH_F_right_ovary",
+        "HRA-VH_F_abdominal_ostium_of_uterine_tube",
+        "HRA-VH_F_body_of_uterus",
+        "HRA-VH_F_fundus_of_uterus",
+        "HRA-VH_F_cornua",
+        "HRA-VH_F_lower_uterine_segment",
+        "HRA-VH_F_posterior_wall_of_uterus",
+        "HRA-VH_F_anterior_wall_of_uterus",
+        "HRA-VH_F_cervix",
+        "HRA-VH_F_internal_cervical_os",
+        "HRA-VH_F_external_cervical_os",
+        "HRA-VH_F_fundus_of_urinary_bladder_dome",
+        "HRA-VH_F_urinary_bladder_neck_smooth_muscle",
+        "HRA-VH_F_fundus_of_urinary_bladder_base",
+        "HRA-VH_F_trigone_of_urinary_bladder",
+        "HRA-VH_F_ureteral_orifice_R",
+        "HRA-VH_F_ureteral_orifice_L",
+        "HRA-VH_F_sacrum",
+        "HRA-VH_F_coccyx",
+        "HRA-VH_F_pubis_spongy_bone_L",
+        "HRA-VH_F_pubis_spongy_bone_R",
+        "HRA-VH_F_pubis_compact_bone_R",
+        "HRA-VH_F_pubis_compact_bone_L",
+        "HRA-VH_F_ilium_compact_bone_R",
+        "HRA-VH_F_ilium_compact_bone_L",
+        "HRA-VH_F_ilium_spongy_bone_L",
+        "HRA-VH_F_ilium_spongy_bone_R",
+        "HRA-VH_F_ischium_compact_bone_R",
+        "HRA-VH_F_ischium_compact_bone_L",
+        "HRA-VH_F_ischium_spongy_bone_R",
+        "HRA-VH_F_ischium_spongy_bone_L"
+      ],
+      "groups": [
+        "joints",
+        "organs",
+        "skeleton"
+      ],
+      "group": "organs"
+    },
+    {
+      "id": "HRA-region-reproductive",
+      "name": "female reproductive organs",
+      "aggregate": true,
+      "meshNames": [
+        "HRA-VH_F_vagina",
+        "HRA-VH_F_cervicovaginal_junction",
+        "HRA-VH_F_ampulla_of_uterine_tube_R",
+        "HRA-VH_F_isthmus_of_fallopian_tube_R",
+        "HRA-VH_F_fibria_of_uterine_tube_R",
+        "HRA-VH_F_uterine_tube_infundibulum_R",
+        "HRA-VH_F_uterine_tube_infundibulum_L",
+        "HRA-VH_F_fibria_of_uterine_tube_L",
+        "HRA-VH_F_isthmus_of_fallopian_tube_L",
+        "HRA-VH_F_ampulla_of_uterine_tube_L",
+        "HRA-VH_F_uterovesical_pouch",
+        "HRA-VH_F_right_round_ligament_of_uterus",
+        "HRA-VH_F_left_round_ligament_of_uterus",
+        "HRA-VH_F_right_uterosacral_ligament",
+        "HRA-VH_F_left_uterosacral_ligament",
+        "HRA-VH_F_right_cardinal_ligament_of_uterus",
+        "HRA-VH_F_left_cardinal_ligament_of_uterus",
+        "HRA-VH_F_suspensory_ligament_of_ovary_R",
+        "HRA-VH_F_suspensory_ligament_of_ovary_L",
+        "HRA-VH_F_ovarian_ligament_L",
+        "HRA-VH_F_ovarian_ligament_R",
+        "HRA-VH_F_broad_ligament",
+        "HRA-VH_F_mesosalpinx_L",
+        "HRA-VH_F_mesosalpinx_R",
+        "HRA-VH_F_mesovarium_R",
+        "HRA-VH_F_mesovarium_L",
+        "HRA-VH_F_left_ovary",
+        "HRA-VH_F_right_ovary",
+        "HRA-VH_F_abdominal_ostium_of_uterine_tube",
+        "HRA-VH_F_body_of_uterus",
+        "HRA-VH_F_fundus_of_uterus",
+        "HRA-VH_F_cornua",
+        "HRA-VH_F_lower_uterine_segment",
+        "HRA-VH_F_posterior_wall_of_uterus",
+        "HRA-VH_F_anterior_wall_of_uterus",
+        "HRA-VH_F_cervix",
+        "HRA-VH_F_internal_cervical_os",
+        "HRA-VH_F_external_cervical_os"
+      ],
+      "groups": [
+        "joints",
+        "organs"
+      ],
+      "group": "organs"
+    },
+    {
+      "id": "HRA-region-breast",
+      "name": "mammary glands",
+      "aggregate": true,
+      "meshNames": [
+        "HRA-VH_F_fat_L",
+        "HRA-VH_F_areolar_tubercles_L",
+        "HRA-VH_F_nipple_L",
+        "HRA-VH_F_areola_L",
+        "HRA-VH_F_mammary_lobes_L",
+        "HRA-VH_F_main_lactiferous_ducts_L",
+        "HRA-VH_F_main_lactiferous_sinuses_L",
+        "HRA-VH_F_suspensory_ligaments_L",
+        "HRA-VH_F_fat_R",
+        "HRA-VH_F_areolar_tubercles_R",
+        "HRA-VH_F_nipple_R",
+        "HRA-VH_F_areola_R",
+        "HRA-VH_F_main_lactiferous_sinuses_R",
+        "HRA-VH_F_main_lactiferous_ducts_R",
+        "HRA-VH_F_mammary_lobes_R",
+        "HRA-VH_F_suspensory_ligaments_R"
+      ],
+      "groups": [
+        "joints",
+        "organs"
+      ],
+      "group": "organs"
+    }
+  ],
+  "bounds": {
+    "height": 3.6,
+    "up": "+Y",
+    "front": "+Z",
+    "transform": [
+      [
+        2.1604127871531547,
+        0.0,
+        0.0,
+        0.012617944960854442
+      ],
+      [
+        0.0,
+        2.1604127871531547,
+        0.0,
+        -0.08298829718145401
+      ],
+      [
+        0.0,
+        0.0,
+        2.1604127871531547,
+        0.12525269538404485
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ]
+  },
+  "source": {
+    "database": "Human Reference Atlas, United Female v1.5",
+    "url": "https://cdn.humanatlas.io/digital-objects/ref-organ/united-female/v1.5/assets/3d-vh-f-united.glb",
+    "doi": "https://doi.org/10.48539/HBM352.BTSQ.586",
+    "authors": [
+      "Kristen Browne",
+      "Heidi Schlehlein"
+    ],
+    "publisher": "HuBMAP",
+    "source": "Visible Human Female, US National Library of Medicine; component references as recorded in HRA crosswalk",
+    "license": "CC BY 4.0",
+    "sha256": "472567a56896b9b7890508da6501fbf858e56aaa30745365f7a71ade782b529c",
+    "bytes": 211624968,
+    "changes": [
+      "Global centering and uniform scaling to 3.6 scene units; original source transforms preserved",
+      "Per-mesh simplification, independent GLB layers, stable original node identities",
+      "Named assemblies reference existing meshes; no duplicated geometry"
+    ],
+    "excludedSeparatePlacenta": [
+      "VH_F_basal_plate",
+      "VH_F_chorionic_plate",
+      "VH_F_placenta_vessels",
+      "VH_F_amnion",
+      "VH_F_umbilical_cord",
+      "VH_F_umbilical_artery_1",
+      "VH_F_umbilical_artery_2",
+      "VH_F_umbilical_vein"
+    ]
+  },
+  "license": "CC BY 4.0",
+  "limitations": [
+    "Composite reference anatomy; coverage differs from the male BodyParts3D atlas",
+    "Skeleton and muscles are partial; no invented completion",
+    "Separate placenta model omitted; this is not a pregnancy model"
+  ],
+  "regions": {
+    "pelvis": [
+      "HRA-VH_F_vagina",
+      "HRA-VH_F_cervicovaginal_junction",
+      "HRA-VH_F_ampulla_of_uterine_tube_R",
+      "HRA-VH_F_isthmus_of_fallopian_tube_R",
+      "HRA-VH_F_fibria_of_uterine_tube_R",
+      "HRA-VH_F_uterine_tube_infundibulum_R",
+      "HRA-VH_F_uterine_tube_infundibulum_L",
+      "HRA-VH_F_fibria_of_uterine_tube_L",
+      "HRA-VH_F_isthmus_of_fallopian_tube_L",
+      "HRA-VH_F_ampulla_of_uterine_tube_L",
+      "HRA-VH_F_uterovesical_pouch",
+      "HRA-VH_F_right_round_ligament_of_uterus",
+      "HRA-VH_F_left_round_ligament_of_uterus",
+      "HRA-VH_F_right_uterosacral_ligament",
+      "HRA-VH_F_left_uterosacral_ligament",
+      "HRA-VH_F_right_cardinal_ligament_of_uterus",
+      "HRA-VH_F_left_cardinal_ligament_of_uterus",
+      "HRA-VH_F_suspensory_ligament_of_ovary_R",
+      "HRA-VH_F_suspensory_ligament_of_ovary_L",
+      "HRA-VH_F_ovarian_ligament_L",
+      "HRA-VH_F_ovarian_ligament_R",
+      "HRA-VH_F_broad_ligament",
+      "HRA-VH_F_mesosalpinx_L",
+      "HRA-VH_F_mesosalpinx_R",
+      "HRA-VH_F_mesovarium_R",
+      "HRA-VH_F_mesovarium_L",
+      "HRA-VH_F_left_ovary",
+      "HRA-VH_F_right_ovary",
+      "HRA-VH_F_abdominal_ostium_of_uterine_tube",
+      "HRA-VH_F_body_of_uterus",
+      "HRA-VH_F_fundus_of_uterus",
+      "HRA-VH_F_cornua",
+      "HRA-VH_F_lower_uterine_segment",
+      "HRA-VH_F_posterior_wall_of_uterus",
+      "HRA-VH_F_anterior_wall_of_uterus",
+      "HRA-VH_F_cervix",
+      "HRA-VH_F_internal_cervical_os",
+      "HRA-VH_F_external_cervical_os",
+      "HRA-VH_F_fundus_of_urinary_bladder_dome",
+      "HRA-VH_F_urinary_bladder_neck_smooth_muscle",
+      "HRA-VH_F_fundus_of_urinary_bladder_base",
+      "HRA-VH_F_trigone_of_urinary_bladder",
+      "HRA-VH_F_ureteral_orifice_R",
+      "HRA-VH_F_ureteral_orifice_L",
+      "HRA-VH_F_sacrum",
+      "HRA-VH_F_coccyx",
+      "HRA-VH_F_pubis_spongy_bone_L",
+      "HRA-VH_F_pubis_spongy_bone_R",
+      "HRA-VH_F_pubis_compact_bone_R",
+      "HRA-VH_F_pubis_compact_bone_L",
+      "HRA-VH_F_ilium_compact_bone_R",
+      "HRA-VH_F_ilium_compact_bone_L",
+      "HRA-VH_F_ilium_spongy_bone_L",
+      "HRA-VH_F_ilium_spongy_bone_R",
+      "HRA-VH_F_ischium_compact_bone_R",
+      "HRA-VH_F_ischium_compact_bone_L",
+      "HRA-VH_F_ischium_spongy_bone_R",
+      "HRA-VH_F_ischium_spongy_bone_L"
+    ],
+    "reproductive": [
+      "HRA-VH_F_vagina",
+      "HRA-VH_F_cervicovaginal_junction",
+      "HRA-VH_F_ampulla_of_uterine_tube_R",
+      "HRA-VH_F_isthmus_of_fallopian_tube_R",
+      "HRA-VH_F_fibria_of_uterine_tube_R",
+      "HRA-VH_F_uterine_tube_infundibulum_R",
+      "HRA-VH_F_uterine_tube_infundibulum_L",
+      "HRA-VH_F_fibria_of_uterine_tube_L",
+      "HRA-VH_F_isthmus_of_fallopian_tube_L",
+      "HRA-VH_F_ampulla_of_uterine_tube_L",
+      "HRA-VH_F_uterovesical_pouch",
+      "HRA-VH_F_right_round_ligament_of_uterus",
+      "HRA-VH_F_left_round_ligament_of_uterus",
+      "HRA-VH_F_right_uterosacral_ligament",
+      "HRA-VH_F_left_uterosacral_ligament",
+      "HRA-VH_F_right_cardinal_ligament_of_uterus",
+      "HRA-VH_F_left_cardinal_ligament_of_uterus",
+      "HRA-VH_F_suspensory_ligament_of_ovary_R",
+      "HRA-VH_F_suspensory_ligament_of_ovary_L",
+      "HRA-VH_F_ovarian_ligament_L",
+      "HRA-VH_F_ovarian_ligament_R",
+      "HRA-VH_F_broad_ligament",
+      "HRA-VH_F_mesosalpinx_L",
+      "HRA-VH_F_mesosalpinx_R",
+      "HRA-VH_F_mesovarium_R",
+      "HRA-VH_F_mesovarium_L",
+      "HRA-VH_F_left_ovary",
+      "HRA-VH_F_right_ovary",
+      "HRA-VH_F_abdominal_ostium_of_uterine_tube",
+      "HRA-VH_F_body_of_uterus",
+      "HRA-VH_F_fundus_of_uterus",
+      "HRA-VH_F_cornua",
+      "HRA-VH_F_lower_uterine_segment",
+      "HRA-VH_F_posterior_wall_of_uterus",
+      "HRA-VH_F_anterior_wall_of_uterus",
+      "HRA-VH_F_cervix",
+      "HRA-VH_F_internal_cervical_os",
+      "HRA-VH_F_external_cervical_os"
+    ],
+    "breast": [
+      "HRA-VH_F_fat_L",
+      "HRA-VH_F_areolar_tubercles_L",
+      "HRA-VH_F_nipple_L",
+      "HRA-VH_F_areola_L",
+      "HRA-VH_F_mammary_lobes_L",
+      "HRA-VH_F_main_lactiferous_ducts_L",
+      "HRA-VH_F_main_lactiferous_sinuses_L",
+      "HRA-VH_F_suspensory_ligaments_L",
+      "HRA-VH_F_fat_R",
+      "HRA-VH_F_areolar_tubercles_R",
+      "HRA-VH_F_nipple_R",
+      "HRA-VH_F_areola_R",
+      "HRA-VH_F_main_lactiferous_sinuses_R",
+      "HRA-VH_F_main_lactiferous_ducts_R",
+      "HRA-VH_F_mammary_lobes_R",
+      "HRA-VH_F_suspensory_ligaments_R"
+    ]
+  },
+  "specialist": true
+}

@@ -1,0 +1,6 @@
+Human Reference Atlas, United Female v1.5. Kristen Browne; Heidi Schlehlein (2023). HuBMAP. https://doi.org/10.48539/HBM352.BTSQ.586
+Derived from Visible Human Female, US National Library of Medicine; component sources documented by HRA.
+Creative Commons Attribution 4.0 International: https://creativecommons.org/licenses/by/4.0/
+Adapted for Corpus: uniform scaling, simplification, separated GLB layers. See /licenses/female-provenance.json and female-source-crosswalk.csv.
+
+Additional adaptation: subset for pelvic, reproductive and breast regional exploration. Original mesh identities and coordinates retained.

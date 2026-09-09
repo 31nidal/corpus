@@ -1,8 +1,9 @@
 import {test,expect} from '@playwright/test'
 import {diagrams} from '../src/study/diagrams'
 
-test('les 25 cours disposent d’un schéma cohérent et interactif',async({page})=>{
- expect(Object.keys(diagrams)).toHaveLength(25)
+test('les 67 cours disposent d’un schéma cohérent et interactif',async({page})=>{
+ test.setTimeout(240000)
+ expect(Object.keys(diagrams)).toHaveLength(67)
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message))
  for(const [id,diagram]of Object.entries(diagrams)){
   for(const edge of diagram.links??[]){expect(diagram.nodes[edge.from]).toBeDefined();expect(diagram.nodes[edge.to]).toBeDefined()}

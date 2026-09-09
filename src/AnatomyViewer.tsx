@@ -79,7 +79,8 @@ export default function AnatomyViewer(props: Props) {
     }
 
     renderer.localClippingEnabled = true
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
+    const restingPixelRatio=Math.min(window.devicePixelRatio || 1, 2)
+    renderer.setPixelRatio(restingPixelRatio)
     renderer.setClearColor(0x000000, 0)
     renderer.outputColorSpace = THREE.SRGBColorSpace
     renderer.toneMapping = THREE.ACESFilmicToneMapping
@@ -216,7 +217,8 @@ export default function AnatomyViewer(props: Props) {
         material.emissive.set(isSelected ? '#1c8e98' : isHovered ? '#17666b' : '#000000')
         material.emissiveIntensity = isSelected ? 0.12 : isHovered ? 0.18 : 0
 
-        mesh.visible = latest.current.opacity[anatomyGroup as GroupId]>0 && !hiddenNames.has(mesh.name) && (!latest.current.isolated || !selectedId || isSelected)
+        const showSurface = !structures.get(structureId)?.detailOnly || (isSelected && !structures.get(selectedId!)?.aggregate)
+        mesh.visible = showSurface && latest.current.opacity[anatomyGroup as GroupId]>0 && !hiddenNames.has(mesh.name) && (!latest.current.isolated || !selectedId || isSelected)
         const context = Boolean(selectedId) && !isSelected
         const baseOpacity = latest.current.opacity[anatomyGroup as GroupId]
         const opacity = baseOpacity * (context ? .035 : 1)
@@ -372,12 +374,14 @@ export default function AnatomyViewer(props: Props) {
     }
     const raycaster = new THREE.Raycaster()
     const pointer = new THREE.Vector2()
-    let pointerDown: { x: number; y: number; time: number } | null = null
+    let pointerDown: { x: number; y: number; time: number; moved:boolean } | null = null
     const activePointers = new Set<number>()
     let pendingHover: { x: number; y: number } | null = null
-    let lastHoverTime = 0
+    let lastHoverTime = 0, lastCameraMotion = 0, lastInteractionEnd = -Infinity, previousFrameTime=0, pickCount = 0
+    let interacting=false
 
     const pick = (x: number, y: number) => {
+      pickCount++
       const rect = renderer.domElement.getBoundingClientRect()
       pointer.set(((x - rect.left) / rect.width) * 2 - 1, -((y - rect.top) / rect.height) * 2 + 1)
       raycaster.setFromCamera(pointer, camera)
@@ -389,22 +393,24 @@ export default function AnatomyViewer(props: Props) {
     }
 
     const handlePointerMove = (event: PointerEvent) => {
-      if (event.pointerType !== 'touch' && !pointerDown) pendingHover = { x: event.clientX, y: event.clientY }
+      if(pointerDown&&Math.hypot(event.clientX-pointerDown.x,event.clientY-pointerDown.y)>=7)pointerDown.moved=true
+      if (event.pointerType !== 'touch' && activePointers.size===0 && !interacting) pendingHover = { x: event.clientX, y: event.clientY }
     }
     const handlePointerDown = (event: PointerEvent) => {
       activePointers.add(event.pointerId)
-      pointerDown = activePointers.size === 1 && event.button === 0 ? { x: event.clientX, y: event.clientY, time: performance.now() } : null
+      pointerDown = activePointers.size === 1 && event.button === 0 ? { x: event.clientX, y: event.clientY, time: performance.now(), moved:false } : null
       pendingHover = null
       hoveredId = null
       latest.current.onHover(null)
       updateMaterials()
     }
     const handlePointerUp = (event: PointerEvent) => {
-      if (activePointers.size === 1 && pointerDown && Math.hypot(event.clientX - pointerDown.x, event.clientY - pointerDown.y) < 7 && performance.now() - pointerDown.time < 650) {
+      if (activePointers.size === 1 && pointerDown && !pointerDown.moved && Math.hypot(event.clientX - pointerDown.x, event.clientY - pointerDown.y) < 7 && performance.now() - pointerDown.time < 650) {
         const id = pick(event.clientX, event.clientY)
         if (id) latest.current.onSelect(id)
       }
       activePointers.delete(event.pointerId)
+      if(activePointers.size===0){interacting=false;lastInteractionEnd=performance.now()}
       pointerDown = null
     }
     const handlePointerLeave = () => {
@@ -415,8 +421,8 @@ export default function AnatomyViewer(props: Props) {
       updateMaterials()
     }
     const handlePointerCancel = (event: PointerEvent) => { activePointers.delete(event.pointerId); pointerDown = null; handlePointerLeave() }
-    const handleControlsStart = () => { tween = null; renderer.domElement.style.cursor = 'grabbing' }
-    const handleControlsEnd = () => { renderer.domElement.style.cursor = 'grab' }
+    const handleControlsStart = () => { interacting=true;pendingHover=null;tween = null; renderer.domElement.style.cursor = 'grabbing' }
+    const handleControlsEnd = () => { interacting=false;lastInteractionEnd=performance.now();lastCameraMotion=lastInteractionEnd;renderer.domElement.style.cursor = 'grab' }
     controls.addEventListener('start', handleControlsStart)
     controls.addEventListener('end', handleControlsEnd)
     renderer.domElement.addEventListener('pointermove', handlePointerMove)
@@ -439,7 +445,7 @@ export default function AnatomyViewer(props: Props) {
     if (import.meta.env.DEV) Object.assign(window, { __CORPUS_TEST__: {
       project: api.project,
       pick: (x:number,y:number)=>pick(x,y)??null,
-      state: () => ({ animation:latest.current.animation, animatedScales:[...originalTransforms.keys()].map(m=>m.scale.toArray()), selectedId, hoveredId, camera: camera.position.toArray(), target: controls.target.toArray(), visibility: { ...visibility }, faceCover: faceCover.value, opacity:{...latest.current.opacity}, cut:{...latest.current.cut}, labels:latest.current.labels, meshes: allMeshes.length, visibleMeshes: allMeshes.filter(m => visibility[m.userData.anatomyGroup as GroupId] && m.visible).length, ready: [...ready] }),
+      state: () => ({ pickCount,pixelRatio:renderer.getPixelRatio(),interacting, animation:latest.current.animation, animatedScales:[...originalTransforms.keys()].map(m=>m.scale.toArray()), selectedId, hoveredId, camera: camera.position.toArray(), target: controls.target.toArray(), visibility: { ...visibility }, faceCover: faceCover.value, opacity:{...latest.current.opacity}, cut:{...latest.current.cut}, labels:latest.current.labels, meshes: allMeshes.length, visibleMeshes: allMeshes.filter(m => visibility[m.userData.anatomyGroup as GroupId] && m.visible).length, ready: [...ready] }),
     } })
     const contextLost = (event: Event) => {
       event.preventDefault()
@@ -604,9 +610,15 @@ export default function AnatomyViewer(props: Props) {
         controls.target.lerpVectors(tween.fromTarget, tween.toTarget, eased)
         if (fraction === 1) tween = null
       }
-      if (controls.update()) dirty = true
+      const frameSeconds=previousFrameTime?Math.min((time-previousFrameTime)/1000,.1):1/60
+      previousFrameTime=time
+      controls.dampingFactor=1-Math.pow(1-.085,frameSeconds*60)
+      if (controls.update()) { dirty = true;lastCameraMotion=time }
+      const moving=interacting||Boolean(tween)||time-lastCameraMotion<140
+      const desiredRatio=(interacting||Boolean(tween)||time-lastInteractionEnd<250)?Math.min(restingPixelRatio,1.25):restingPixelRatio
+      if(renderer.getPixelRatio()!==desiredRatio){renderer.setPixelRatio(desiredRatio);dirty=true}
       if (tween) dirty = true
-      if (pendingHover && time - lastHoverTime > 50 && !tween) {
+      if (pendingHover && time - lastHoverTime > 80 && !moving && activePointers.size===0) {
         const { x, y } = pendingHover
         const id = pick(x, y) ?? null
         pendingHover = null

@@ -1,5 +1,5 @@
 export type GroupId = 'skin' | 'skeleton' | 'organs' | 'muscles' | 'arteries' | 'veins' | 'nerves' | 'joints'
-export type Structure = { id: string; name: string; group: GroupId; meshNames: string[]; aggregate?: boolean; groups?: GroupId[] }
+export type Structure = { id: string; name: string; group: GroupId; meshNames: string[]; aggregate?: boolean; groups?: GroupId[]; detailOnly?:boolean }
 export type ModelGroup = { id: GroupId; url: string; bytes: number; label: string }
 export type Manifest = { groups: ModelGroup[]; structures: Structure[] }
 export type Visibility = Record<GroupId, boolean>

@@ -3,19 +3,19 @@ import path from 'node:path'
 import {createProvider} from './providers.mjs'
 import {validateAction} from '../shared/actions.mjs'
 const read=p=>JSON.parse(fs.readFileSync(path.resolve(process.cwd(),p.replace(/^\.\.\//,'')),'utf8'))
-const manifest=read('../public/models/manifest.json'),labels=read('../src/data/french-labels.json'),lessons=read('../src/data/learning.json'),profiles=read('../src/data/profiles.json')
+const manifests={male:read('../public/models/manifest.json'),female:read('../public/models/female-regions/manifest.json')},labels={...read('../src/data/female-labels.json'),...read('../src/data/french-labels.json')},lessons=read('../src/data/learning.json'),profiles=read('../src/data/profiles.json')
 const systemIds=['skeletal','muscular','cardiovascular','nervous','digestive','respiratory','urinary','reproductive','lymphatic']
-const aliases={coeur:'FMA7088',heart:'FMA7088',poumon:'FMA7309',poumons:'FMA7309',cerveau:'FMA50801',foie:'FMA7197',estomac:'FMA7148',pancreas:'FMA7198',rein:'FMA7204',reins:'FMA7204',femur:'FMA24474',intestin:'FMA7200'}
+const aliases={coeur:'FMA7088',heart:'FMA7088',poumon:'FMA7309',poumons:'FMA7309',cerveau:'FMA50801',foie:'FMA7197',estomac:'FMA7148',pancreas:'FMA7198',rein:'FMA7204',reins:'FMA7204',femur:'FMA24474',intestin:'FMA7200',uterus:'HRA-uterus',ovaire:'HRA-ovaries',ovaires:'HRA-ovaries'}
 const normalize=s=>String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/œ/g,'oe')
-const ids=manifest.structures.map(s=>s.id)
-function resolveStructure(message){
+function resolveStructure(message,manifest){
  const text=normalize(message)
  const alias=Object.entries(aliases).find(([name])=>new RegExp(`\\b${name}\\b`).test(text))
- if(alias)return alias[1]
+ if(alias&&manifest.structures.some(s=>s.id===alias[1]))return alias[1]
  return manifest.structures.filter(s=>text.includes(normalize(labels[s.name]||s.name))).sort((a,b)=>(labels[b.name]||b.name).length-(labels[a.name]||a.name).length)[0]?.id
 }
 function localReply(context){
- const text=normalize(context.message),id=resolveStructure(text)||context.selected_structure,structure=manifest.structures.find(s=>s.id===id)
+ const manifest=manifests[context.body]
+ const text=normalize(context.message),id=resolveStructure(text,manifest)||context.selected_structure,structure=manifest.structures.find(s=>s.id===id)
  const name=structure?labels[structure.name]||structure.name:'cette structure'
  if(/reinitialis|reviens.*ensemble/.test(text))return {message:'La vue de face est rétablie.',actions:[{action:'reset_camera'}],sources:[]}
  const system=Object.entries({squelette:'skeletal',muscles:'muscular',cardiovasculaire:'cardiovascular',nerveux:'nervous',digestif:'digestive',respiratoire:'respiratory',urinaire:'urinary',reproducteur:'reproductive',lymphatique:'lymphatic'}).find(([n])=>text.includes(n))
@@ -50,12 +50,14 @@ export function createApiHandler(config=process.env){
    let body;try{body=JSON.parse(raw)}catch{return send(400,{error:'Requête JSON invalide.'})}
    if(!body||typeof body!=='object'||Array.isArray(body))return send(400,{error:'Objet JSON attendu.'})
    if(typeof body.message!=='string'||!body.message.trim()||body.message.length>2000)return send(400,{error:'Le message doit contenir entre 1 et 2 000 caractères.'})
+   if(body.body!=null&&!['male','female'].includes(body.body))return send(400,{error:'Référence anatomique inconnue.'})
+   const reference=body.body??(body.selected_structure?.startsWith?.('HRA-')?'female':'male'),manifest=manifests[reference],ids=manifest.structures.map(s=>s.id)
    if(body.selected_structure!=null&&!ids.includes(body.selected_structure))return send(400,{error:'Structure inconnue.'})
    if(!['discovery','student','advanced'].includes(body.learning_level))return send(400,{error:'Niveau inconnu.'})
    const selected=manifest.structures.find(s=>s.id===body.selected_structure)
    const requestedLesson=typeof body.current_lesson==='string'?body.current_lesson.split(':')[0]:null
-   const lesson=lessons.find(l=>l.id===requestedLesson)||lessons.find(l=>l.id===resolveStructure(body.message))||lessons.find(l=>l.id===selected?.id)||null
-   const context={message:body.message,selected_structure:selected?.id??null,structure_name:selected?(labels[selected.name]||selected.name):null,system:lessons.find(l=>l.id===selected?.id)?.system??selected?.group??null,learning_level:body.learning_level,current_lesson:typeof body.current_lesson==='string'?body.current_lesson.slice(0,100):null,lesson,instructions:'Répondre en français à visée éducative, distinguer les informations connues et manquantes, ne pas poser de diagnostic personnel. Utiliser uniquement les actions structurées autorisées et les sources fournies.',allowed_actions:['focus_structure','hide_structure','show_structure','isolate_structure','show_system','hide_system','reset_camera','start_animation']}
+   const lesson=lessons.find(l=>l.id===requestedLesson)||lessons.find(l=>l.id===resolveStructure(body.message,manifest))||lessons.find(l=>l.id===selected?.id)||null
+   const context={body:reference,message:body.message,selected_structure:selected?.id??null,structure_name:selected?(labels[selected.name]||selected.name):null,system:lessons.find(l=>l.id===selected?.id)?.system??selected?.group??null,learning_level:body.learning_level,current_lesson:typeof body.current_lesson==='string'?body.current_lesson.slice(0,100):null,lesson,instructions:'Répondre en français à visée éducative, distinguer les informations connues et manquantes, ne pas poser de diagnostic personnel. Utiliser uniquement les actions structurées autorisées et les sources fournies.',allowed_actions:['focus_structure','hide_structure','show_structure','isolate_structure','show_system','hide_system','reset_camera','start_animation']}
    const response=provider?await provider.respond(context):localReply(context)
    const actions=(Array.isArray(response.actions)?response.actions:[]).slice(0,8).map(a=>validateAction(a,ids,systemIds,['heartbeat','breathing'])).filter(Boolean)
    const sources=(Array.isArray(response.sources)?response.sources:[]).filter(s=>typeof s.label==='string'&&typeof s.url==='string'&&/^https:\/\//.test(s.url)).slice(0,8).map(s=>({label:s.label.slice(0,150),url:s.url.slice(0,2000)}))

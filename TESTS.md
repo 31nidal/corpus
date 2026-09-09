@@ -133,3 +133,29 @@ Build TypeScript/Vite réussi, avec l’avertissement existant sur les bundles d
 Couverture : 25 cours avec 6 à 8 sections, 143 questions et leurs corrections, réponse exclusive des vrai/faux, notes et favoris, filtres et examen, 25 schémas avec sélection et explications, navigation entre cours sans duplication de schéma. Une collision de clés React entre le schéma et les notes a été corrigée puis les parcours concernés ont été rejoués avec succès.
 
 Sur téléphone émulé à 393 × 852 : cerveau réel FMA50801 isolé, rapprochement effectif de la caméra avec le zoom, recadrage, diagrammes au clavier, thème sombre et absence de débordement horizontal. Captures inspectées : `brain-mobile-zoom.png`, `diagram-mobile-pancreas.png`, `diagram-mobile-cycle.png`. Les schémas restent des représentations fonctionnelles ; aucune validation médicale supplémentaire n’est revendiquée.
+
+## Extension matières et références anatomiques — 9 septembre 2026
+
+État testé : 66 cours dans 13 matières, 307 questions corrigées et 66 schémas interactifs. Les matières se parcourent séparément, avec des groupes régionaux en anatomie et un chapitre suivant limité à la discipline courante. Les nouveaux exercices de vocabulaire sont distingués des 75 vrai/faux argumentés existants.
+
+Tests ajoutés :
+
+- `curriculum-organization.spec.ts` : couverture et identifiants, validité des liens 3D, inventaires du carpe et du tarse, ordre des groupes, recherche dans le contenu sans accents, liens matière/région, rechargement et retour navigateur, filtrage matière/chapitre des quiz, mobile sombre sans téléchargement GLB.
+- `reference-bodies.spec.ts` : 880 maillages féminins réels, unicité et empreintes des fichiers, références des assemblages, nomenclature française, sélection utérine, lien profond féminin, retour masculin, cerveau et zoom mobile, chargement différé des muscles, accès aux détails hépatiques superposés.
+- `provider.spec.ts` : commandes locales dans la référence féminine et rejet des identifiants absents de la référence active.
+
+Les contrôles existants sur les cours, favoris, notes, examen, corrections, carnet d’erreurs, schémas, couches et zoom sont conservés. Les anciens compteurs et les accès directs à une grille mélangée ont été remplacés par les attentes de la bibliothèque organisée.
+
+Vérification de production : `npm run build` réussit. Un serveur lancé directement avec `PORT=4199 node server/index.mjs`, sans chargement de `.env`, sert la page, le manifeste féminin, le GLB d’organes, la licence et `/api/status` en HTTP 200. L’action locale « Isole les ovaires » retourne `HRA-ovaries` dans la référence féminine. Le démarrage annonce `0.0.0.0:4199`.
+
+Captures inspectées dans le navigateur : `catalog-directory.png`, `catalog-anatomy.png`, `catalog-mobile-chemistry.png`, `reference-female-desktop.png`, `reference-female-mobile.png`, `reference-female-uterus.png`. Corrections visuelles issues de cette inspection : cartes de matières en blocs, panneau des couches sous le sélecteur, notice féminine compacte sur téléphone et surfaces hépatiques superposées masquées en vue générale.
+
+Limites : contrôle navigateur sous Chromium avec rendu logiciel SwiftShader ; pas de mesure sur un appareil physique bas de gamme. Le bundle principal reste proche de 1 Mo avant compression (280 Ko gzip), avec un avertissement Vite sur la taille des chunks. Le contenu pédagogique est une synthèse à relire avec les supports facultaires, pas un programme PASS/L.AS certifié exhaustif. Les nouvelles modifications sont locales, sans publication Railway lors de cette extension.
+
+Résultat consolidé : **les 46 tests passent**, exécutés en séries ciblées. Un lancement concurrent a supprimé une ressource temporaire de trace (`ENOENT`) pendant la fermeture du contexte du test d’orientation ; ce test a été rejoué seul avec succès (18,5 s). Aucune modification du comportement de la caméra n’a été nécessaire. `git diff --check` est également sans erreur.
+
+## MyCorpus : régions féminines et fluidité
+
+Le périmètre courant comprend 67 cours et 311 questions. `reference-bodies.spec.ts` vérifie désormais les 74 pièces régionales, les trois zooms féminins, les liens cours/quiz, le retour au corps masculin, le logo et le titre MyCorpus. `rotation.spec.ts` vérifie l’absence de raycasts de survol pendant les gestes, la résolution temporaire à 1,25 puis son retour à 2 sur écran dense, et l’absence de sélection après un aller-retour de rotation. Les contrôles n’attestent pas une fréquence d’images identique sur tous les appareils.
+
+Validation finale avant publication : les 16 scénarios ciblés ont réussi après correction du retour de résolution ; les cinq contrôles régions féminines / rotation / zoom ont été rejoués ensemble avec succès (2,7 min). Le build final est `index-WTrqbS1m.js`. Les sources de préparation complètes du modèle féminin restent dans `.model-cache/`, hors Git et hors déploiement. Aucun complément masculin 4.3i n’est publié sans téléchargement et validation de sa géométrie.

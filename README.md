@@ -1,4 +1,4 @@
-# Corpus — Explorer le corps humain
+# MyCorpus — Explorer le corps humain
 
 Prototype fonctionnel dans `SAAS/medecine`, en React, TypeScript et Three.js. Interface sur fond blanc avec commandes agrandies, panneaux compacts et vues rapides Organes / Squelette / Muscles, adaptée à l’ordinateur et au téléphone. Matériaux et éclairage de studio retravaillés pour mieux distinguer les tissus. Modèles et polices hébergés localement, API de conversation légère, sans compte.
 
@@ -9,13 +9,15 @@ npm install
 npm run dev
 ```
 
-Ouvrir http://localhost:5173. Production complète : `npm run build`, puis `npm start` (http://localhost:4173, Node 22.9+). `npm run preview` permet également une prévisualisation avec l’API. Aucun secret requis pour le mode ressources locales ; un hébergement statique seul ne fournit pas l’assistant.
+Ouvrir http://localhost:5173. Production complète : `npm run build`, puis `npm start` (http://localhost:8080, Node 22.9+). `npm run preview` permet également une prévisualisation avec l’API. Aucun secret requis pour le mode ressources locales ; un hébergement statique seul ne fournit pas l’assistant.
 
 ## Explorer
 
 Glisser pour tourner, molette ou pincement pour zoomer. Survol et clic sur les vrais maillages, cadrage animé, fiches pédagogiques et sources. Recherche en français sans accents ou avec le nom anglais source ; navigation par flèches et Entrée. Index filtrable par système. Boutons Isoler, Voir le contexte, Masquer et Rétablir les structures cachées. Affichage de toutes les couches, masquage, orientation face/dos et réinitialisation.
 
-L’atlas détaillé est affiché par défaut. La vue d’ensemble conserve la sélection simplifiée de 48 structures.
+L’atlas principal conserve les **1 663 structures masculines BodyParts3D**. Une section **Anatomie féminine** propose trois zooms spécialisés : bassin, appareil reproducteur et sein, à partir de **74 maillages féminins HRA**, sans emprunt au modèle masculin. Le sélecteur de corps féminin entier a été retiré. Les fichiers régionaux pèsent 3,46 Mo. Voir [les sources et limites](docs/reference-bodies.md).
+
+L’atlas masculin détaillé est affiché par défaut. La vue d’ensemble conserve la sélection simplifiée de 48 structures.
 
 | Couche détaillée | Structures |
 | --- | ---: |
@@ -110,4 +112,4 @@ Organisation : `src/study/curriculum.ts`, `questions.ts`, `CoursesWorkspace.tsx`
 
 ## Extension de la bibliothèque — septembre 2026
 
-La version actuelle comprend **25 cours approfondis, 25 schémas interactifs, 143 questions (68 QCM et 75 vrai/faux argumentés) et 10 exercices d’identification 3D**. Les cours possèdent 6 à 8 sections, un lexique, une application corrigée, des notes personnelles et des favoris. Les quiz disposent d’une bibliothèque par chapitre, de filtres de niveau et d’une navigation numérotée en examen. Une vue dédiée au cerveau et des contrôles de zoom visibles facilitent l’exploration. Les chiffres des sections précédentes décrivent les étapes antérieures du prototype. Voir [le détail de la bibliothèque](docs/campus-library.md).
+La version actuelle comprend **67 cours classés dans 13 matières, 67 schémas interactifs, 311 questions corrigées et 10 exercices d’identification 3D**. Les cours possèdent 6 à 8 sections, un lexique, une application corrigée, des notes personnelles et des favoris. Les quiz disposent d’une bibliothèque par chapitre, de filtres de niveau et d’une navigation numérotée en examen. Une vue dédiée au cerveau et des contrôles de zoom visibles facilitent l’exploration. Les chiffres des sections précédentes décrivent les étapes antérieures du prototype. Voir [le détail de la bibliothèque](docs/campus-library.md).

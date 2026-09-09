@@ -108,3 +108,9 @@ Les exercices sont originaux, sans reprise d’annales. Les 13 cours préexistan
 ### Approfondissements et schémas interactifs
 
 Les 25 schémas sont des créations originales en SVG et HTML : ils expliquent des relations et des mécanismes, sans reproduire les illustrations du manuel ni prétendre représenter des coupes anatomiques à l’échelle. Leurs explications et les 75 vrai/faux supplémentaires s’appuient sur les sources accessibles dans chaque cours. Les approfondissements ajoutent notamment les sections OpenStax 4.2–4.3 (tissus), 6.3 et 8.4 (os), 13.2 et 16.2 (système nerveux), 17.9 (pancréas endocrine), 19.1–19.2 (cœur), 22.1 (voies respiratoires), 23.4–23.7 (digestion), 25.3 et 25.5 (rein). Les URL exactes sont regroupées dans `src/study/deepCourses.ts` et affichées avec les références du cours.
+
+## Référence féminine Human Reference Atlas
+
+United Female v1.5, Kristen Browne et Heidi Schlehlein, HuBMAP. [DOI de la référence](https://doi.org/10.48539/HBM352.BTSQ.586). Licence exacte **CC BY 4.0**, d’après les métadonnées officielles archivées dans `licenses/female-source-metadata.yaml`. Les attributions des composants sont conservées dans `licenses/female-source-crosswalk.csv`. Source : Visible Human Female / US National Library of Medicine et références composites du crosswalk.
+
+Adaptations : recentrage et mise à l’échelle uniforme, réduction des triangles, couches GLB, libellés français et assemblages de sélection. 880 maillages préparés localement ; 8 composants du placenta séparé exclus. La version publiée conserve uniquement les 74 maillages des explorations bassin, appareil reproducteur et sein. Fichiers : `models/female-regions/`; licence : `models/female-regions/LICENSE.txt`; empreinte et provenance : `licenses/female-provenance.json`.

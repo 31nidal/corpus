@@ -2,7 +2,7 @@ import {useEffect,useRef,useState} from 'react'
 import {ArrowUp,MessageCircle,X,LoaderCircle} from 'lucide-react'
 import type {SceneAction} from '../shared/actions.mjs'
 import type {LearningLevel} from './learning'
-export default function ChatAssistant(p:{open:boolean;selectedId:string|null;name:string;system:string;lesson:string;level:LearningLevel;onAction:(a:SceneAction)=>void;onOpen:(b:boolean)=>void}){
+export default function ChatAssistant(p:{open:boolean;body:'male'|'female';selectedId:string|null;name:string;system:string;lesson:string;level:LearningLevel;onAction:(a:SceneAction)=>void;onOpen:(b:boolean)=>void}){
  const open=p.open
  const [message,setMessage]=useState(''),[busy,setBusy]=useState(false),[mode,setMode]=useState('local'),[error,setError]=useState('')
  const [messages,setMessages]=useState<{role:'user'|'assistant';text:string;context:string;sources?:{label:string;url:string}[]}[]>([])
@@ -11,15 +11,15 @@ export default function ChatAssistant(p:{open:boolean;selectedId:string|null;nam
  const toggle=(v:boolean)=>{p.onOpen(v)}
  const send=async()=>{
   if(!message.trim()||busy)return
-  const text=message.trim(),context=p.name,selected=p.selectedId
+  const text=message.trim(),context=p.name,selected=p.selectedId,reference=p.body
   setMessages(m=>[...m,{role:'user',text,context}]);setMessage('');setBusy(true);setError('');toggle(true)
   controller.current=new AbortController()
   try{
-   const response=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text,selected_structure:selected,system:p.system,current_lesson:p.lesson,learning_level:p.level}),signal:controller.current.signal})
+   const response=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text,body:reference,selected_structure:selected,system:p.system,current_lesson:p.lesson,learning_level:p.level}),signal:controller.current.signal})
    const data=await response.json();if(!response.ok)throw new Error(data.error||'La réponse est indisponible.')
    setMode(data.mode)
    setMessages(m=>[...m,{role:'assistant',text:String(data.message),context,sources:data.sources}])
-   if(latest.current.selectedId===selected)for(const action of data.actions??[])p.onAction(action)
+   if(latest.current.selectedId===selected&&latest.current.body===reference)for(const action of data.actions??[])p.onAction(action)
    else if(data.actions?.length)setError('La sélection a changé : les actions de cette réponse n’ont pas été appliquées.')
   }catch(e){if((e as Error).name!=='AbortError'){setError((e as Error).message);setMessage(text)}}finally{setBusy(false)}
  }

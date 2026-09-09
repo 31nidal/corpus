@@ -17,3 +17,16 @@ test('adaptateur interchangeable : contexte transmis, actions invalides rejetée
   fail=true;expect((await ask()).status).toBe(503)
  }finally{await close(api);await close(provider)}
 })
+
+test('ressources locales : référence féminine, sélection et commandes sans mélange de modèles',async()=>{
+ const api=http.createServer(createApiHandler({})),url=await listen(api)
+ try{
+  const ask=(body:any)=>fetch(url+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({learning_level:'student',body:'female',...body})})
+  const response=await ask({message:'Isole les ovaires',selected_structure:'HRA-uterus'})
+  expect(response.status).toBe(200)
+  expect((await response.json()).actions).toEqual([{action:'isolate_structure',structure:'HRA-ovaries'}])
+  expect((await ask({message:'Bonjour',selected_structure:'HRA-uterus',body:'male'})).status).toBe(400)
+  const missing=await (await ask({message:'Montre le fémur'})).json()
+  expect(missing.actions.every((a:any)=>a.structure!=='FMA24474')).toBeTruthy()
+ }finally{await close(api)}
+})

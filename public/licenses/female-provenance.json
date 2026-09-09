@@ -1,0 +1,29 @@
+{
+  "database": "Human Reference Atlas, United Female v1.5",
+  "url": "https://cdn.humanatlas.io/digital-objects/ref-organ/united-female/v1.5/assets/3d-vh-f-united.glb",
+  "doi": "https://doi.org/10.48539/HBM352.BTSQ.586",
+  "authors": [
+    "Kristen Browne",
+    "Heidi Schlehlein"
+  ],
+  "publisher": "HuBMAP",
+  "source": "Visible Human Female, US National Library of Medicine; component references as recorded in HRA crosswalk",
+  "license": "CC BY 4.0",
+  "sha256": "472567a56896b9b7890508da6501fbf858e56aaa30745365f7a71ade782b529c",
+  "bytes": 211624968,
+  "changes": [
+    "Global centering and uniform scaling to 3.6 scene units; original source transforms preserved",
+    "Per-mesh simplification, independent GLB layers, stable original node identities",
+    "Named assemblies reference existing meshes; no duplicated geometry"
+  ],
+  "excludedSeparatePlacenta": [
+    "VH_F_basal_plate",
+    "VH_F_chorionic_plate",
+    "VH_F_placenta_vessels",
+    "VH_F_amnion",
+    "VH_F_umbilical_cord",
+    "VH_F_umbilical_artery_1",
+    "VH_F_umbilical_artery_2",
+    "VH_F_umbilical_vein"
+  ]
+}

@@ -1,5 +1,5 @@
-import lessons from './data/learning.json'
-import profiles from './data/profiles.json'
+import lessons from './data/learning.json' with {type:'json'}
+import profiles from './data/profiles.json' with {type:'json'}
 import type {Structure} from './types'
 export type LearningLevel='discovery'|'student'|'advanced'
 export {lessons}

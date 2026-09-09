@@ -1,0 +1,17 @@
+{
+  "checkedAt": "2026-09-09",
+  "installedDistinctStructures": 1663,
+  "inventory": "https://lifesciencedb.jp/bp3d/get-info.cgi?version=4.3i&cmd=upload-all-list&load=1&md_id=1&mr_id=1&mv_id=12&tree=isa",
+  "version": "4.3i",
+  "candidateSourceElements": 699,
+  "candidateConcepts": 523,
+  "meaning": "Candidates absent from existing FMA IDs and source element IDs; not validated as independent or compatible geometry. Not included in the installed count.",
+  "sample": {
+    "art_id": "FJ3891",
+    "rep_id": "BP47742",
+    "description": "Right abducens nerve"
+  },
+  "downloadEndpoint": "https://lifesciencedb.jp/bp3d/download.cgi",
+  "result": "HTTP 302, Location ./, empty response body with the official form parameters. No OBJ downloaded; exact embedded license and spatial compatibility cannot be verified.",
+  "decision": "Retain the existing licensed atlas; do not count metadata entries or duplicate meshes as added anatomy."
+}

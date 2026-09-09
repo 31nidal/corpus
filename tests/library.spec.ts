@@ -4,7 +4,7 @@ import {questions} from '../src/study/questions'
 
 test('banque pédagogique : identifiants, corrections et couverture des nouveaux chapitres',()=>{
  expect(chapters).toHaveLength(12)
- expect(questions).toHaveLength(143)
+ expect(questions).toHaveLength(311)
  expect(new Set(questions.map(q=>q.id)).size).toBe(questions.length)
  expect(new Set(questions.map(q=>q.prompt)).size).toBe(questions.length)
  for(const q of questions){
@@ -30,7 +30,7 @@ test('chapitre complet : schéma, raisonnement, favoris et notes conservées sé
  await page.getByRole('button',{name:'Garder pour plus tard'}).click()
  await page.reload();await expect(page.getByLabel('Mes notes de cours')).toHaveValue('Le Golgi trie les protéines. À revoir demain.')
  await expect(page.getByRole('button',{name:'Enregistré',exact:true})).toHaveAttribute('aria-pressed','true')
- await page.locator('.next-chapter').click();await expect(page).toHaveURL(/cours=gene-expression/)
+ await page.locator('.next-chapter').click();await expect(page).toHaveURL(/cours=cell-junctions/)
  await expect(page.getByLabel('Mes notes de cours')).toHaveValue('')
  await page.getByRole('button',{name:'Tous les cours',exact:true}).click()
  await page.getByLabel('Afficher les cours', {exact:true}).selectOption('saved')
@@ -40,7 +40,7 @@ test('chapitre complet : schéma, raisonnement, favoris et notes conservées sé
 
 test('quiz par chapitre : URL, difficulté, navigation examen et bilan',async({page})=>{
  await page.goto('/#tab=entrainement')
- await page.getByLabel('Rechercher un chapitre de quiz').fill('Débit')
+ await page.getByLabel('Rechercher un chapitre de quiz').fill('Débit, pression et résistance')
  await expect(page.locator('.chapter-bank-grid article')).toHaveCount(1)
  await page.getByRole('button',{name:'Choisir ce chapitre'}).click()
  await expect(page).toHaveURL(/cours=hemodynamics/)

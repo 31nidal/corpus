@@ -4,7 +4,7 @@ import {questions} from '../src/study/questions'
 
 test('chaque cours possède des développements et des exercices associés',async({page})=>{
  await page.goto('/#tab=cours')
- await expect(page.locator('.course-tile')).toHaveCount(25)
+ await expect(page.locator('.subject-card')).toHaveCount(13)
  expect(Object.keys(deepCourses)).toHaveLength(25)
  for(const [id,content]of Object.entries(deepCourses)){
   expect(content.sections).toHaveLength(3)

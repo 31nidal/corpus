@@ -1,20 +1,19 @@
 import {test,expect} from '@playwright/test'
 import {questions} from '../src/study/questions'
-import fs from 'node:fs'
-import {chapters} from '../src/study/chapters'
-const courseCount=4+chapters.length+JSON.parse(fs.readFileSync('src/data/learning.json','utf8')).length
 async function answer(page:any,correct=true){const title=await page.locator('.question-layout h1').innerText();const q=questions.find(q=>q.prompt===title)!;const picks=correct?q.correct:[q.options.findIndex((_,i)=>!q.correct.includes(i))];for(const i of picks)await page.locator('.answer-options button').nth(i).click();return q}
 
 test('cours dédiés : recherche, lien profond, rappel actif et retour au modèle',async({page})=>{
  const glbs:string[]=[];page.on('request',r=>{if(r.url().endsWith('.glb'))glbs.push(r.url())})
  await page.goto('/#tab=cours')
- await expect(page.locator('.course-tile')).toHaveCount(courseCount)
+ await expect(page.locator('.subject-card')).toHaveCount(13)
+ await expect(page.locator('.course-tile')).toHaveCount(0)
  expect(glbs).toHaveLength(0)
  await page.getByLabel('Rechercher un cours').fill('Les échanges membranaires');await expect(page.locator('.course-tile')).toHaveCount(1)
  await page.locator('.course-tile').click();await expect(page).toHaveURL(/cours=membrane/)
  await page.getByRole('button',{name:'Vérifier ma réponse'}).click();await expect(page.locator('.recall-answer')).toContainText('Non')
  await page.reload();await expect(page.locator('.course-article>h1')).toHaveText('Les échanges membranaires')
  await page.getByRole('button',{name:'Tous les cours',exact:true}).click()
+ await page.getByLabel('Rechercher un cours').fill('Se repérer dans le corps')
  await page.getByRole('button',{name:/Se repérer dans le corps/}).click()
  await page.locator('.anatomy-link').click();await expect(page.locator('main')).toHaveAttribute('data-selected','FMA24474')
  await expect(page.locator('main')).toHaveAttribute('data-loaded','true',{timeout:90000})
@@ -23,7 +22,7 @@ test('cours dédiés : recherche, lien profond, rappel actif et retour au modèl
 
 test('QCM : correction complète, erreur mémorisée et révision ciblée',async({page})=>{
  await page.goto('/#tab=entrainement')
- await page.getByLabel('Matière du quiz').selectOption('Anatomie');await page.getByLabel('Nombre de questions').selectOption('5')
+ await page.getByLabel('Matière du quiz').selectOption('Anatomie');await page.getByLabel('Chapitre du quiz').selectOption('orientation');await page.getByLabel('Niveau du quiz').selectOption('essentiel');await page.getByLabel('Nombre de questions').selectOption('5')
  await page.getByRole('button',{name:'Commencer la série'}).click()
  await expect(page.getByRole('button',{name:'Valider ma réponse'})).toBeDisabled()
  const failed=await answer(page,false)
@@ -57,7 +56,7 @@ test('examen blanc : fin automatique du temps imparti',async({page})=>{
 test('mobile : onglets, cours lisible, réponses et thème sombre',async({page})=>{
  await page.setViewportSize({width:375,height:667});await page.goto('/#tab=cours')
  await page.getByRole('button',{name:'Activer le thème sombre'}).click()
- await page.getByRole('button',{name:/Les quatre familles de tissus/}).click();await expect(page.locator('.course-article')).toBeVisible()
+ await page.getByLabel('Rechercher un cours').fill('Les quatre familles de tissus');await page.getByRole('button',{name:/Les quatre familles de tissus/}).click();await expect(page.locator('.course-article')).toBeVisible()
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(375)
  await page.getByRole('button',{name:'M’entraîner sur ce cours'}).click();await page.getByRole('button',{name:'Commencer la série'}).click();await answer(page)
  await page.getByRole('button',{name:'Valider ma réponse'}).click();await expect(page.locator('.question-feedback')).toBeVisible()
