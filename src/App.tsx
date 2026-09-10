@@ -1,3 +1,5 @@
+import AccountPanel from './account/AccountPanel'
+import {storageScope,profileRequested} from './account/store'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { BookOpen, Box, GraduationCap, ArrowLeft, ArrowRight, ArrowUpRight, Bone, Copy, SlidersHorizontal, Moon, Sun, ChevronDown, CircleHelp, Eye, Heart, Layers3, Minus, MoveUpRight, Plus, Rotate3D, RotateCcw, Search, ShieldCheck, Sparkles, UserRound, X } from 'lucide-react'
 import {breastMeshIds} from './data/female-regions'
@@ -47,7 +49,8 @@ function readRoute() {
 }
 
 export default function App() {
-  const [dark, setDark] = useState(() => { try { return localStorage.getItem('corpus-theme') === 'dark' } catch { return false } })
+  const [accountStorage]=useState(storageScope)
+  const [dark, setDark] = useState(() => { try { return accountStorage.getItem('corpus-theme') === 'dark' } catch { return false } })
   const [learningOpen,setLearningOpen]=useState(()=>new URLSearchParams(location.hash.slice(1)).get('tab')==='cours')
   const [atlasVisited,setAtlasVisited]=useState(()=>!['cours','entrainement'].includes(new URLSearchParams(location.hash.slice(1)).get('tab')??''))
   const [practiceOpen,setPracticeOpen]=useState(()=>new URLSearchParams(location.hash.slice(1)).get('tab')==='entrainement')
@@ -57,8 +60,8 @@ export default function App() {
   const currentLesson=courseToOpen??''
   const [level]=useState<LearningLevel>('student')
   const [chatOpen,setChatOpen]=useState(false)
-  const [profileOpen,setProfileOpen]=useState(false)
-  const [completed,setCompleted]=useState<string[]>(()=>{try{const v=JSON.parse(localStorage.getItem('corpus-completed')||'[]');return Array.isArray(v)?v.filter(x=>courses.some(l=>l.id===x)):[]}catch{return []}})
+  const [profileOpen,setProfileOpen]=useState(profileRequested)
+  const [completed,setCompleted]=useState<string[]>(()=>{try{const v=JSON.parse(accountStorage.getItem('corpus-completed')||'[]');return Array.isArray(v)?v.filter(x=>courses.some(l=>l.id===x)):[]}catch{return []}})
   const [layerTab,setLayerTab]=useState<'layers'|'systems'>('layers')
   const [activeSystems,setActiveSystems]=useState<string[]>([])
   const [animation,setAnimation]=useState<AnimationState>(null)
@@ -72,7 +75,7 @@ export default function App() {
   useEffect(() => {
     document.documentElement.dataset.theme = dark ? 'dark' : 'light'
     document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#101d22' : '#ffffff')
-    try { localStorage.setItem('corpus-theme', dark ? 'dark' : 'light') } catch { /* Storage is optional. */ }
+    try { accountStorage.setItem('corpus-theme', dark ? 'dark' : 'light') } catch { /* Storage is optional. */ }
   }, [dark])
   const [route, setRoute] = useState(readRoute)
   const [body,setBody]=useState<'male'|'female'>(()=>new URLSearchParams(location.hash.slice(1)).get('body')==='female'?'female':'male')
@@ -200,6 +203,7 @@ export default function App() {
     if(quiz){
       const question=quizQuestions[quiz.index],target=manifest?.structures.find(s=>s.id===question.id),picked=manifest?.structures.find(s=>s.id===id)
       const correct=id===question.id || Boolean(target && picked && picked.meshNames.some(name=>target.meshNames.includes(name)))
+      accountStorage.event('quiz',{title:'Tentative 3D · '+question.name,question:question.id,picked:id,correct,attempt:quiz.attempts+1})
       setQuiz({...quiz,attempts:quiz.attempts+1,answered:correct,score:quiz.score+(correct&&!quiz.helped&&quiz.attempts===0?1:0),feedback:correct?'Exact ! Vous avez trouvé la bonne structure.':'Pas encore. Observez sa position et essayez à nouveau.'})
       if(correct){setSelectedId(question.id);setIsolated(true)}
       return
@@ -269,7 +273,7 @@ export default function App() {
   const femaleCourse=selected?.meshNames.some(n=>breastMeshIds.includes(n))?'anat-breast':'anat-female-pelvis'
   const openLearning=()=>openStudy('cours',body==='female'?femaleCourse:lessonFor(selected)?.id??null)
   const openPractice=()=>openStudy('entrainement',body==='female'?femaleCourse:null)
-  const completeCourse=(id:string)=>{const next=[...new Set([...completed,id])];setCompleted(next);try{localStorage.setItem('corpus-completed',JSON.stringify(next))}catch{}}
+  const completeCourse=(id:string)=>{const next=[...new Set([...completed,id])];setCompleted(next);try{accountStorage.setItem('corpus-completed',JSON.stringify(next))}catch{}}
   const executeAction=(raw:SceneAction)=>{
     const action=validateAction(raw,structures.map(s=>s.id),availableSystems.map(s=>s.id),animationRegistry.map(a=>a.id))
     if(!action)return
@@ -293,12 +297,15 @@ export default function App() {
     }
   }
   const detailedProfile=selected?profileFor(selected):null
+  useEffect(()=>{if(selectedId&&description)accountStorage.event('exploration',{id:selectedId,name:description.name,body,url:location.hash})},[selectedId,body])
+  useEffect(()=>{if(learningOpen&&courseToOpen)accountStorage.event('course',{id:courseToOpen,title:courses.find(c=>c.id===courseToOpen)?.title||courseToOpen,url:location.hash})},[learningOpen,courseToOpen])
+  useEffect(()=>{if(quiz?.done)accountStorage.event('quiz',{title:'Identification anatomique 3D',score:quiz.score,total:quizQuestions.length,results:quiz.results})},[quiz?.done])
   const selectedAnimation=animationRegistry.find(a=>a.targets.some(id=>id===selectedId))
   return <main className="experience" data-body={body} data-workspace={learningOpen?'courses':practiceOpen?'practice':'atlas'} data-chat={chatOpen} data-selected={selectedId ?? ''} data-loaded={isLoaded}>
     <div className="ambient ambient-one" /><div className="ambient ambient-two" /><div className="world-grid" />
     <header className="topbar">
       <Brand />
-      <nav aria-label="Navigation principale"><button className={!learningOpen&&!practiceOpen?"nav-active":""} onClick={()=>{setChatOpen(false);setLearningOpen(false);setPracticeOpen(false);setToolsOpen(false);setQuiz(null);setProfileOpen(false);writeRoute(selectedId)}}><Box size={15}/>Atlas 3D</button><button onClick={()=>openStudy('cours')} aria-pressed={learningOpen}><BookOpen size={15}/>Cours</button><button onClick={openPractice} aria-pressed={practiceOpen||Boolean(quiz)}><GraduationCap size={16}/>Entraînement</button><button onClick={()=>{setChatOpen(false);setProfileOpen(v=>!v);setLearningOpen(false);setPracticeOpen(false);setToolsOpen(false);setQuiz(null);setCatalogOpen(false)}}>Ma progression</button></nav>
+      <nav aria-label="Navigation principale"><button className={!learningOpen&&!practiceOpen?"nav-active":""} onClick={()=>{setChatOpen(false);setLearningOpen(false);setPracticeOpen(false);setToolsOpen(false);setQuiz(null);setProfileOpen(false);writeRoute(selectedId)}}><Box size={15}/>Atlas 3D</button><button onClick={()=>openStudy('cours')} aria-pressed={learningOpen}><BookOpen size={15}/>Cours</button><button onClick={openPractice} aria-pressed={practiceOpen||Boolean(quiz)}><GraduationCap size={16}/>Entraînement</button><button aria-label="Mon compte" onClick={()=>{setChatOpen(false);setProfileOpen(v=>!v);setToolsOpen(false);setQuiz(null);setCatalogOpen(false)}}>Mon compte</button></nav>
       <button className="theme-toggle" aria-label={dark ? 'Activer le thème clair' : 'Activer le thème sombre'} title={dark ? 'Thème clair' : 'Thème sombre'} onClick={()=>setDark(v=>!v)}>{dark ? <Sun size={18}/> : <Moon size={18}/>}</button>
       <div className="search-wrap" ref={searchBox}>
         <div className={`search-input ${searchOpen ? 'is-open' : ''}`}>
@@ -313,13 +320,14 @@ export default function App() {
       </div>
     </header>
 
+    {profileOpen && <AccountPanel close={()=>setProfileOpen(false)}/>}
     <div className="atlas-workspace" hidden={learningOpen||practiceOpen}>
     <aside className="intro">
       <div className="edition"><span className="pulse-dot" /> ATLAS ANATOMIQUE <span className="edition-number">ÉDITION 03</span></div>
       <h1>{body==='female'?'Anatomie féminine.':'Le corps humain.'}<br /><em>{body==='female'?'Explorer par région.':'Une autre dimension.'}</em></h1>
       <p className="intro-text">Votre laboratoire d’anatomie personnel.</p>
       {body==='male'?<details className="female-specialty"><summary>Anatomie féminine <ArrowUpRight size={14}/></summary><div className="female-specialty-menu"><p>Trois explorations ciblées sur de vrais modèles féminins.</p>{[{id:'pelvis',name:'Bassin féminin'},{id:'reproductive',name:'Appareil reproducteur'},{id:'breast',name:'Sein et glandes mammaires'}].map(r=><button key={r.id} onClick={()=>openFemaleRegion('HRA-region-'+r.id)}>{r.name}<ArrowRight size={14}/></button>)}</div></details>:<button className="return-main-atlas" onClick={()=>changeBody('male')}><ArrowLeft size={14}/>Revenir au corps entier</button>}
-      {body==='male'&&<div className="atlas-mode" aria-label="Niveau de détail"><button title="Structures regroupées pour découvrir les principaux repères" aria-pressed={!detailMode} onClick={() => changeMode(false)}>Vue d’ensemble</button><button title="Structures anatomiques séparées et sélectionnables" aria-pressed={detailMode} onClick={() => changeMode(true)}>Atlas détaillé</button></div>}<p className="mode-explanation">{manifest?structures.filter(s=>!s.aggregate).length.toLocaleString('fr-FR')+(body==='female'?' structures · explorations régionales':' structures · référence masculine'):'Chargement de la référence…'}</p>{body==='female'&&<p className="female-coverage"><span className="coverage-full">Modèles féminins HRA : bassin, appareil reproducteur et sein. Une sélection régionale, sans ajout de maillages masculins.</span><span className="coverage-compact">HRA · explorations féminines régionales</span></p>}<button className="mobile-learn" onClick={()=>openStudy('cours')}>Cours</button><button className="mobile-start-quiz" onClick={openPractice}>Entraînement</button><button className="mobile-profile" onClick={()=>{setChatOpen(false);setProfileOpen(true);setLearningOpen(false);setToolsOpen(false);setQuiz(null)}}>Profil</button><button className="mobile-start-tour" onClick={()=>visitStep(0)}>Visite guidée <ArrowRight size={13}/></button>
+      {body==='male'&&<div className="atlas-mode" aria-label="Niveau de détail"><button title="Structures regroupées pour découvrir les principaux repères" aria-pressed={!detailMode} onClick={() => changeMode(false)}>Vue d’ensemble</button><button title="Structures anatomiques séparées et sélectionnables" aria-pressed={detailMode} onClick={() => changeMode(true)}>Atlas détaillé</button></div>}<p className="mode-explanation">{manifest?structures.filter(s=>!s.aggregate).length.toLocaleString('fr-FR')+(body==='female'?' structures · explorations régionales':' structures · référence masculine'):'Chargement de la référence…'}</p>{body==='female'&&<p className="female-coverage"><span className="coverage-full">Modèles féminins HRA : bassin, appareil reproducteur et sein. Une sélection régionale, sans ajout de maillages masculins.</span><span className="coverage-compact">HRA · explorations féminines régionales</span></p>}<button className="mobile-learn" onClick={()=>openStudy('cours')}>Cours</button><button className="mobile-start-quiz" onClick={openPractice}>Entraînement</button><button className="mobile-profile" onClick={()=>{setChatOpen(false);setProfileOpen(true);setToolsOpen(false);setQuiz(null)}}>Profil</button><button className="mobile-start-tour" onClick={()=>visitStep(0)}>Visite guidée <ArrowRight size={13}/></button>
     </aside>
 
     {body==='female'?<div className="view-presets female-region-presets" aria-label="Régions féminines">{[{id:'pelvis',name:'Bassin'},{id:'reproductive',name:'Reproduction'},{id:'breast',name:'Sein'}].map(r=><button key={r.id} aria-pressed={selectedId==='HRA-region-'+r.id} onClick={()=>openFemaleRegion('HRA-region-'+r.id)}>{r.name}</button>)}</div>:<div className="view-presets" aria-label="Vues rapides"><span>Vues rapides</span>{([
@@ -357,7 +365,6 @@ export default function App() {
     </aside>}
 
 
-    {profileOpen && <aside className="detail-panel profile-panel" aria-label="Profil local"><div className="detail-heading"><span className="eyebrow">VOTRE ESPACE</span><button className="icon-button" aria-label="Fermer le profil" onClick={()=>setProfileOpen(false)}><X size={18}/></button></div><div className="detail-content"><h2>Votre progression.</h2><p className="quiz-score">{completed.length} / {courses.length}</p><p>Cours terminés sur cet appareil. Aucun compte n’est nécessaire.</p><ul>{courses.filter(l=>completed.includes(l.id)).map(l=><li key={l.id}>{l.title}</li>)}</ul><button className="subtle-action" onClick={()=>{setCompleted([]);try{localStorage.removeItem('corpus-completed')}catch{}}}>Effacer ma progression locale</button><button className="primary-action" onClick={openLearning}>Reprendre l’apprentissage</button></div></aside>}
     {!quiz && <ChatAssistant body={body} open={chatOpen} selectedId={selectedId} name={description?.name??'Le corps humain'} system={description?.system??''} lesson={learningOpen?currentLesson:lessonFor(selected)?.id??''} level={level} onAction={executeAction} onOpen={setChatOpen}/>}
     {toolsOpen && !quiz && <ExplorerTools cut={cut} setCut={setCut} opacity={opacity} setOpacity={setOpacity} labels={labels} setLabels={setLabels} groups={(manifest?.groups??[]).map(g=>({id:g.id,name:groupMeta[g.id].name}))} close={()=>setToolsOpen(false)} share={share} status={shareStatus}/>}
     {quiz && <QuizPanel quiz={quiz} setQuiz={setQuiz} close={endQuiz} next={nextQuestion} reveal={()=>{setQuiz({...quiz,answered:true,helped:true,feedback:'Réponse dévoilée. Prenez le temps de repérer cette structure.'});setSelectedId(quizQuestions[quiz.index].id);setIsolated(true)}}/>}

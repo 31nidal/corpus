@@ -1,3 +1,4 @@
+import {storageScope,useAccount} from '../account/store'
 import {useEffect,useRef,useState} from 'react'
 import {ArrowLeft,ArrowRight,BookOpen,Check,CheckCircle2,Box,Bookmark,GraduationCap,PenLine} from 'lucide-react'
 import {courses,type Course} from './curriculum'
@@ -8,13 +9,15 @@ import {subjectFor} from './subjects'
 import diseases from '../data/diseases.json'
 import {lessons} from '../learning'
 
-function readSaved():string[]{try{const v=JSON.parse(localStorage.getItem('corpus-saved-courses')||'[]');return Array.isArray(v)?v.filter(id=>courses.some(c=>c.id===id)):[]}catch{return []}}
+function readSaved():string[]{try{const v=JSON.parse(storageScope().getItem('corpus-saved-courses')||'[]');return Array.isArray(v)?v.filter(id=>courses.some(c=>c.id===id)):[]}catch{return []}}
 function Notebook({course}:{course:Course}){
+ const [accountStorage]=useState(storageScope),account=useAccount()
  const key='corpus-note-'+course.id
- const [note,setNote]=useState(()=>{try{return localStorage.getItem(key)||''}catch{return ''}}),[notice,setNotice]=useState('Enregistrées sur cet appareil uniquement.')
- return <section className="course-notebook"><h2><PenLine size={19}/>Mon carnet de cours</h2><p>Reformulez une notion, notez votre erreur ou une question à poser en cours.</p><textarea aria-label="Mes notes de cours" maxLength={8000} value={note} placeholder="Ce que je veux retenir…" onChange={e=>{setNote(e.target.value);try{localStorage.setItem(key,e.target.value);setNotice('Notes enregistrées sur cet appareil.')}catch{setNotice('Enregistrement indisponible : copiez vos notes avant de quitter.')}}}/><small role="status">{notice}</small></section>
+ const [note,setNote]=useState(()=>{try{return accountStorage.getItem(key)||''}catch{return ''}}),[notice,setNotice]=useState('Enregistrées sur cet appareil uniquement.')
+ return <section className="course-notebook"><h2><PenLine size={19}/>Mon carnet de cours</h2><p>Reformulez une notion, notez votre erreur ou une question à poser en cours.</p><textarea aria-label="Mes notes de cours" maxLength={8000} value={note} placeholder="Ce que je veux retenir…" onChange={e=>{setNote(e.target.value);try{accountStorage.setItem(key,e.target.value);setNotice('Notes enregistrées sur cet appareil.')}catch{setNotice('Enregistrement indisponible : copiez vos notes avant de quitter.')}}}/><small role="status">{account.user?account.status:notice}</small></section>
 }
 export default function CoursesWorkspace(p:{initial:string|null;completed:string[];complete:(id:string)=>void;explore:(id:string)=>void;practice:(id:string)=>void;navigate:(id:string|null)=>void}){
+ const [accountStorage]=useState(storageScope)
  const [query,setQuery]=useState(''),[category,setCategory]=useState(()=>new URLSearchParams(location.hash.slice(1)).get('matiere')??''),[group,setGroup]=useState(()=>new URLSearchParams(location.hash.slice(1)).get('module')??''),[filter,setFilter]=useState('all'),[saved,setSaved]=useState(readSaved),[reveal,setReveal]=useState(false),[pathology,setPathology]=useState<string|null>(null),[progress,setProgress]=useState(0)
  const workspace=useRef<HTMLElement>(null),course=courses.find(c=>c.id===p.initial)
  useEffect(()=>{setReveal(false);setPathology(null);setProgress(0);workspace.current?.scrollTo(0,0)},[p.initial])
@@ -22,7 +25,7 @@ export default function CoursesWorkspace(p:{initial:string|null;completed:string
  useEffect(()=>{const sync=()=>{const params=new URLSearchParams(location.hash.slice(1));setCategory(params.get('matiere')??'');setGroup(params.get('module')??'')};window.addEventListener('popstate',sync);window.addEventListener('hashchange',sync);return()=>{window.removeEventListener('popstate',sync);window.removeEventListener('hashchange',sync)}},[])
  const disease=diseases.find(d=>d.id===pathology),siblings=course?courses.filter(c=>c.category===course.category):[],nextCourse=course?siblings[siblings.indexOf(course)+1]:null
  const returnToLibrary=(subject='')=>{setQuery('');setFilter('all');browse(subject);p.navigate(null)}
- const toggleSave=(id:string)=>{const next=saved.includes(id)?saved.filter(x=>x!==id):[...saved,id];setSaved(next);try{localStorage.setItem('corpus-saved-courses',JSON.stringify(next))}catch{/* optional */}}
+ const toggleSave=(id:string)=>{const next=saved.includes(id)?saved.filter(x=>x!==id):[...saved,id];setSaved(next);try{accountStorage.setItem('corpus-saved-courses',JSON.stringify(next))}catch{/* optional */}}
  const questionCount=(id:string)=>questions.filter(q=>q.course===id).length
  return <section ref={workspace} onScroll={e=>{const el=e.currentTarget;setProgress(Math.round(el.scrollTop/Math.max(1,el.scrollHeight-el.clientHeight)*100))}} className="study-workspace courses-workspace" aria-label="Cours de première année">
  {course?<>

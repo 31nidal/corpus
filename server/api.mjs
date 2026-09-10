@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import {createAccountHandler} from './accounts.mjs'
 import path from 'node:path'
 import {createProvider} from './providers.mjs'
 import {validateAction} from '../shared/actions.mjs'
@@ -37,10 +38,12 @@ function localReply(context){
  return {message:'Je peux sélectionner une structure (« Montre-moi le pancréas »), isoler un élément ou consulter les cours locaux. Cette question ne dispose pas encore d’une réponse précise dans les ressources disponibles.',actions:[],sources:[]}
 }
 export function createApiHandler(config=process.env){
+ const account=createAccountHandler(config)
  const provider=createProvider(config)
  return async(req,res,next)=>{
   const path=req.url?.split('?')[0]
   if(!path?.startsWith('/api/'))return next?.()
+  if(path.startsWith('/api/account/'))return account(req,res)
   const send=(status,body)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(body))}
   if(path==='/api/status'&&req.method==='GET')return send(200,{mode:provider?'connected':'local',label:provider?'Assistant connecté':'Ressources locales'})
   if(path!=='/api/chat')return send(404,{error:'Route inconnue.'})

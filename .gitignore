@@ -11,3 +11,9 @@ playwright-report/
 .env
 .env.*
 !.env.example
+
+# Private account database
+.data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
