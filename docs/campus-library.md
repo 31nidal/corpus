@@ -1,19 +1,19 @@
 # Bibliothèque et entraînement — septembre 2026
 
-Corpus contient **67 cours, 67 schémas interactifs et 311 questions corrigées** : 68 QCM, 75 vrai/faux argumentés et 168 questions de vocabulaire contextualisées. Chaque cours comprend 6 à 8 sections, un lexique et au moins quatre exercices. Les 10 identifications du quiz 3D constituent un entraînement distinct.
+MyCorpus contient **98 cours, 569 sections, 98 schémas interactifs et 435 questions corrigées** : 68 QCM, 75 vrai/faux argumentés et 292 questions de vocabulaire contextualisées. Chaque cours comprend 4 à 8 sections, un lexique et au moins quatre exercices. Les 10 identifications du quiz 3D constituent un entraînement distinct.
 
 La bibliothèque commence par **13 matières séparées** : anatomie, biologie cellulaire, histologie, embryologie, génétique, chimie, biochimie, physiologie, immunologie, biophysique, biostatistiques, pharmacologie et santé publique. Chaque matière est organisée en régions ou thèmes, puis en chapitres. La navigation au chapitre suivant reste dans la même discipline. La recherche parcourt aussi les sections et lexiques, sans imposer les accents.
 
 L’anatomie comprend les principaux os par région : crâne et face, rachis, thorax, ceinture scapulaire, humérus, radius/ulna, carpe/main, bassin, fémur, patella, tibia/fibula et tarse/pied. Les autres chapitres développent articulations, groupes musculaires, cou, médiastin, péritoine, voies urinaires, appareils reproducteurs féminin et masculin, moelle, nerfs crâniens, œil, oreille et réseau lymphatique. Plusieurs os voisins sont étudiés dans un même chapitre.
 
-Ce socle n’est pas une couverture certifiée de tous les programmes PASS/L.AS ni une banque d’annales officielles. Certains enseignements ne disposent encore que d’un cours de synthèse. Les nouvelles questions de vocabulaire complètent les exercices de raisonnement existants ; elles ne remplacent pas des problèmes et annales propres à chaque faculté. Les durées de lecture/exercices sont indicatives.
+Ce socle couvre les fondamentaux attendus en première année dans treize matières, sans constituer une couverture certifiée de tous les programmes PASS/L.AS ni une banque d’annales officielles. Les nouvelles questions de vocabulaire complètent les exercices de raisonnement existants ; elles ne remplacent pas les problèmes et annales propres à chaque faculté. Les durées de lecture et d’exercice sont indicatives.
 
 ## Pages de cours
 
 - Sommaire, objectifs, sections, mécanismes séquencés quand ils sont pertinents, lexique, application corrigée et rappel actif.
 - Un schéma interactif par cours : éléments sélectionnables au clic ou au clavier, explication détaillée, flèches et disposition adaptée au téléphone. Les cours initiaux présentent des mécanismes ; les nouveaux proposent surtout des cartes de comparaison des notions, identifiées comme telles. Ce ne sont pas des planches anatomiques à l’échelle.
 - Trois sections approfondies supplémentaires pour les 25 cours initiaux, avec mécanismes, exemples et points de vigilance.
-- Sources accessibles au bas du cours ; les cours nouveaux affichent plusieurs sections de référence d’OpenStax Anatomy and Physiology 2e.
+- Sources accessibles au bas du cours : OpenStax, Organisation mondiale de la Santé, Haute Autorité de santé, ANSM et Société française de pharmacologie et de thérapeutique selon la matière.
 - Notes personnelles séparées par chapitre, favoris, filtres des cours enregistrés ou non terminés, navigation au chapitre suivant.
 - URL du cours : `/#tab=cours&cours=organelles`. Les chapitres concernés ouvrent un modèle existant dans l’atlas.
 - Le pourcentage de défilement est une aide à la lecture, pas une mesure d’acquisition. Le cours est marqué terminé explicitement.
@@ -28,7 +28,7 @@ Ce socle n’est pas une couverture certifiée de tous les programmes PASS/L.AS 
 
 ## Stockage
 
-Tout reste local à l’appareil : `corpus-completed`, `corpus-practice-v1`, `corpus-saved-courses` et `corpus-note-<identifiant>`. Aucun compte, aucune synchronisation et aucun service payant supplémentaire ne sont nécessaires. Les notes sont limitées à 8 000 caractères par cours et un message signale un échec d’écriture.
+En mode invité, la progression, les réponses, les favoris et les notes restent dans le stockage du navigateur. Un compte MyCorpus facultatif les synchronise dans la base SQLite du serveur et restaure l’historique sur un autre appareil. L’inscription classique et la connexion Google sont prises en charge lorsque les variables OAuth sont configurées. Les notes sont limitées à 8 000 caractères par cours ; l’utilisateur peut exporter ou supprimer ses données depuis son espace personnel.
 
 ## Organisation
 
@@ -37,7 +37,7 @@ Tout reste local à l’appareil : `corpus-completed`, `corpus-practice-v1`, `co
 - `src/study/chapterQuestions.ts` : 48 QCM supplémentaires, avec corrections par proposition.
 - `src/study/deepCourses.ts` : approfondissements des 25 cours.
 - `src/study/reasoningQuestions.ts` : 75 vrai/faux argumentés, à réponse unique.
-- `src/study/diagrams.ts`, `CourseDiagram.tsx`, `diagrams.css` : données et rendu des 67 schémas interactifs.
+- `src/study/diagrams.ts`, `CourseDiagram.tsx`, `diagrams.css` : données et rendu des 98 schémas interactifs.
 - `src/study/curriculum.ts` et `questions.ts` : catalogues unifiés, identifiants stables.
 - `CoursesWorkspace.tsx`, `PracticeWorkspace.tsx`, `library.css` : lecture, navigation et présentation.
 
@@ -49,6 +49,7 @@ Les textes, exercices et schémas fonctionnels sont des synthèses françaises r
 - `skeletalCourses.ts`, `regionalCourses.ts` : ostéologie et articulations.
 - `systemCourses.ts`, `regionalSystems.ts`, `reproductiveCourses.ts` : anatomie régionale, muscles, système nerveux et appareils reproducteurs.
 - `scienceCourses.ts` : enseignements fondamentaux complémentaires.
+- `firstYearExpansion.ts` : 31 chapitres approfondis d’histologie, embryologie, génétique, chimie, biochimie, physiologie, immunologie, biophysique, biostatistiques, pharmacologie et santé publique.
 - `courseSupport.ts` : cartes de notions et questions à correction individuelle associées aux nouveaux lexiques.
 - [Les deux références 3D et leurs limites](reference-bodies.md).
 

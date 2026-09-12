@@ -31,3 +31,18 @@ test('comptes : inscription, notes et cours synchronisés, export, isolation et 
  await remove(page);await login(page,first);await page.screenshot({path:'tests/artifacts/account-desktop.png'});await remove(page)
  expect(errors).toEqual([])
 })
+
+test('Google : bouton français et politique de confidentialité accessibles',async({page})=>{
+ await page.route('**/api/account/session',route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({available:true,user:null,state:{},google:{available:true,linked:false}})}))
+ await page.goto('/')
+ await page.getByRole('button',{name:'Mon compte',exact:true}).click()
+ const google=page.getByRole('link',{name:'Continuer avec Google',exact:true})
+ await expect(google).toBeVisible()
+ await expect(google).toHaveAttribute('href','/api/account/google/start')
+ await page.setViewportSize({width:393,height:852})
+ await expect(google).toBeVisible()
+ await page.goto('/confidentialite.html')
+ await expect(page.getByRole('heading',{name:'Politique de confidentialité.'})).toBeVisible()
+ await expect(page.getByRole('heading',{name:'Connexion avec Google'})).toBeVisible()
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(393)
+})

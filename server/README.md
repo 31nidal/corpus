@@ -91,4 +91,19 @@ Mots de passe de 12 à 128 caractères, hachage scrypt N=131072/r=8/p=1 avec sel
 
 Aucun service d’e-mail n’est configuré : les adresses ne sont pas vérifiées. Un code secret de récupération, affiché une fois, permet de remplacer un mot de passe oublié. Son utilisation renouvelle le code et révoque les sessions. Sans mot de passe ni code conservé, il n’existe pas de récupération autonome. Aucun mot de passe ni code en clair n’est enregistré en base ou dans les logs.
 
+### Connexion Google
+
+La connexion Google utilise le flux OpenID Connect Authorization Code avec `state`, `nonce` et PKCE. Seuls les scopes `openid`, `email` et `profile` sont demandés. MyCorpus conserve l’identifiant stable Google et l’adresse vérifiée qui lui est associée ; aucun jeton Google n’est enregistré en base.
+
+Créer dans Google Cloud un client OAuth 2.0 de type **Application Web**, puis configurer :
+
+- origine JavaScript autorisée : `https://mycorpus3d.com`
+- URI de redirection autorisée : `https://mycorpus3d.com/api/account/google/callback`
+- variables Railway : `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET`
+- variable facultative `GOOGLE_REDIRECT_URI` uniquement si l’URI publique diffère de `${APP_ORIGIN}/api/account/google/callback`
+
+L’URI doit correspondre exactement dans Google Cloud et Railway. Tant que les deux secrets ne sont pas présents, le bouton Google reste masqué et l’authentification par mot de passe continue de fonctionner. La page publique `/confidentialite.html` décrit les données utilisées.
+
+Une adresse déjà utilisée par un compte local n’est pas liée automatiquement, car les adresses du formulaire local ne sont pas vérifiées. L’utilisateur se connecte d’abord avec son mot de passe, puis choisit « Lier mon compte Google ». Un compte créé avec Google peut ensuite ajouter un mot de passe et reçoit alors son code de récupération.
+
 Tests : `npm run test:accounts` pour l’isolation et la persistance ; `npx playwright test tests/accounts.spec.ts` pour les parcours navigateur.

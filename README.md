@@ -1,6 +1,6 @@
 # MyCorpus — Explorer le corps humain
 
-Prototype fonctionnel dans `SAAS/medecine`, en React, TypeScript et Three.js. Interface sur fond blanc avec commandes agrandies, panneaux compacts et vues rapides Organes / Squelette / Muscles, adaptée à l’ordinateur et au téléphone. Matériaux et éclairage de studio retravaillés pour mieux distinguer les tissus. Modèles et polices hébergés localement, API de conversation légère, sans compte.
+Prototype fonctionnel dans `SAAS/medecine`, en React, TypeScript et Three.js. Interface sur fond blanc avec commandes agrandies, panneaux compacts et vues rapides Organes / Squelette / Muscles, adaptée à l’ordinateur et au téléphone. Matériaux et éclairage de studio retravaillés pour mieux distinguer les tissus. Modèles et polices hébergés localement, API de conversation légère et comptes facultatifs avec historique synchronisé.
 
 ## Lancer
 
@@ -88,7 +88,7 @@ Navigation Atlas 3D / Cours / Entraînement / Ma progression. La conversation co
 
 - Treize fiches de cours, dont neuf sur les organes et quatre sur les fondamentaux, avec rappel actif et approfondissement. Huit fiches de pathologies en six rubriques, avec sources.
 - Quiz spatial de dix structures : sélection sur les maillages ou repères, indices, réponse dévoilée et bilan. Le score récompense le premier essai sans aide. Vingt QCM théoriques complètent cet entraînement.
-- Progression des cours mémorisée sur cet appareil, effaçable dans Profil. Pas de compte ni synchronisation.
+- Progression mémorisée localement en mode invité, ou synchronisée avec l’historique, les favoris et les notes après connexion à un compte MyCorpus.
 - Neuf filtres de systèmes combinables, construits à partir des structures réellement présentes ; réseau lymphatique partiel et anatomie reproductrice masculine uniquement.
 - Coupe mobile suivant trois axes, inversion du côté conservé et plan de repère ; opacité par couche ; étiquettes nominatives ou numérotées.
 - Cinquante profils anatomiques enrichissent 80 structures musculaires et donnent des repères de réseau à 280 artères et 142 veines. Les autres structures conservent une fiche générale : leurs attaches, innervation ou territoires précis restent à documenter.
@@ -112,4 +112,4 @@ Organisation : `src/study/curriculum.ts`, `questions.ts`, `CoursesWorkspace.tsx`
 
 ## Extension de la bibliothèque — septembre 2026
 
-La version actuelle comprend **67 cours classés dans 13 matières, 67 schémas interactifs, 311 questions corrigées et 10 exercices d’identification 3D**. Les cours possèdent 6 à 8 sections, un lexique, une application corrigée, des notes personnelles et des favoris. Les quiz disposent d’une bibliothèque par chapitre, de filtres de niveau et d’une navigation numérotée en examen. Une vue dédiée au cerveau et des contrôles de zoom visibles facilitent l’exploration. Les chiffres des sections précédentes décrivent les étapes antérieures du prototype. Voir [le détail de la bibliothèque](docs/campus-library.md).
+La version actuelle comprend **98 cours classés dans 13 matières, 569 sections, 98 schémas interactifs, 435 questions corrigées et 10 exercices d’identification 3D**. Les cours possèdent 4 à 8 sections, un lexique, une application corrigée, des notes personnelles et des favoris. Les quiz disposent d’une bibliothèque par chapitre, de filtres de niveau et d’une navigation numérotée en examen. Une vue dédiée au cerveau et des contrôles de zoom visibles facilitent l’exploration. Les chiffres des sections précédentes décrivent les étapes antérieures du prototype. Voir [le détail de la bibliothèque](docs/campus-library.md).

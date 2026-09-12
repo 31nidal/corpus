@@ -5,11 +5,12 @@ import {regionalSupport} from './regionalCourses'
 import {reproductiveSupport} from './reproductiveCourses'
 import {regionalSystemSupport} from './regionalSystems'
 import {scienceSupport} from './scienceCourses'
+import {firstYearSupport} from './firstYearExpansion'
 export type Diagram={title:string;caption:string;kind:'flow'|'cycle'|'compare'|'branch';nodes:{label:string;detail:string}[];links?:{from:number;to:number;label?:string}[]}
 type Node=[label:string,detail:string]
 const diagram=(title:string,caption:string,kind:Diagram['kind'],nodes:Node[],links?:Diagram['links']):Diagram=>({title,caption,kind,nodes:nodes.map(([label,detail])=>({label,detail})),links})
 export const diagrams:Record<string,Diagram>={
- ...skeletalDiagrams,...systemDiagrams,...regionalSupport.diagrams,...reproductiveSupport.diagrams,...scienceSupport.diagrams,...regionalSystemSupport.diagrams,...breastSupport.diagrams,
+ ...skeletalDiagrams,...systemDiagrams,...regionalSupport.diagrams,...reproductiveSupport.diagrams,...scienceSupport.diagrams,...firstYearSupport.diagrams,...regionalSystemSupport.diagrams,...breastSupport.diagrams,
  orientation:diagram('Trois plans, trois séparations','Comparaison de plans anatomiques : ils décrivent une orientation, pas une position unique dans le corps.','compare',[
  ['Sagittal','Sépare droite et gauche. Un plan sagittal est médian seulement lorsqu’il passe par le milieu.'],['Frontal','Sépare une partie antérieure d’une partie postérieure. Il est aussi appelé coronal.'],['Transversal','Sépare une partie supérieure d’une partie inférieure. Déplacer sa hauteur change les structures traversées.']]),
  homeostasis:diagram('La boucle du rétrocontrôle négatif','La réponse finale tend à réduire la variation initiale. Les flèches représentent une relation fonctionnelle.','cycle',[

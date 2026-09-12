@@ -30,6 +30,7 @@
 [data-theme=dark] .search-input,[data-theme=dark] .atlas-mode,[data-theme=dark] .theme-toggle,[data-theme=dark] .layer-icon,[data-theme=dark] .catalog-filter select{background:#1d3035;border-color:#34484e;color:#bdd4cd}
 [data-theme=dark] .search-input input,[data-theme=dark] .layer-text,[data-theme=dark] .detail-role,[data-theme=dark] .detail-content h3{color:#d2e7df}
 [data-theme=dark] .intro-text,[data-theme=dark] .discovery p,[data-theme=dark] .mode-explanation,[data-theme=dark] .layer-note,[data-theme=dark] .detail-description,[data-theme=dark] .dialog-inner p,[data-theme=dark] .original-name,[data-theme=dark] .detail-category,[data-theme=dark] .source-link,[data-theme=dark] .layer-text small,[data-theme=dark] .share-structure,[data-theme=dark] .start-tour,[data-theme=dark] .footer-actions button,[data-theme=dark] .education-note{color:#9fbeb7}
+.footer-actions>a{display:inline-flex;align-items:center;font-size:11px;color:#74878c}.footer-actions>a:hover{color:var(--mint)}[data-theme=dark] .footer-actions>a{color:#9fbeb7}@media(max-width:600px){.footer-actions>a{display:none}}
 [data-theme=dark] .layer-row:not(.layer-on) .layer-text{color:#8ba69f}
 [data-theme=dark] .layer-actions{background:#17292e}
 [data-theme=dark] .layer-actions button,[data-theme=dark] .quick-links button,[data-theme=dark] .restore-hidden,[data-theme=dark] .dissection-actions button:last-child{border-color:#38524e;color:#bed7ce;background:#20332f}
