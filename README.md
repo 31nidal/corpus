@@ -1,115 +1,146 @@
-# MyCorpus — Explorer le corps humain
+# MyCorpus
 
-Prototype fonctionnel dans `SAAS/medecine`, en React, TypeScript et Three.js. Interface sur fond blanc avec commandes agrandies, panneaux compacts et vues rapides Organes / Squelette / Muscles, adaptée à l’ordinateur et au téléphone. Matériaux et éclairage de studio retravaillés pour mieux distinguer les tissus. Modèles et polices hébergés localement, API de conversation légère et comptes facultatifs avec historique synchronisé.
+Plateforme web d’apprentissage médical orientée première année : atlas anatomique 3D, cours structurés, entraînement, répétition espacée et progression synchronisée.
 
-## Lancer
+## État actuel
 
-```sh
+MyCorpus est une application React/TypeScript avec rendu 3D Three.js et un petit backend Node.js. La version actuelle comprend notamment :
+
+- 98 cours répartis dans 13 matières ;
+- 98 schémas interactifs ;
+- 619 questions corrigées ;
+- 10 exercices d’identification 3D ;
+- un atlas masculin détaillé de 1 663 structures BodyParts3D ;
+- trois explorations féminines ciblées (bassin, appareil reproducteur, sein) construites à partir de 74 maillages HRA ;
+- comptes persistants, connexion Google facultative, favoris, notes et historique ;
+- répétition espacée pour les questions d’entraînement ;
+- interface ordinateur et mobile.
+
+Le produit est pédagogique. Il ne constitue ni un dispositif médical ni un outil de diagnostic, et son contenu ne remplace pas les supports officiels d’une faculté.
+
+## Stack
+
+- React 19 + TypeScript
+- Vite
+- Three.js
+- Node.js
+- SQLite (`node:sqlite`)
+- Playwright
+- Google OAuth 2.0 en option
+
+## Démarrage local
+
+Prérequis : Node.js 22.13 ou plus récent.
+
+```bash
 npm install
 npm run dev
 ```
 
-Ouvrir http://localhost:5173. Production complète : `npm run build`, puis `npm start` (http://localhost:8080, Node 22.9+). `npm run preview` permet également une prévisualisation avec l’API. Aucun secret requis pour le mode ressources locales ; un hébergement statique seul ne fournit pas l’assistant.
+L’interface de développement est servie par Vite. Pour tester l’application complète avec le backend :
 
-## Explorer
+```bash
+npm run build
+npm start
+```
 
-Glisser pour tourner, molette ou pincement pour zoomer. Survol et clic sur les vrais maillages, cadrage animé, fiches pédagogiques et sources. Recherche en français sans accents ou avec le nom anglais source ; navigation par flèches et Entrée. Index filtrable par système. Boutons Isoler, Voir le contexte, Masquer et Rétablir les structures cachées. Affichage de toutes les couches, masquage, orientation face/dos et réinitialisation.
+Variables d’environnement disponibles : voir [`.env.example`](.env.example).
 
-L’atlas principal conserve les **1 663 structures masculines BodyParts3D**. Une section **Anatomie féminine** propose trois zooms spécialisés : bassin, appareil reproducteur et sein, à partir de **74 maillages féminins HRA**, sans emprunt au modèle masculin. Le sélecteur de corps féminin entier a été retiré. Les fichiers régionaux pèsent 3,46 Mo. Voir [les sources et limites](docs/reference-bodies.md).
+## Commandes utiles
 
-L’atlas masculin détaillé est affiché par défaut. La vue d’ensemble conserve la sélection simplifiée de 48 structures.
+```bash
+npm run dev            # développement frontend
+npm run build          # vérification TypeScript + build Vite
+npm test               # suite Playwright
+npm run test:accounts  # tests backend comptes
+npm start              # serveur de production local
+```
 
-| Couche détaillée | Structures |
-| --- | ---: |
-| Enveloppe | 1 |
-| Squelette et dents | 231 |
-| Organes et structures internes | 262 |
-| Muscles | 398 |
-| Artères | 423 |
-| Veines | 225 |
-| Nerfs | 34 |
-| Articulations et tissus de soutien | 89 |
-| **Total** | **1 663** |
+Les détails de validation sont regroupés dans [TESTS.md](TESTS.md).
 
-17 assemblages virtuels supplémentaires permettent de sélectionner des organes entiers à partir des mêmes maillages : 1 680 entrées de recherche, sans dupliquer la géométrie. Le compteur de visibilité compte uniquement les structures réelles.
+## Architecture
 
-Les huit GLB détaillés représentent 50,61 Mo et 1 794 983 triangles. Le chargement initial concerne 494 structures (enveloppe, squelette, organes), soit 19,01 Mo. Les autres systèmes sont téléchargés à leur activation avec progression et gestion d’erreur. La vue d’ensemble pèse 7,66 Mo. Le rendu est actualisé quand la scène change pour limiter le travail du GPU au repos.
+```text
+src/                  application React
+  account/            état et interface de compte
+  data/               nomenclature et données anatomiques
+  study/              cours, questions, schémas et progression
+server/               API locale, comptes, OAuth et fournisseurs
+public/models/         modèles 3D distribués
+public/licenses/       licences et provenance des données
+scripts/               préparation et audit des modèles/données
+tests/                 tests Playwright, tests backend et captures de référence
+docs/                  documentation produit et données anatomiques
+shared/                contrats partagés frontend/backend
+```
 
-## Origine et licences
+Voir [docs/architecture.md](docs/architecture.md) pour la description des responsabilités et des contrats à préserver lors des refactors.
 
-Vrais maillages [BodyParts3D, DBCLS](https://dbarchive.biosciencedbc.jp/en/bodyparts3d/download.html) : archive officielle ISA 4.0, 142 903 898 octets, 2 234 OBJ. Les fichiers sont réunis seulement lorsqu’ils portent le même concept FMA. 17 fichiers sans identification sont exclus. Cinq lobes pulmonaires réels de l’archive 3.0 complètent les ramifications 4.0. La vue d’ensemble provient de l’archive PART-OF 4.0 avec le même complément. Aucun organe n’est remplacé par une primitive géométrique.
+## Atlas 3D
 
-**Les en-têtes OBJ téléchargés portent CC BY-SA 2.1 Japon.** Les GLB adaptés conservent cette licence, attribution et partage identique. La [page officielle actuelle](https://dbarchive.biosciencedbc.jp/en/bodyparts3d/lic.html), mise à jour le 27 février 2025, indique CC BY 4.0 : les deux mentions sont documentées sans présumer d’un changement rétroactif.
+L’atlas principal utilise BodyParts3D. Les structures sont chargées par couches et les modèles lourds sont différés jusqu’à leur activation. Les interactions comprennent notamment recherche, isolation, masquage, coupe, opacité, liens profonds et partage de l’état de vue.
 
-BodyParts3D, © The Database Center for Life Science licensed under CC Attribution-Share Alike 2.1 Japan.
+Les explorations féminines utilisent des maillages distincts issus du Human Reference Atlas. Les limites, transformations et licences sont documentées dans [docs/reference-bodies.md](docs/reference-bodies.md).
 
-Voir [la notice des modèles](public/models/LICENSE.txt), [la provenance détaillée](public/licenses/detailed-provenance.json), [le manifeste et les empreintes GLB](public/models/manifest.json), [la provenance de la vue d’ensemble](public/licenses/provenance.json) et [les lobes pulmonaires](public/licenses/lung-surfaces-provenance.json).
+## Apprentissage
 
-La nomenclature française utilise le fichier TA2.csv de [Z-Anatomy](https://github.com/Z-Anatomy/Models-of-human-anatomy), Gauthier Kervyn et contributeurs, sous CC BY-SA 4.0. Le dictionnaire normalisé `src/data/terminology.json` et les libellés dérivés `src/data/french-labels.json` conservent cette licence séparée : [notice](public/licenses/terminology-LICENSE.txt). Aucun maillage Z-Anatomy n’est utilisé.
+L’espace d’étude contient des cours, schémas, questions théoriques et exercices 3D. Les questions ratées peuvent être reprogrammées rapidement et les réussites suivent une répétition espacée progressive.
 
-Les fiches françaises synthétisent des connaissances issues du NIH et d’OpenStax : [sources](public/SOURCES.md). Les fiches de nombreuses petites structures expliquent leur groupe, sans prétendre donner leur fonction particulière.
+La couverture actuelle et l’organisation des matières sont détaillées dans [docs/campus-library.md](docs/campus-library.md).
 
-## Reconstruction des maillages
+## Comptes et persistance
 
-Les GLB sont inclus : Python n’est pas nécessaire pour compiler le site. Pour les reconstruire, installer `scripts/requirements-models.txt` dans un environnement virtuel. `scripts/build_anatomy.py --source /private/tmp/bodyparts3d --download` construit la vue d’ensemble ; conserver son manifeste dans `public/models/overview.json`. Exécuter ensuite `scripts/download_full_archive.py`, puis `scripts/build_detailed_atlas.py`. Les deux derniers scripts utilisent le cache `/private/tmp/bodyparts3d`. Les téléchargements officiels sont contrôlés par taille, CRC et empreintes.
+Le mode invité fonctionne localement dans le navigateur. Lorsqu’un compte est utilisé, l’état d’apprentissage est synchronisé côté serveur dans SQLite.
 
-Transformation commune : rotation `(x,y,z) → (x,z,−y)`, centrage et échelle uniforme (hauteur 3,6, axe vertical +Y, face +Z). Simplification des maillages, recalcul des normales, conversion GLB. Les identifiants FMA restent stables ; les assemblages locaux de la vue d’ensemble sont explicitement préfixés BP3D_.
+Les secrets ne doivent jamais être commités. `.env`, les bases SQLite locales et `.data/` sont ignorés par Git. La connexion Google est optionnelle et n’est activée que lorsque `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET` sont configurés côté serveur.
 
-## Vérification et limites
+## Déploiement
 
-`npm test` lance Playwright ; `npm run build` vérifie TypeScript et produit le site. Voir [TESTS.md](TESTS.md) pour les résultats et captures.
+Le serveur écoute le port fourni par l’environnement et peut utiliser un volume persistant pour la base des comptes. La configuration actuellement prévue pour Railway repose sur :
 
-- Corps de référence masculin adulte : pas toutes les anatomies, variantes ni détails microscopiques. Le nombre de structures décrit cet atlas, pas un dénombrement universel du corps humain.
-- Tous les modèles distribués possèdent un libellé français. Les noms sources anglais restent dans les manifestes pour la traçabilité, sans être affichés dans les fiches. Les traductions descriptives composées ne sont pas une nomenclature officielle ; une révision terminologique spécialisée reste possible.
-- Maillages simplifiés pour le Web ; fines structures et intersections entre versions peuvent présenter des limites. Couleurs pédagogiques, enveloppe transparente.
-- Tout afficher charge environ 51 Mo de modèles et peut ralentir un téléphone peu puissant. WebGL requis ; pas de décodeur distant.
-- Validation Chromium et émulation tactile ; pas de validation sur téléphone physique, Safari ou Firefox. Outil pédagogique, pas outil de diagnostic.
+- `PORT` ;
+- `APP_ORIGIN` ;
+- un volume persistant ;
+- les variables Google OAuth si la connexion Google est activée.
 
-## Compléter les noms français
+## Tests et qualité
 
-`python3 scripts/complete-french.py` compose les libellés à partir de la nomenclature et de correspondances explicites, puis échoue si un nom source reste non traduit. `node scripts/audit-french.mjs` vérifie la couverture du catalogue. Seuls les libellés nécessaires sont chargés dans le navigateur, sans le dictionnaire de travail complet.
+La suite couvre notamment :
 
-## Présence, partage et étude
+- chargement et interaction avec les modèles 3D ;
+- navigation desktop et mobile ;
+- cours et entraînement ;
+- progression et comptes ;
+- liens profonds ;
+- comportement du serveur et de l’API locale.
 
-Le cadrage initial est rapproché, avec un halo et une ombre de présentation au sol. Le bouton Isoler est l’action principale de la fiche. Une explication distingue les 48 repères de la vue d’ensemble des 1 663 structures détaillées.
+Les captures présentes dans `tests/artifacts/` servent de références visuelles et de traces de validation ; elles ne sont pas nécessaires au runtime.
 
-Chaque sélection dispose d’un lien stable, par exemple `/#structure=FMA7088` (cœur), ou `/#structure=FMA7088&mode=overview`. Ces fragments fonctionnent sur un hébergement statique sans configuration de réécriture. Le bouton Copier le lien fournit l’URL ; si le presse-papiers est indisponible, un champ sélectionnable est proposé. Rechargement et navigation précédent/suivant restaurent la sélection et activent ses couches. La copie ajoute aussi un état versionné : caméra, couches, opacités, structures masquées, isolation, coupe, repères et thème. Les URL peuvent être longues après de nombreux masquages ; elles ne contiennent ni conversation ni progression. Les animations et le parcours courant ne sont pas partagés.
+## Données, sources et licences
 
-Un thème sombre facultatif est mémorisé localement. Le blanc reste le choix initial. La visite guidée comporte cinq étapes avec consignes d’observation et fiches sourcées : poumon, cœur, intestin grêle, cerveau et fémur. Un quiz 3D distinct complète cette visite.
+Les modèles anatomiques et la nomenclature proviennent de sources tierces avec leurs propres licences. Les notices distribuées avec le projet se trouvent dans `public/licenses/`, `public/models/` et la documentation associée.
 
-### Visage en vue Muscles
+Principales références :
 
-Les principaux muscles faciaux sont absents des modèles distribués. Le shader de l’enveloppe corporelle rend donc opaque sa région faciale réelle en vue musculaire, avec une transition progressive sur le cou. Aucun muscle facial n’est inventé ni ajouté au compteur. Cette présentation nécessite la couche Enveloppe ; elle disparaît lorsque celle-ci est masquée, et devient transparente pendant une sélection pour préserver l’exploration interne.
+- BodyParts3D / DBCLS ;
+- Human Reference Atlas / HuBMAP ;
+- nomenclature dérivée de TA2 via Z-Anatomy ;
+- sources pédagogiques mentionnées dans `public/SOURCES.md`.
 
+Consulter impérativement [docs/reference-bodies.md](docs/reference-bodies.md) et les fichiers de licence avant toute redistribution des données ou modèles.
 
-## Plateforme d’apprentissage
+## Limites connues
 
-Navigation Atlas 3D / Cours / Entraînement / Ma progression. La conversation contextuelle accompagne l’atlas ; les cours disposent d’un espace de lecture indépendant.
+- validation principale sous Chromium ;
+- pas de validation clinique du contenu ;
+- certaines petites structures disposent encore de descriptions générales ;
+- les modèles Web sont simplifiés pour limiter le coût de rendu ;
+- les animations sont illustratives et ne simulent pas une physiologie complète.
 
-- Treize fiches de cours, dont neuf sur les organes et quatre sur les fondamentaux, avec rappel actif et approfondissement. Huit fiches de pathologies en six rubriques, avec sources.
-- Quiz spatial de dix structures : sélection sur les maillages ou repères, indices, réponse dévoilée et bilan. Le score récompense le premier essai sans aide. Vingt QCM théoriques complètent cet entraînement.
-- Progression mémorisée localement en mode invité, ou synchronisée avec l’historique, les favoris et les notes après connexion à un compte MyCorpus.
-- Neuf filtres de systèmes combinables, construits à partir des structures réellement présentes ; réseau lymphatique partiel et anatomie reproductrice masculine uniquement.
-- Coupe mobile suivant trois axes, inversion du côté conservé et plan de repère ; opacité par couche ; étiquettes nominatives ou numérotées.
-- Cinquante profils anatomiques enrichissent 80 structures musculaires et donnent des repères de réseau à 280 artères et 142 veines. Les autres structures conservent une fiche générale : leurs attaches, innervation ou territoires précis restent à documenter.
-- Deux animations illustratives sur les vrais modèles : battement et respiration. Pas de simulation du débit sanguin, des valves ou de la mécanique articulaire.
+## Documentation
 
-L’API `/api/chat` comprend notamment « Montre-moi le pancréas », « Isole le cœur » et des questions sur les cours. **Le mode livré utilise des ressources locales, sans IA générative.** L’adaptateur de fournisseur est prêt, mais aucun fournisseur externe n’a été configuré. Voir [contrat API et extension](server/README.md).
-
-Les coupes ouvrent les maillages de surface sans remplir les tissus internes : ce ne sont pas des coupes histologiques ou radiologiques. Le contenu médical est une introduction sourcée, pas un cursus complet ni une validation clinique. Les données et composants sont séparés pour enrichir progressivement la plateforme.
-
-## Corpus Campus — espaces séparés
-
-La navigation comprend **Atlas 3D**, **Cours** et **Entraînement**, utilisables sur ordinateur et téléphone. Les cours sont des pages de lecture indépendantes, avec un lien profond (`#tab=cours&cours=orientation`), recherche et filtres par matière. Une ouverture directe des cours ou de l’entraînement ne télécharge aucun GLB avant utilisation de l’atlas.
-
-Le socle comporte 13 fiches : quatre fondamentaux (orientation, homéostasie, membrane, tissus) et neuf organes. Chaque cours présente objectifs, notions, point de vigilance, rappel actif dévoilable et source. Il est possible de marquer un cours terminé, ouvrir son modèle 3D et lancer ses QCM. Les supports de la faculté restent la référence du programme ; la biochimie complète, la biophysique, les statistiques et les autres matières du PASS/L.AS ne sont pas couvertes.
-
-L’entraînement propose 20 QCM originaux à réponses multiples, filtrés par matière ou cours, tirés sans doublon. Sessions de 5, 10 ou 20 questions, réduites au nombre disponible dans le filtre. Mode apprentissage avec correction par proposition ; mode examen avec 75 secondes par question, navigation arrière et correction différée. Le chronomètre termine la session à échéance. Barème interne : 1 point pour une sélection entièrement correcte, sinon 0 ; aucun point négatif. Bilan détaillé, lien vers le cours et reprise des erreurs. Le carnet d’erreurs mémorise la dernière réussite ou erreur de chaque question localement (`corpus-practice-v1`). Il ne s’agit ni d’annales ni d’un barème officiel.
-
-Le quiz spatial comprend désormais 10 structures réelles, avec indices, repères numérotés prioritaires et bilan par structure. Il reste distinct des QCM théoriques. Les vues de l’atlas bénéficient d’un environnement de studio calculé localement, de matériaux physiques, d’ombres et de couleurs cardiaques affinées. L’enveloppe réelle du visage est opaque en vue Organes ou Muscles sans sélection ; elle devient transparente pour explorer l’intérieur. Les ombres et reflets sont des choix de présentation, sans valeur diagnostique.
-
-Organisation : `src/study/curriculum.ts`, `questions.ts`, `CoursesWorkspace.tsx`, `PracticeWorkspace.tsx` et `study.css`. Les rendus de cours sont générés depuis les GLB via `tests/campus-thumbnails.mjs`, avec attribution dans `public/course-previews/LICENSE.txt`. Aucun nouveau modèle IA ou service payant n’a été activé par cette refonte.
-
-## Extension de la bibliothèque — septembre 2026
-
-La version actuelle comprend **98 cours classés dans 13 matières, 98 schémas interactifs, 619 questions corrigées et 10 exercices d’identification 3D**. Seize chapitres pivots proposent 9 à 13 sections, un tableau comparatif, une relation à appliquer, un exemple résolu, des erreurs classiques et 15 à 19 questions. Les quiz disposent de niveaux, de cas et calculs, d’une navigation numérotée en examen et d’une répétition espacée à 1, 3, 7, 14, 30 puis 60 jours. Voir [le détail de la bibliothèque](docs/campus-library.md).
+- [Architecture](docs/architecture.md)
+- [Bibliothèque de cours et entraînement](docs/campus-library.md)
+- [Références anatomiques et licences](docs/reference-bodies.md)
+- [Tests](TESTS.md)
+- [Backend et contrat API](server/README.md)
