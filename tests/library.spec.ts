@@ -4,11 +4,11 @@ import {questions} from '../src/study/questions'
 
 test('banque pédagogique : identifiants, corrections et couverture des nouveaux chapitres',()=>{
  expect(chapters).toHaveLength(12)
- expect(questions).toHaveLength(311)
+ expect(questions).toHaveLength(621)
  expect(new Set(questions.map(q=>q.id)).size).toBe(questions.length)
  expect(new Set(questions.map(q=>q.prompt)).size).toBe(questions.length)
  for(const q of questions){
-  expect([2,4]).toContain(q.options.length);expect(q.why).toHaveLength(q.options.length)
+  expect([2,3,4]).toContain(q.options.length);expect(q.why).toHaveLength(q.options.length)
   expect(q.correct.length).toBeGreaterThan(0);expect(q.correct.length).toBeLessThan(q.options.length)
   expect(new Set(q.correct).size).toBe(q.correct.length)
   for(const index of q.correct)expect(index>=0&&index<q.options.length).toBeTruthy()
@@ -17,7 +17,7 @@ test('banque pédagogique : identifiants, corrections et couverture des nouveaux
  for(const c of chapters){
   expect(c.sections.length).toBeGreaterThanOrEqual(4);expect(c.caseStudy?.answer).toBeTruthy()
   expect(c.sources!.length).toBeGreaterThanOrEqual(2)
-  expect(questions.filter(q=>q.course===c.id)).toHaveLength(7)
+  expect(questions.filter(q=>q.course===c.id).length).toBeGreaterThanOrEqual(7)
  }
 })
 

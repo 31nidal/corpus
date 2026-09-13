@@ -3,17 +3,18 @@ import {courses} from '../src/study/curriculum'
 import {questions} from '../src/study/questions'
 import {diagrams} from '../src/study/diagrams'
 import {subjects,groupCourses} from '../src/study/subjects'
+import {firstYearCourses} from '../src/study/firstYearExpansion'
 import fs from 'node:fs'
 
 test('couverture organisée : cours, exercices, schémas et repères 3D valides',()=>{
- expect(courses).toHaveLength(67)
- expect(questions).toHaveLength(311)
+ expect(courses).toHaveLength(98)
+ expect(questions).toHaveLength(621)
  expect(new Set(courses.map(c=>c.id)).size).toBe(courses.length)
  expect(Object.keys(diagrams)).toHaveLength(courses.length)
  const ids=new Set(['public/models/manifest.json','public/models/female-regions/manifest.json'].flatMap(path=>JSON.parse(fs.readFileSync(path,'utf8')).structures.map((s:{id:string})=>s.id)))
  for(const c of courses){
   expect(subjects.some(s=>s.title===c.category),c.id).toBeTruthy()
-  expect(c.sections.length,c.id).toBeGreaterThanOrEqual(6)
+  expect(c.sections.length,c.id).toBeGreaterThanOrEqual(firstYearCourses.some(chapter=>chapter.id===c.id)?4:6)
   expect(c.glossary?.length,c.id).toBeGreaterThanOrEqual(2)
   expect(c.source,c.id).toMatch(/^https:\/\//)
   expect(questions.filter(q=>q.course===c.id).length,c.id).toBeGreaterThanOrEqual(4)
@@ -58,7 +59,7 @@ test('mobile : matières séparées et quiz filtré, sans chargement 3D',async({
  const glbs:string[]=[],errors:string[]=[]
  page.on('request',r=>{if(r.url().endsWith('.glb'))glbs.push(r.url())});page.on('pageerror',e=>errors.push(e.message))
  await page.goto('/#tab=cours&matiere=chimie')
- await expect(page.locator('.course-tile')).toHaveCount(2)
+ await expect(page.locator('.course-tile')).toHaveCount(courses.filter(c=>c.category==='Chimie').length)
  await page.getByRole('button',{name:'Activer le thème sombre'}).click()
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(393)
  await page.screenshot({path:'tests/artifacts/catalog-mobile-chemistry.png'})

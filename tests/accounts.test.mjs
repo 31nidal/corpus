@@ -73,6 +73,29 @@ test('comptes : isolation, sécurité, persistance, fusion, récupération et su
  }finally{rmSync(dir,{recursive:true,force:true})}
 })
 
+test('révisions : persistance, synchronisation tardive et rejet de dates invalides',async()=>{
+ const dir=mkdtempSync(path.join(tmpdir(),'mycorpus-reviews-')),api=harness({ACCOUNT_DATA_DIR:dir})
+ try{
+  const account=await api.call('register',{email:'review@example.test',name:'Révision',password:'test-revisions-solide-2026'})
+  const key='corpus-practice-v1',question='revision2-phys-renal-7'
+  const first={seen:1,correct:1,wrong:false,streak:1,interval:1,due:100000000,lastReviewed:13600000}
+  const sync=async(id,value,before=null)=>api.call('sync',{userId:account.data.user.id,operations:[{id,kind:'value',payload:{key,value:JSON.stringify({[question]:value}),before:before?JSON.stringify({[question]:before}):null}}]},account.cookie)
+  assert.equal((await sync('review-first',first)).status,200)
+  const later={seen:2,correct:1,wrong:true,streak:0,interval:.25,due:45000000,lastReviewed:23400000}
+  assert.equal((await sync('review-later',later,first)).status,200)
+  const stale={...first,seen:2,correct:2,lastReviewed:14000000}
+  assert.equal((await sync('review-stale',stale,first)).status,200)
+  api.restart()
+  const merged=JSON.parse((await api.call('session',undefined,account.cookie)).data.state[key])[question]
+  assert.equal(merged.seen,3);assert.equal(merged.correct,2)
+  assert.equal(merged.due,later.due);assert.equal(merged.lastReviewed,later.lastReviewed);assert.equal(merged.wrong,true)
+  assert.equal((await sync('invalid-date',{...later,due:-1},later)).status,400)
+  assert.equal((await sync('invalid-review',{...later,lastReviewed:'demain'},later)).status,400)
+  await sync('review-stale',stale,first)
+  assert.equal(JSON.parse((await api.call('session',undefined,account.cookie)).data.state[key])[question].seen,3)
+ }finally{rmSync(dir,{recursive:true,force:true})}
+})
+
 test('Railway sans volume : comptes désactivés',async()=>{
  const api=harness({RAILWAY_ENVIRONMENT_ID:'production'})
  const response=await api.call('session')

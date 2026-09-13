@@ -137,6 +137,10 @@ Consulter impérativement [docs/reference-bodies.md](docs/reference-bodies.md), 
 - les modèles Web sont simplifiés pour limiter le coût de rendu ;
 - les animations sont illustratives et ne simulent pas une physiologie complète.
 
+## Extension de la bibliothèque — septembre 2026
+
+La version actuelle comprend **98 cours classés dans 13 matières, 98 supports visuels interactifs, 621 questions corrigées et 10 exercices d’identification 3D**. Seize chapitres pivots proposent un tableau comparatif, une relation à appliquer, un exemple résolu, des erreurs classiques et 15 à 19 questions. Cinq d’entre eux ont été réécrits en huit parties (environ 930 à 1 020 mots hors exercices) et disposent de dessins SVG avec légendes masquables et exercices de repérage : cycle cardiaque, rein, ventilation, gastrulation et immunité adaptative. Les quiz proposent deux niveaux, des cas et calculs, une navigation numérotée en examen et une répétition espacée. Voir [le détail de la bibliothèque](docs/campus-library.md).
+
 ## Documentation
 
 - [Architecture](docs/architecture.md)

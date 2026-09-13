@@ -12,6 +12,7 @@ import './study/study.css'
 import './study/library.css'
 import './study/diagrams.css'
 import './study/spacedReview.css'
+import './study/flagship.css'
 import './study/catalog.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><AccountRoot /></React.StrictMode>)

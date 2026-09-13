@@ -1,6 +1,7 @@
 import type {Course,CourseLearning} from './curriculum'
 import type {Diagram} from './diagrams'
 import type {Question} from './questions'
+import {refineFlagship} from './flagshipCourses'
 
 type Check=[statement:string,correct:boolean,explanation:string]
 type DeepSection={title:string;text:string;check:Check}
@@ -139,7 +140,7 @@ Object.assign(modules,{
  ],learning:{formula:{label:'Dynamique clonale',expression:'Reconnaissance + co-stimulation + cytokines → expansion → effecteurs + mémoire',explanation:'La reconnaissance isolée ne garantit pas une activation complète et peut conduire à d’autres destins.'},comparison:{headers:['Cellule','Reconnaissance','Fonction majeure'],rows:[['Lymphocyte B','Antigène natif via BCR','Anticorps après différenciation'],['T CD4','Peptide-CMH II','Coordination'],['T CD8','Peptide-CMH I','Cytotoxicité']]},example:{prompt:'Une cellule présente un peptide sur CMH I à un T CD8 activé.',steps:['Le TCR reconnaît le complexe','Les signaux d’adhérence stabilisent le contact','Les granules cytotoxiques peuvent être dirigés','La cellule cible engage sa mort'],result:'La cytotoxicité est ciblée et distincte de la neutralisation par anticorps.'},errors:[{title:'Anticorps = cellule',detail:'C’est une immunoglobuline sécrétée notamment par les plasmocytes.'},{title:'TCR reconnaît antigène libre',detail:'Il reconnaît un peptide présenté par le CMH.'},{title:'Mémoire = réponse permanente maximale',detail:'Les effecteurs diminuent puis des cellules mémoire persistent.'}]}}
 })
 
-export function enrichCoreCourses(courses:Course[]):Course[]{return courses.map(course=>{const module=modules[course.id];if(!module)return course;return {...course,minutes:module.minutes,objectives:module.objectives,sections:[...course.sections,...module.sections.map(({title,text})=>({title,text}))],learning:module.learning}})}
+export function enrichCoreCourses(courses:Course[]):Course[]{return courses.map(course=>{const module=modules[course.id];if(!module)return course;return refineFlagship({...course,minutes:module.minutes,objectives:module.objectives,sections:[...course.sections,...module.sections.map(({title,text})=>({title,text}))],learning:module.learning})})}
 
 export const coreLearningDiagrams:Record<string,Diagram>=Object.fromEntries(Object.entries(modules).map(([id,module])=>[id,{...module.diagram,nodes:module.sections.map(section=>({label:section.title,detail:section.text}))}]))
 

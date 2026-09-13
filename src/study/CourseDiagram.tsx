@@ -1,8 +1,12 @@
 import {useEffect,useId,useState} from 'react'
 import {ArrowRight,MousePointer2} from 'lucide-react'
 import {diagrams} from './diagrams'
+import MedicalDiagram,{medicalPlates} from './MedicalDiagram'
 
 export default function CourseDiagram({courseId}:{courseId:string}){
+ return medicalPlates[courseId]?<MedicalDiagram key={courseId} courseId={courseId}/>:<GenericDiagram key={courseId} courseId={courseId}/>
+}
+function GenericDiagram({courseId}:{courseId:string}){
  const graph=diagrams[courseId],uid=useId().replace(/:/g,''),[active,setActive]=useState(0),[compact,setCompact]=useState(()=>window.matchMedia('(max-width:700px)').matches)
  useEffect(()=>{setActive(0)},[courseId])
  useEffect(()=>{const media=window.matchMedia('(max-width:700px)');const update=()=>setCompact(media.matches);media.addEventListener('change',update);return()=>media.removeEventListener('change',update)},[])
