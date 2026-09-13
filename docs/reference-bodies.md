@@ -1,50 +1,99 @@
-# Atlas principal et explorations féminines MyCorpus
+# Références anatomiques MyCorpus
 
-La présentation actuelle utilise le corps masculin comme atlas principal (1 663 structures). La section féminine est limitée à trois explorations : bassin, appareil reproducteur et sein. Elle charge 74 maillages source indépendants (14 os, 47 organes/tissus, 13 éléments de soutien), pour 3,46 Mo. Les 880 maillages de l’import HRA initial sont conservés localement dans `.model-cache/female/` comme source de préparation, mais ne sont plus proposés comme corps féminin entier ni comptés dans l’interface courante.
+MyCorpus utilise plusieurs jeux de données anatomiques avec des couvertures et des licences différentes. Cette page décrit uniquement ce qui est effectivement distribué ou utilisé par l’application actuelle.
 
-Les regroupements `HRA-region-pelvis`, `HRA-region-reproductive` et `HRA-region-breast` référencent les pièces existantes. Aucun maillage masculin n’entre dans ces regroupements. `scripts/build_female_regions.py` génère le sous-ensemble à partir des GLB HRA déjà importés ; `scripts/female-region-members.json` fixe l’appartenance des pièces.
+## Atlas masculin principal
 
-La recherche de compléments masculins 4.3i est documentée dans `public/licenses/male-extension-audit.json`. L’inventaire fournit des candidats, mais `download.cgi` redirige vers l’accueil sans délivrer d’OBJ. Les candidats ne sont donc pas intégrés et ne gonflent pas le compteur.
+L’atlas principal repose sur **BodyParts3D** et contient **1 663 structures maillées réelles**.
 
-## Archive de provenance de l’import initial
+| Couche | Structures |
+| --- | ---: |
+| Enveloppe | 1 |
+| Squelette et dents | 231 |
+| Organes et structures internes | 262 |
+| Muscles | 398 |
+| Artères | 423 |
+| Veines | 225 |
+| Nerfs | 34 |
+| Articulations et tissus de soutien | 89 |
+| **Total** | **1 663** |
 
-# Références anatomiques disponibles
+Des assemblages virtuels permettent de sélectionner certains organes entiers à partir de plusieurs maillages existants. Ils ne sont pas comptés comme de nouvelles géométries.
 
-Corpus propose deux jeux de données réels, avec des couvertures différentes. Le total de **2 543 structures maillées** additionne **1 663 structures masculines BodyParts3D** et **880 structures féminines Human Reference Atlas**. Ce nombre ne désigne ni 2 543 structures par corps, ni 2 543 concepts anatomiques différents : un même organe peut être représenté dans les deux références. Les assemblages virtuels ne sont pas comptés comme de nouvelles géométries.
+Les couches sont distribuées dans `public/models/` et chargées progressivement afin de limiter le coût initial côté navigateur.
 
-| Couche | Homme | Femme |
-| --- | ---: | ---: |
-| Enveloppe | 1 | 1 |
-| Squelette et dents | 231 | 91 |
-| Organes et tissus internes | 262 | 631 |
-| Muscles | 398 | 16 |
-| Artères | 423 | 48 |
-| Veines | 225 | 56 |
-| Nerfs | 34 | 2 |
-| Articulations et soutien | 89 | 35 |
-| Total réel | 1 663 | 880 |
+### Source et licence
 
-Les 17 assemblages masculins et 10 assemblages féminins facilitent la sélection d’organes entiers. Ils référencent les maillages existants. Les compteurs de visibilité excluent ces assemblages.
+Source : BodyParts3D / Database Center for Life Science (DBCLS).
 
-## Référence féminine
+Les en-têtes des OBJ utilisés pour construire les GLB indiquent **CC BY-SA 2.1 Japon**. La page officielle actuelle de BodyParts3D indique par ailleurs CC BY 4.0 ; le projet conserve les notices et la provenance des fichiers effectivement téléchargés au lieu de supposer un changement rétroactif de licence.
 
-Source : [Human Reference Atlas, United Female v1.5](https://doi.org/10.48539/HBM352.BTSQ.586), Kristen Browne et Heidi Schlehlein, HuBMAP. Modèle composite, principalement issu de Visible Human Female (US National Library of Medicine), complété par les références indiquées dans le crosswalk HRA. Le squelette, les muscles et les nerfs sont partiels. Ce jeu n’est pas un modèle exhaustif de toutes les variations anatomiques féminines.
+Les informations de provenance et licences distribuées se trouvent notamment dans :
 
-Licence exacte du fichier source : **CC BY 4.0**, d’après les métadonnées officielles de cette version, conservées dans `public/licenses/female-source-metadata.yaml`. Le crosswalk et les crédits des composants sont conservés dans `female-source-crosswalk.csv`. La provenance, le SHA-256 de l’original et les transformations sont détaillés dans `female-provenance.json`. Les crédits distribués avec les GLB sont dans `public/models/female-regions/LICENSE.txt`.
+- `public/models/LICENSE.txt` ;
+- `public/licenses/detailed-provenance.json` ;
+- `public/licenses/provenance.json` ;
+- `public/models/manifest.json`.
 
-L’original contient 888 maillages. Les huit éléments d’un placenta de référence séparé sont exclus : l’atlas affiché ne représente pas une grossesse. Les 880 autres sont conservés avec leur identité source. Le bassin reproducteur propose notamment des assemblages sélectionnables pour l’utérus, les ovaires et les trompes ; les cours correspondants possèdent leurs propres explications.
+## Explorations féminines
 
-Les huit GLB optimisés totalisent 30,15 Mo (base décimale). Le chargement initial enveloppe/squelette/organes représente 22,24 Mo. Les autres couches se chargent à leur activation. Les surfaces d’empreintes et subdivisions hépatiques superposées restent accessibles par recherche et sélection directe, mais sont masquées en vue générale pour éviter le scintillement entre surfaces coplanaires.
+L’interface actuelle ne propose pas un second corps complet. Elle fournit trois explorations féminines spécialisées :
 
-Import reproductible : `scripts/import_female_atlas.py` (Python, numpy, trimesh, fast-simplification ; scipy pour les normales), puis `scripts/label_female_atlas.py`. Le premier accepte le chemin du GLB source en argument ; consulter son en-tête avant exécution. Les noms français sont dans `src/data/female-labels.json` ; les identifiants `HRA-…` reprennent les noms des nœuds source.
+- bassin ;
+- appareil reproducteur ;
+- sein.
 
-## Interaction et limites
+Ces vues utilisent **74 maillages source indépendants** issus du Human Reference Atlas : 14 os, 47 organes/tissus et 13 éléments de soutien. Les fichiers distribués pour ces régions représentent environ 3,46 Mo.
 
-- Homme/Femme change réellement les fichiers chargés, les résultats de recherche, les compteurs et la sélection.
-- Les liens partagés conservent la référence : `/#body=female&structure=HRA-uterus`.
-- Les cours ouvrent un repère 3D réellement disponible, en choisissant la référence correspondante.
-- Les commandes de l’assistant sont validées contre la référence active. Les fiches locales restent limitées aux contenus documentés ; aucun fournisseur IA payant n’est requis.
-- La visite guidée historique et le quiz d’identification 3D utilisent la référence masculine et la rétablissent explicitement. Les quiz de cours couvrent les deux appareils reproducteurs.
-- L’archive officielle BodyParts3D PART-OF 4.0 à 99 % a été vérifiée : ses concepts nommés sont déjà présents. Aucun doublon n’a été ajouté pour augmenter artificiellement le compteur.
+Les regroupements `HRA-region-pelvis`, `HRA-region-reproductive` et `HRA-region-breast` référencent uniquement ces maillages féminins ; ils ne réutilisent pas les géométries masculines.
 
-La référence masculine conserve sa licence propre CC BY-SA 2.1 Japon, attestée par les en-têtes des OBJ téléchargés. La nouvelle référence féminine n’en change pas les conditions.
+### Source et licence
+
+Source : **Human Reference Atlas, United Female v1.5**, HuBMAP.
+
+La licence du fichier source est **CC BY 4.0**. Les métadonnées et éléments de provenance sont conservés dans les fichiers distribués, notamment :
+
+- `public/licenses/female-source-metadata.yaml` ;
+- `public/licenses/female-source-crosswalk.csv` ;
+- `public/licenses/female-provenance.json` ;
+- `public/models/female-regions/LICENSE.txt`.
+
+L’import HRA initial contenait davantage de maillages. Les données intermédiaires complètes servent uniquement à la préparation locale et restent dans `.model-cache/female/`, qui n’est pas versionné. Elles ne doivent pas être confondues avec les 74 maillages réellement utilisés dans l’interface actuelle.
+
+## Nomenclature française
+
+La nomenclature française s’appuie notamment sur TA2 via Z-Anatomy. Les maillages Z-Anatomy ne sont pas utilisés dans l’atlas ; seules des données terminologiques dérivées sont intégrées.
+
+Les fichiers concernés conservent leur notice séparée, notamment `public/licenses/terminology-LICENSE.txt`.
+
+## Liens et identifiants
+
+Les identifiants anatomiques sont des contrats stables du produit :
+
+- identifiants FMA pour l’atlas principal ;
+- identifiants `HRA-...` pour les explorations féminines.
+
+Ils sont utilisés dans la recherche, les cours et les liens profonds. Exemple :
+
+```text
+/#structure=FMA7088
+/#body=female&structure=HRA-uterus
+```
+
+Un refactor ne doit pas les renommer sans migration explicite.
+
+## Transformations
+
+Les modèles Web sont transformés et simplifiés pour le rendu navigateur. Les scripts de préparation sont conservés dans `scripts/` afin de rendre les conversions auditables et reproductibles autant que possible.
+
+Les transformations ne donnent pas aux modèles une valeur diagnostique. Les couleurs, matériaux, transparences et simplifications sont des choix de visualisation pédagogique.
+
+## Limites
+
+- les références anatomiques ne couvrent pas toutes les variations humaines ;
+- certaines structures fines sont simplifiées pour le Web ;
+- les explorations féminines sont régionales et non un atlas féminin complet ;
+- les coupes du moteur 3D ouvrent des surfaces et ne recréent pas des tissus histologiques ou radiologiques ;
+- l’outil est pédagogique et non clinique.
+
+Avant toute redistribution des modèles ou données, vérifier les notices originales présentes dans `public/licenses/` et `public/models/`.
