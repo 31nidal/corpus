@@ -69,7 +69,7 @@ server/               API locale, comptes, OAuth et fournisseurs
 public/models/         modèles 3D distribués
 public/licenses/       licences et provenance des données
 scripts/               préparation et audit des modèles/données
-tests/                 tests Playwright, tests backend et captures de référence
+tests/                 tests Playwright, tests backend et outils de validation visuelle
 docs/                  documentation produit et données anatomiques
 shared/                contrats partagés frontend/backend
 ```
@@ -114,7 +114,7 @@ La suite couvre notamment :
 - liens profonds ;
 - comportement du serveur et de l’API locale.
 
-Les captures présentes dans `tests/artifacts/` servent de références visuelles et de traces de validation ; elles ne sont pas nécessaires au runtime.
+Les scripts de validation peuvent générer des captures dans `tests/artifacts/`. Ces PNG sont des sorties locales ignorées par Git et ne sont pas nécessaires au runtime.
 
 ## Données, sources et licences
 
@@ -127,7 +127,7 @@ Principales références :
 - nomenclature dérivée de TA2 via Z-Anatomy ;
 - sources pédagogiques mentionnées dans `public/SOURCES.md`.
 
-Consulter impérativement [docs/reference-bodies.md](docs/reference-bodies.md) et les fichiers de licence avant toute redistribution des données ou modèles.
+Consulter impérativement [docs/reference-bodies.md](docs/reference-bodies.md), [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) et les fichiers de licence avant toute redistribution des données ou modèles.
 
 ## Limites connues
 
@@ -142,5 +142,6 @@ Consulter impérativement [docs/reference-bodies.md](docs/reference-bodies.md) e
 - [Architecture](docs/architecture.md)
 - [Bibliothèque de cours et entraînement](docs/campus-library.md)
 - [Références anatomiques et licences](docs/reference-bodies.md)
+- [Notices tierces](THIRD_PARTY_NOTICES.md)
 - [Tests](TESTS.md)
 - [Backend et contrat API](server/README.md)
