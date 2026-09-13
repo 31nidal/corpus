@@ -17,3 +17,6 @@ playwright-report/
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm
+
+# Generated visual validation output
+tests/artifacts/*.png
