@@ -4,7 +4,7 @@ import {questions} from '../src/study/questions'
 
 test('banque pédagogique : identifiants, corrections et couverture des nouveaux chapitres',()=>{
  expect(chapters).toHaveLength(12)
- expect(questions).toHaveLength(621)
+ expect(questions).toHaveLength(1492)
  expect(new Set(questions.map(q=>q.id)).size).toBe(questions.length)
  expect(new Set(questions.map(q=>q.prompt)).size).toBe(questions.length)
  for(const q of questions){
@@ -46,6 +46,7 @@ test('quiz par chapitre : URL, difficulté, navigation examen et bilan',async({p
  await expect(page).toHaveURL(/cours=hemodynamics/)
  await page.reload();await expect(page.getByLabel('Chapitre du quiz')).toHaveValue('hemodynamics')
  await page.getByLabel('Niveau du quiz').selectOption('application')
+ await page.getByLabel('Nombre de questions').selectOption('5')
  await page.getByRole('button',{name:/Examen blanc/}).click()
  await page.getByRole('button',{name:'Commencer la série'}).click()
  await expect(page.locator('.exam-navigation button')).toHaveCount(5)

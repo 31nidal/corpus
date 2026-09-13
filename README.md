@@ -8,7 +8,7 @@ MyCorpus est une application React/TypeScript avec rendu 3D Three.js et un petit
 
 - 98 cours répartis dans 13 matières ;
 - 98 schémas interactifs ;
-- 619 questions corrigées ;
+- 1 492 questions corrigées, avec 15 à 19 exercices par cours ;
 - 10 exercices d’identification 3D ;
 - un atlas masculin détaillé de 1 663 structures BodyParts3D ;
 - trois explorations féminines ciblées (bassin, appareil reproducteur, sein) construites à partir de 74 maillages HRA ;
@@ -139,7 +139,7 @@ Consulter impérativement [docs/reference-bodies.md](docs/reference-bodies.md), 
 
 ## Extension de la bibliothèque — septembre 2026
 
-La version actuelle comprend **98 cours classés dans 13 matières, 98 supports visuels interactifs, 621 questions corrigées et 10 exercices d’identification 3D**. Seize chapitres pivots proposent un tableau comparatif, une relation à appliquer, un exemple résolu, des erreurs classiques et 15 à 19 questions. Cinq d’entre eux ont été réécrits en huit parties (environ 930 à 1 020 mots hors exercices) et disposent de dessins SVG avec légendes masquables et exercices de repérage : cycle cardiaque, rein, ventilation, gastrulation et immunité adaptative. Les quiz proposent deux niveaux, des cas et calculs, une navigation numérotée en examen et une répétition espacée. Voir [le détail de la bibliothèque](docs/campus-library.md).
+La version actuelle comprend **98 cours classés dans 13 matières, 98 supports visuels interactifs, 1 492 questions corrigées et 10 exercices d’identification 3D**. Chaque chapitre possède des prérequis, une durée de lecture calculée sur son contenu et 15 à 19 questions. Seize chapitres pivots proposent aussi un tableau comparatif, une relation à appliquer, un exemple résolu et des erreurs classiques. Cinq d’entre eux ont été réécrits en huit parties (environ 930 à 1 020 mots hors exercices) et disposent de dessins SVG avec légendes masquables et exercices de repérage : cycle cardiaque, rein, ventilation, gastrulation et immunité adaptative. Les quiz proposent deux niveaux, des cas et calculs, une navigation numérotée en examen et une répétition espacée. Voir [le détail de la bibliothèque](docs/campus-library.md).
 
 ## Documentation
 

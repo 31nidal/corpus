@@ -8,7 +8,7 @@ import fs from 'node:fs'
 
 test('couverture organisée : cours, exercices, schémas et repères 3D valides',()=>{
  expect(courses).toHaveLength(98)
- expect(questions).toHaveLength(621)
+ expect(questions).toHaveLength(1492)
  expect(new Set(courses.map(c=>c.id)).size).toBe(courses.length)
  expect(Object.keys(diagrams)).toHaveLength(courses.length)
  const ids=new Set(['public/models/manifest.json','public/models/female-regions/manifest.json'].flatMap(path=>JSON.parse(fs.readFileSync(path,'utf8')).structures.map((s:{id:string})=>s.id)))
@@ -70,8 +70,8 @@ test('mobile : matières séparées et quiz filtré, sans chargement 3D',async({
  const available=await page.getByLabel('Chapitre du quiz').locator('option').evaluateAll(options=>options.map(o=>(o as HTMLOptionElement).value).filter(v=>v!=='all'))
  expect(available).toEqual(courses.filter(c=>c.category==='Histologie').map(c=>c.id))
  await page.getByRole('button',{name:'Commencer la série'}).click()
- const prompt=await page.locator('.question-layout h1').innerText()
- expect(questions.find(q=>q.prompt===prompt)?.topic).toBe('Histologie')
+ const shownCourse=(await page.locator('.question-chapter').innerText()).split(' · ')[0]
+ expect(courses.find(course=>course.title===shownCourse)?.category).toBe('Histologie')
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(393)
  expect(glbs).toEqual([]);expect(errors).toEqual([])
 })

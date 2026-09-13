@@ -11,7 +11,8 @@ import {scienceSupport} from './scienceCourses'
 import {firstYearSupport} from './firstYearExpansion'
 import {coreLearningQuestions} from './coreCourseDepth'
 import {flagshipQuestions,flagshipQuestionCourses} from './flagshipQuestions'
-export type Question={id:string;course:string;topic:string;prompt:string;options:string[];correct:number[];why:string[];difficulty?:'essentiel'|'application';format?:'boolean'}
+import {completeQuestionBank} from './universalCourseQuality'
+export type Question={id:string;course:string;topic:string;prompt:string;options:string[];correct:number[];why:string[];difficulty?:'essentiel'|'application';format?:'boolean'|'single'}
 const questionCatalog:Question[]=[...reasoningQuestions,...chapterQuestions,...skeletalQuestions,...systemQuestions,...regionalSupport.questions,...reproductiveSupport.questions,...scienceSupport.questions,...firstYearSupport.questions,...regionalSystemSupport.questions,...breastSupport.questions,...coreLearningQuestions,
  {id:'orientation-1',course:'orientation',topic:'Anatomie',prompt:'Quels plans sont correctement associés ?',options:['Sagittal : droite / gauche','Frontal : haut / bas','Transversal : avant / arrière','Frontal : avant / arrière'],correct:[0,3],why:['Le plan sagittal sépare les côtés.','Cette séparation est transversale.','Le transversal sépare le haut et le bas.','Le plan frontal est aussi appelé coronal.']},
  {id:'orientation-2',course:'orientation',topic:'Anatomie',prompt:'Concernant les repères anatomiques :',options:['La droite est celle du sujet','Distal signifie proche du tronc','Le coude est proximal au poignet','Médial signifie vers le plan médian'],correct:[0,2,3],why:['Le point de vue reste celui du sujet.','Distal signifie plus éloigné de l’attache.','Il est plus proche de l’attache.','Médial s’oppose à latéral.']},
@@ -34,6 +35,6 @@ const questionCatalog:Question[]=[...reasoningQuestions,...chapterQuestions,...s
  {id:'brain-1',course:'FMA50801',topic:'Nerveux',prompt:'Le cerveau participe :',options:['À l’intégration sensorielle','À la commande de mouvements','À la mémoire','À la production de bile'],correct:[0,1,2],why:['Il traite des informations sensorielles.','Des réseaux commandent des mouvements.','Des réseaux soutiennent la mémorisation.','Cette fonction relève du foie.']},
  {id:'femur-1',course:'FMA24474',topic:'Locomoteur',prompt:'Le fémur :',options:['Est un os de la cuisse','Participe à la hanche','Participe au genou','Est un os de l’avant-bras'],correct:[0,1,2],why:['Il constitue le squelette de la cuisse.','Sa tête s’articule avec l’acétabulum.','Son extrémité distale participe au genou.','L’avant-bras comprend radius et ulna.']},
 ]
-export const questions:Question[]=[...questionCatalog.filter(q=>!(q.id.startsWith('core-')&&flagshipQuestionCourses.has(q.course))),...flagshipQuestions].map(q=>({...q,topic:courses.find(c=>c.id===q.course)?.category??q.topic}))
+export const questions:Question[]=completeQuestionBank(courses,[...questionCatalog.filter(q=>!(q.id.startsWith('core-')&&flagshipQuestionCourses.has(q.course))),...flagshipQuestions].map(q=>({...q,topic:courses.find(c=>c.id===q.course)?.category??q.topic})))
 export function isCorrect(q:Question,answer:number[]){return answer.length===q.correct.length&&q.correct.every(i=>answer.includes(i))}
 export function shuffled<T>(items:T[]):T[]{const a=[...items];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
