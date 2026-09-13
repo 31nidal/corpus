@@ -129,12 +129,19 @@ Principales références :
 
 Consulter impérativement [docs/reference-bodies.md](docs/reference-bodies.md), [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) et les fichiers de licence avant toute redistribution des données ou modèles.
 
+## Chargement de l’atlas
+
+Le premier lancement ouvre la vue d’ensemble de 48 structures et transfère environ 7,3 Mo de GLB. La peau, plus légère, est chargée en premier afin de rendre rapidement la rotation et le zoom disponibles ; les organes et le squelette arrivent ensuite. L’atlas détaillé conserve 1 663 maillages séparés et se charge à la demande. Un lien profond vers une structure détaillée ouvre directement ce mode.
+
+Le serveur applique un cache de sept jours aux modèles et un cache immuable aux fichiers JavaScript et CSS versionnés. Les manifestes et la page HTML restent revalidables pour que les mises à jour soient détectées.
+
 ## Limites connues
 
 - validation principale sous Chromium ;
 - pas de validation clinique du contenu ;
 - certaines petites structures disposent encore de descriptions générales ;
 - les modèles Web sont simplifiés pour limiter le coût de rendu ;
+- la première visite dépend encore du débit réseau et des capacités WebGL de l’appareil ;
 - les animations sont illustratives et ne simulent pas une physiologie complète.
 
 ## Extension de la bibliothèque — septembre 2026

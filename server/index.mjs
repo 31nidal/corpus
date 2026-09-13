@@ -14,6 +14,10 @@ http.createServer((req,res)=>api(req,res,()=>{
  if(!file.startsWith(root+path.sep)&&file!==root){res.writeHead(403);return res.end()}
  if(!fs.existsSync(file)||fs.statSync(file).isDirectory())file=path.join(root,'index.html')
  if(!fs.existsSync(file)){res.writeHead(503);return res.end('Compilez le site avec npm run build.')}
- res.writeHead(200,{'Content-Type':types[path.extname(file)]||'application/octet-stream','Content-Length':fs.statSync(file).size})
+ const extension=path.extname(file),relative=path.relative(root,file).replaceAll(path.sep,'/')
+ const cache=/^assets\/.*-[A-Za-z0-9_-]+\.(?:js|css|woff2)$/.test(relative)?'public, max-age=31536000, immutable'
+  :['.glb','.woff2','.png','.svg'].includes(extension)?'public, max-age=604800, stale-while-revalidate=2592000'
+  :'no-cache'
+ res.writeHead(200,{'Content-Type':types[extension]||'application/octet-stream','Content-Length':fs.statSync(file).size,'Cache-Control':cache})
  if(req.method==='HEAD')return res.end();fs.createReadStream(file).pipe(res)
 })).listen(PORT,HOST,()=>console.log(`Corpus listening on ${HOST}:${PORT}`))

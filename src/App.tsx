@@ -45,7 +45,9 @@ const tourSteps = [
 ]
 function readRoute() {
   const params = new URLSearchParams(window.location.hash.slice(1))
-  return { id: params.get('structure')??(params.get('body')==='female'?'HRA-region-pelvis':null), detail: params.get('mode') !== 'overview', view:decodeView(params.get('view')) }
+  const id=params.get('structure')??(params.get('body')==='female'?'HRA-region-pelvis':null)
+  const mode=params.get('mode')
+  return { id, detail:mode==='detail'||Boolean(id)&&mode!=='overview', view:decodeView(params.get('view')) }
 }
 
 export default function App() {
@@ -114,7 +116,7 @@ export default function App() {
     const params = new URLSearchParams()
     if (id) params.set('structure', id)
     if(reference==='female')params.set('body','female')
-    if (!detail) params.set('mode', 'overview')
+    params.set('mode',detail?'detail':'overview')
     url.hash = params.toString()
     if (url.href !== window.location.href) window.history.pushState(null, '', url)
     setCameraRestore(null); setRoute({id, detail, view:null}); setShareStatus('')
@@ -153,7 +155,7 @@ export default function App() {
     if(!view)return
     const url=new URL(window.location.href),params=new URLSearchParams()
     if(selectedId)params.set('structure',selectedId)
-    if(!detailMode)params.set('mode','overview')
+    params.set('mode',detailMode?'detail':'overview')
     if(body==='female')params.set('body','female')
     params.set('view',encodeView(view));url.hash=params.toString();window.history.replaceState(null,'',url)
     try { await navigator.clipboard.writeText(url.href); setShareStatus('Lien copié !') }

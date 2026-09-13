@@ -434,7 +434,9 @@ export default function AnatomyViewer(props: Props) {
 
     const ready: GroupId[] = []
     const errors: string[] = []
-    const groups = [...props.manifest.groups].sort((a, b) => ['organs', 'skeleton', 'skin', 'muscles', 'arteries', 'veins', 'nerves', 'joints'].indexOf(a.id) - ['organs', 'skeleton', 'skin', 'muscles', 'arteries', 'veins', 'nerves', 'joints'].indexOf(b.id))
+    // Show the lightweight body envelope first so rotation and zoom become usable
+    // while the inner systems continue loading progressively.
+    const groups = [...props.manifest.groups].sort((a, b) => ['skin', 'organs', 'skeleton', 'muscles', 'arteries', 'veins', 'nerves', 'joints'].indexOf(a.id) - ['skin', 'organs', 'skeleton', 'muscles', 'arteries', 'veins', 'nerves', 'joints'].indexOf(b.id))
     const totalBytes = () => groups.filter(g => visibility[g.id] || ready.includes(g.id)).reduce((sum,g) => sum + g.bytes, 0)
     let receivedBytes = 0
     let progress = 0

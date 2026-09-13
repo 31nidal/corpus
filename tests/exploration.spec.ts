@@ -6,7 +6,27 @@ const initialCount=manifest.groups.filter((g:any)=>['organs','skin','skeleton'].
 const total=manifest.groups.reduce((n:number,g:any)=>n+g.structures,0)
 async function state(page:any){return page.evaluate(()=>(window as any).__CORPUS_TEST__.state())}
 async function loaded(page:any){await expect(page.locator('main')).toHaveAttribute('data-loaded','true',{timeout:90000})}
-async function ready(page:any){await page.goto('/');await loaded(page);await expect(page.getByRole('alert')).toHaveCount(0)}
+async function ready(page:any){await page.goto('/#mode=detail');await loaded(page);await expect(page.getByRole('alert')).toHaveCount(0)}
+
+test('premier lancement léger puis atlas détaillé à la demande',async({page})=>{
+ const requested:string[]=[];page.on('request',request=>{if(request.url().endsWith('.glb'))requested.push(request.url())})
+ await page.goto('/');await loaded(page)
+ expect((await state(page)).meshes).toBe(48)
+ expect(requested.some(url=>url.includes('/detail-'))).toBe(false)
+ await expect(page.locator('.atlas-mode').getByRole('button',{name:'Vue d’ensemble',exact:true})).toHaveAttribute('aria-pressed','true')
+ await page.getByRole('combobox').fill('fémur');await page.getByRole('option').first().click();await loaded(page)
+ await expect(page).toHaveURL(/mode=overview/)
+ await page.reload();await loaded(page)
+ await expect(page.locator('.atlas-mode').getByRole('button',{name:'Vue d’ensemble',exact:true})).toHaveAttribute('aria-pressed','true')
+ await page.getByRole('button',{name:'Fermer la fiche'}).click()
+ await page.getByRole('button',{name:'Atlas détaillé',exact:true}).click()
+ await expect(page).toHaveURL(/mode=detail/)
+ await expect.poll(async()=>(await state(page)).meshes,{timeout:90000}).toBe(initialCount)
+ await loaded(page)
+ expect(requested.some(url=>url.includes('/detail-organs.glb'))).toBe(true)
+ await page.reload();await loaded(page)
+ await expect(page.getByRole('button',{name:'Atlas détaillé',exact:true})).toHaveAttribute('aria-pressed','true')
+})
 
 test('intégrité des 1663 structures et des assemblages, sans duplication de géométrie',()=>{
   const names=new Set<string>()

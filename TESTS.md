@@ -39,6 +39,7 @@ La validation fonctionnelle couvre au minimum les domaines suivants :
 - coupe anatomique, opacité et repères ;
 - liens profonds et restauration de l’état ;
 - chargement différé des modèles lourds ;
+- vue d’ensemble au premier lancement, persistance du mode détaillé et ordre de chargement progressif ;
 - comportement mobile et clavier ;
 - explorations féminines régionales.
 
@@ -72,6 +73,7 @@ Le smoke test vérifie notamment :
 - que l’application compilée se charge correctement ;
 - qu’aucune erreur JavaScript inattendue n’apparaît ;
 - que les ressources locales nécessaires sont servies ;
+- que les modèles et les fichiers versionnés reçoivent les politiques de cache prévues ;
 - que l’API répond ;
 - que les principaux parcours atlas / cours / entraînement restent accessibles.
 
