@@ -87,11 +87,9 @@ Cette couverture ne remplace pas des tests manuels réguliers sur :
 - Android physique ;
 - appareils à GPU limité.
 
-## Captures de référence
+## Validation visuelle
 
-`tests/artifacts/` contient des captures produites pendant les validations visuelles. Elles documentent des états connus de l’interface mais ne sont pas chargées par l’application en production.
-
-Les scripts `tests/*-preview.mjs` et `tests/*-inspection.mjs` servent principalement à produire ou inspecter ces états visuels.
+Les scripts `tests/*-preview.mjs` et `tests/*-inspection.mjs` peuvent produire des captures dans `tests/artifacts/`. Les PNG générés sont ignorés par Git : ils servent à l’inspection locale et peuvent être recréés à la demande.
 
 ## Règle pour les refactors
 
