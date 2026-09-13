@@ -1,6 +1,6 @@
 # Bibliothèque et entraînement — septembre 2026
 
-MyCorpus contient **98 cours, 569 sections, 98 schémas interactifs et 435 questions corrigées** : 68 QCM, 75 vrai/faux argumentés et 292 questions de vocabulaire contextualisées. Chaque cours comprend 4 à 8 sections, un lexique et au moins quatre exercices. Les 10 identifications du quiz 3D constituent un entraînement distinct.
+MyCorpus contient **98 cours, 98 schémas interactifs et 619 questions corrigées**. Seize chapitres pivots de physiologie, embryologie, biochimie et immunologie comprennent désormais 9 à 13 sections et 15 à 19 exercices ; les autres chapitres conservent au moins quatre exercices. Les 10 identifications du quiz 3D constituent un entraînement distinct.
 
 La bibliothèque commence par **13 matières séparées** : anatomie, biologie cellulaire, histologie, embryologie, génétique, chimie, biochimie, physiologie, immunologie, biophysique, biostatistiques, pharmacologie et santé publique. Chaque matière est organisée en régions ou thèmes, puis en chapitres. La navigation au chapitre suivant reste dans la même discipline. La recherche parcourt aussi les sections et lexiques, sans imposer les accents.
 
@@ -11,6 +11,7 @@ Ce socle couvre les fondamentaux attendus en première année dans treize matiè
 ## Pages de cours
 
 - Sommaire, objectifs, sections, mécanismes séquencés quand ils sont pertinents, lexique, application corrigée et rappel actif.
+- Pour 16 cours pivots : relation ou formule commentée, tableau comparatif, exemple résolu pas à pas et trois erreurs classiques expliquées.
 - Un schéma interactif par cours : éléments sélectionnables au clic ou au clavier, explication détaillée, flèches et disposition adaptée au téléphone. Les cours initiaux présentent des mécanismes ; les nouveaux proposent surtout des cartes de comparaison des notions, identifiées comme telles. Ce ne sont pas des planches anatomiques à l’échelle.
 - Trois sections approfondies supplémentaires pour les 25 cours initiaux, avec mécanismes, exemples et points de vigilance.
 - Sources accessibles au bas du cours : OpenStax, Organisation mondiale de la Santé, Haute Autorité de santé, ANSM et Société française de pharmacologie et de thérapeutique selon la matière.
@@ -24,6 +25,7 @@ Ce socle couvre les fondamentaux attendus en première année dans treize matiè
 - Choix du chapitre, de la matière, du niveau « connaissances essentielles » ou « application et raisonnement ».
 - Séries de 5, 10, 20 ou 40 questions, limitées à la taille réelle du filtre, sans doublons.
 - Apprentissage avec correction immédiate, examen chronométré avec navigation numérotée et corrections différées, bilan et carnet d’erreurs.
+- Répétition espacée : une réponse réussie revient après 1, 3, 7, 14, 30 puis 60 jours ; une erreur est reprogrammée après 6 heures. Les questions dues sont prioritaires dans la série suivante.
 - URL ciblée : `/#tab=entrainement&cours=hemodynamics`. Une session et ses réponses en cours ne sont pas conservées après rechargement.
 
 ## Stockage
@@ -50,6 +52,7 @@ Les textes, exercices et schémas fonctionnels sont des synthèses françaises r
 - `systemCourses.ts`, `regionalSystems.ts`, `reproductiveCourses.ts` : anatomie régionale, muscles, système nerveux et appareils reproducteurs.
 - `scienceCourses.ts` : enseignements fondamentaux complémentaires.
 - `firstYearExpansion.ts` : 31 chapitres approfondis d’histologie, embryologie, génétique, chimie, biochimie, physiologie, immunologie, biophysique, biostatistiques, pharmacologie et santé publique.
+- `coreCourseDepth.ts` : approfondissement de 16 cours pivots, schémas dédiés et 184 exercices supplémentaires issus de leurs mécanismes, tableaux et erreurs classiques.
 - `courseSupport.ts` : cartes de notions et questions à correction individuelle associées aux nouveaux lexiques.
 - [Les deux références 3D et leurs limites](reference-bodies.md).
 

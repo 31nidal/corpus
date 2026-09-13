@@ -28,7 +28,7 @@ function validValue(key, value) {
   try {
     const parsed = JSON.parse(value)
     if (['corpus-completed', 'corpus-saved-courses'].includes(key)) return Array.isArray(parsed) && parsed.length <= 1000 && parsed.every(id => typeof id === 'string' && id.length <= 100)
-    if (key === 'corpus-practice-v1') return parsed && typeof parsed === 'object' && !Array.isArray(parsed) && Object.keys(parsed).length <= 2000 && Object.entries(parsed).every(([id, result]) => id.length <= 100 && result && Number.isSafeInteger(result.seen) && result.seen >= 0 && result.seen <= 1000000 && Number.isSafeInteger(result.correct) && result.correct >= 0 && result.correct <= result.seen && typeof result.wrong === 'boolean')
+    if (key === 'corpus-practice-v1') return parsed && typeof parsed === 'object' && !Array.isArray(parsed) && Object.keys(parsed).length <= 2000 && Object.entries(parsed).every(([id, result]) => id.length <= 100 && result && Number.isSafeInteger(result.seen) && result.seen >= 0 && result.seen <= 1000000 && Number.isSafeInteger(result.correct) && result.correct >= 0 && result.correct <= result.seen && typeof result.wrong === 'boolean' && (result.streak === undefined || Number.isSafeInteger(result.streak) && result.streak >= 0 && result.streak <= 10000) && (result.interval === undefined || typeof result.interval === 'number' && result.interval >= 0 && result.interval <= 365) && (result.due === undefined || Number.isSafeInteger(result.due) && result.due >= 0))
     if (key === 'corpus-chat-v1') return Array.isArray(parsed) && parsed.length <= 20 && parsed.every(message => message && ['user', 'assistant'].includes(message.role) && typeof message.text === 'string' && message.text.length <= 5000 && typeof message.context === 'string' && message.context.length <= 500 && (!message.sources || (Array.isArray(message.sources) && message.sources.length <= 2 && message.sources.every(source => source && typeof source.url === 'string' && /^https:\/\//.test(source.url) && source.url.length <= 1000 && typeof source.label === 'string' && source.label.length <= 150))))
   } catch {
     return false
@@ -51,7 +51,7 @@ function mergeValue(key, value, before, current) {
     for (const [id, result] of Object.entries(incoming)) {
       const oldResult = previous[id] || {seen: 0, correct: 0}
       const delta = result.seen - oldResult.seen
-      if (delta > 0) saved[id] = {seen: (saved[id]?.seen || 0) + delta, correct: (saved[id]?.correct || 0) + Math.max(0, result.correct - oldResult.correct), wrong: result.wrong}
+      if (delta > 0) saved[id] = {seen: (saved[id]?.seen || 0) + delta, correct: (saved[id]?.correct || 0) + Math.max(0, result.correct - oldResult.correct), wrong: result.wrong, streak: result.streak ?? saved[id]?.streak, interval: result.interval ?? saved[id]?.interval, due: result.due ?? saved[id]?.due}
     }
     return JSON.stringify(saved)
   }
