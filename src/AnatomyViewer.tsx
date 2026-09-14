@@ -92,7 +92,7 @@ export default function AnatomyViewer(props: Props) {
     const studio=new RoomEnvironment()
     const environment=environmentGenerator.fromScene(studio,.04)
     scene.environment=environment.texture
-    scene.environmentIntensity=.38
+    scene.environmentIntensity=.3
     studio.dispose();environmentGenerator.dispose()
     renderer.domElement.setAttribute('aria-label', 'Corps humain en trois dimensions. Glissez pour tourner, pincez ou utilisez la molette pour zoomer.')
     renderer.domElement.setAttribute('role', 'img')
@@ -114,8 +114,8 @@ export default function AnatomyViewer(props: Props) {
     controls.target.set(0, 0, 0)
     camera.position.set(0, 0.04, 6.1)
 
-    scene.add(new THREE.HemisphereLight(0xf5f8ff, 0x62718a, 0.48))
-    const key = new THREE.DirectionalLight(0xfff4e9, 2.8)
+    scene.add(new THREE.HemisphereLight(0xf5f8ff, 0x53677d, 0.4))
+    const key = new THREE.DirectionalLight(0xfff0df, 3.15)
     key.position.set(-3, 5, 5)
     key.castShadow=true
     key.shadow.mapSize.set(1024,1024)
@@ -124,10 +124,10 @@ export default function AnatomyViewer(props: Props) {
     key.shadow.camera.near=.1;key.shadow.camera.far=15
     key.shadow.normalBias=.006;key.shadow.bias=-.0002;key.shadow.radius=3
     scene.add(key)
-    const fill = new THREE.DirectionalLight(0xc9e8ff, 0.65)
+    const fill = new THREE.DirectionalLight(0xbadff2, 0.46)
     fill.position.set(4, 1, 3)
     scene.add(fill)
-    const rim = new THREE.DirectionalLight(0xd1efff, 2.8)
+    const rim = new THREE.DirectionalLight(0xc4e9f7, 2.35)
     rim.position.set(2, 3, -4)
     scene.add(rim)
     const lower = new THREE.DirectionalLight(0xd7cfbd, 0.5)
@@ -518,7 +518,7 @@ export default function AnatomyViewer(props: Props) {
             const structure = structures.get(id)!
             const originals = Array.isArray(child.material) ? child.material : [child.material]
             for (const original of originals) original.dispose()
-            const color = group.id === 'skin' ? '#9ec2cf' : group.id === 'skeleton' ? '#e9dbbd' : group.id === 'muscles' ? '#b3444e' : group.id === 'arteries' ? '#c83d4b' : group.id === 'veins' ? '#4a75b3' : group.id === 'nerves' ? '#c7a443' : group.id === 'joints' ? '#8eb2b6' : organColor(structure.name)
+            const color = group.id === 'skin' ? '#82afbd' : group.id === 'skeleton' ? '#dfcca7' : group.id === 'muscles' ? '#ad3946' : group.id === 'arteries' ? '#c43745' : group.id === 'veins' ? '#416caa' : group.id === 'nerves' ? '#c29b37' : group.id === 'joints' ? '#7ca3aa' : organColor(structure.name)
             const material = new THREE.MeshPhysicalMaterial({
               color, roughness: group.id === 'skeleton' ? 0.52 : group.id === 'muscles' ? 0.45 : 0.36,
               metalness: group.id === 'skin' ? 0.05 : 0,

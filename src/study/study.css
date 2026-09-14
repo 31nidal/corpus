@@ -42,3 +42,25 @@
 .spatial-results details{border-bottom:1px solid var(--stroke);padding:12px 0}.spatial-results summary{display:flex;align-items:center;gap:8px;font-size:11px;cursor:pointer;list-style:none}.spatial-results summary>span{color:#258b9d}.spatial-results small{margin-left:auto;font-size:9px;color:#849da8}.spatial-results p{font-size:11px!important}.quiz-panel .quiz-score{color:#187e95!important}.quiz-feedback{color:#187b90}
 .course-tile-art>img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;mix-blend-mode:multiply}.course-tile-art:has(img) .art-orbit{display:none}[data-theme=dark] .course-tile-art:has(img){background:#e4eef3}[data-theme=dark] .course-tile-art>img{mix-blend-mode:normal}
 @media(max-width:700px){.mobile-start-tour{display:flex!important;position:absolute;right:0;top:0;min-height:34px;font-size:9px;gap:5px;color:#547c8c}.experience:has(.detail-panel) .mobile-start-tour{display:none!important}}
+
+/* Final visual polish for atlas controls, course discovery and practice. */
+.practice-emblem{min-width:300px;min-height:205px;justify-content:center;border:1px solid #dce8ed;border-radius:28px;background:radial-gradient(circle at 50% 42%,#fff 0 10%,#e1eff4 38%,#f3f8fa 72%);box-shadow:inset 0 0 45px #fff,0 18px 50px #163b4b0a}
+.practice-emblem svg{filter:drop-shadow(0 12px 18px #4c80962c)}
+.practice-home-grid{margin-top:-4px}
+
+@media(max-width:700px){
+  .topbar nav button{font-size:10.5px;padding:0 7px;gap:4px}
+  .topbar nav button:last-child{font-size:10.5px;min-width:54px}
+  .topbar nav button:last-child::after{content:none}
+  .atlas-workspace .atlas-mode button{padding:7px 4px}
+  .atlas-workspace .view-presets{top:58px;left:auto;right:16px;transform:none}
+  .atlas-workspace .view-presets button{padding:8px 9px;font-size:9.5px}
+  .subject-rail{position:relative}
+  .subject-rail::after{content:'›';position:absolute;right:-1px;top:0;width:34px;height:44px;display:grid;place-items:center;font-size:22px;color:#397589;background:linear-gradient(90deg,transparent,#f8fafb 45%);pointer-events:none}
+  [data-theme=dark] .subject-rail::after{background:linear-gradient(90deg,transparent,#0f1e29 45%);color:#8fc8d5}
+}
+
+@media(min-width:701px){
+  .practice-workspace .study-page-heading{align-items:flex-end;margin-bottom:30px}
+  .practice-workspace .study-page-heading h1{margin-bottom:14px}
+}
