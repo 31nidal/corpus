@@ -140,6 +140,30 @@ export function checkGenerationQuota(userId, d) {
   return quota
 }
 
+export function reserveGenerationQuota(userId, d) {
+  getOrResetStudyQuota(userId, d)
+  const res = d.prepare(`
+    UPDATE study_quotas
+    SET generations_used = generations_used + 1
+    WHERE user_id = ? AND generations_used < monthly_generations
+  `).run(userId)
+
+  if (res.changes === 0) {
+    return checkGenerationQuota(userId, d)
+  }
+
+  return getOrResetStudyQuota(userId, d)
+}
+
+export function releaseGenerationQuota(userId, d) {
+  d.prepare(`
+    UPDATE study_quotas
+    SET generations_used = MAX(0, generations_used - 1)
+    WHERE user_id = ?
+  `).run(userId)
+}
+
+
 export function createStudyHandler(config = process.env, dependencies = {}) {
   let db = dependencies.db
   const provider = dependencies.provider || null
@@ -471,8 +495,6 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
 
         // POST /documents/:id/summarize
         if (req.method === 'POST' && action === 'summarize') {
-          checkGenerationQuota(user.id, d)
-
           const sections = d.prepare(`
             SELECT id, title, section_order as sectionOrder, start_page as startPage, end_page as endPage, content
             FROM study_sections
@@ -484,9 +506,17 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
             return send(400, { error: 'Aucune section disponible pour ce document.' })
           }
 
+          const hasRemoteProvider = Boolean(provider && typeof provider.generateStudySummary === 'function')
+          let quotaReserved = false
+
+          if (hasRemoteProvider) {
+            reserveGenerationQuota(user.id, d)
+            quotaReserved = true
+          }
+
           // Build structured summary
-          let summary
-          if (provider && typeof provider.generateStudySummary === 'function') {
+          let summary = null
+          if (hasRemoteProvider) {
             try {
               summary = await provider.generateStudySummary({
                 documentTitle: doc.title,
@@ -498,29 +528,39 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
           }
 
           if (!summary) {
+            if (quotaReserved) {
+              releaseGenerationQuota(user.id, d)
+              quotaReserved = false
+            }
             // High-quality local structured summary strictly grounded in extracted sections
             summary = generateLocalSummary(doc.title, sections)
           }
 
           const summaryJson = JSON.stringify(summary)
           const now = new Date().toISOString()
-          // Supprimer l'ancienne synthèse avant d'insérer (garantit au plus 1 ligne par document/user)
-          d.prepare('DELETE FROM study_summaries WHERE document_id = ? AND user_id = ?').run(documentId, user.id)
-          d.prepare(`
-            INSERT INTO study_summaries(id, document_id, user_id, summary_json, created_at)
-            VALUES(?, ?, ?, ?, ?)
-          `).run(randomUUID(), documentId, user.id, summaryJson, now)
-
-          // Track quota generation
-          d.prepare('UPDATE study_quotas SET generations_used = generations_used + 1 WHERE user_id = ?').run(user.id)
+          d.exec('BEGIN IMMEDIATE')
+          try {
+            // Supprimer l'ancienne synthèse avant d'insérer (garantit au plus 1 ligne par document/user)
+            d.prepare('DELETE FROM study_summaries WHERE document_id = ? AND user_id = ?').run(documentId, user.id)
+            d.prepare(`
+              INSERT INTO study_summaries(id, document_id, user_id, summary_json, created_at)
+              VALUES(?, ?, ?, ?, ?)
+            `).run(randomUUID(), documentId, user.id, summaryJson, now)
+            d.exec('COMMIT')
+          } catch (err) {
+            d.exec('ROLLBACK')
+            if (quotaReserved) {
+              releaseGenerationQuota(user.id, d)
+              quotaReserved = false
+            }
+            throw err
+          }
 
           return send(200, { summary, createdAt: now })
         }
 
         // POST /documents/:id/questions (Generate QCM)
         if (req.method === 'POST' && action === 'questions') {
-          checkGenerationQuota(user.id, d)
-
           let count = 5
           let sectionId = null
           try {
@@ -544,8 +584,16 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
             return send(400, { error: 'Aucune section trouvée pour générer des questions.' })
           }
 
+          const hasRemoteProvider = Boolean(provider && typeof provider.generateStudyQuestions === 'function')
+          let quotaReserved = false
+
+          if (hasRemoteProvider) {
+            reserveGenerationQuota(user.id, d)
+            quotaReserved = true
+          }
+
           let generatedQuestions = []
-          if (provider && typeof provider.generateStudyQuestions === 'function') {
+          if (hasRemoteProvider) {
             try {
               generatedQuestions = await provider.generateStudyQuestions({
                 documentTitle: doc.title,
@@ -557,7 +605,11 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
             }
           }
 
-          if (!generatedQuestions || generatedQuestions.length === 0) {
+          if (!generatedQuestions || !Array.isArray(generatedQuestions) || generatedQuestions.length === 0) {
+            if (quotaReserved) {
+              releaseGenerationQuota(user.id, d)
+              quotaReserved = false
+            }
             // Strict local grounded generation
             generatedQuestions = generateLocalGroundedQuestions(doc, sections, count)
           }
@@ -593,10 +645,12 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
             d.exec('COMMIT')
           } catch (err) {
             d.exec('ROLLBACK')
+            if (quotaReserved) {
+              releaseGenerationQuota(user.id, d)
+              quotaReserved = false
+            }
             throw err
           }
-
-          d.prepare('UPDATE study_quotas SET generations_used = generations_used + 1 WHERE user_id = ?').run(user.id)
 
           return send(201, {
             count: generatedQuestions.length,

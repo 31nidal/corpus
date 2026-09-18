@@ -41,10 +41,10 @@ function makeScannedPdf() {
   return Buffer.from(pdfParts.join(''), 'latin1')
 }
 
-function setupTestApi(dataDir) {
-  const config = { ACCOUNT_DATA_DIR: dataDir }
+function setupTestApi(dataDir, options = {}) {
+  const config = { ACCOUNT_DATA_DIR: dataDir, ...(options.config || {}) }
   const accountHandler = createAccountHandler(config)
-  const studyHandler = createStudyHandler(config)
+  const studyHandler = createStudyHandler(config, { provider: options.provider || null })
 
   async function call(route, body, cookie = '', headers = {}) {
     let raw = ''
@@ -283,7 +283,28 @@ test('PDF Extractor : restitution des ligatures TeX, accents français et intég
 
 test('Système de quota IA : non atteint, atteint, reset mensuel, isolation et absence d’incrémentation sur échec', async () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'mycorpus-quota-test-'))
-  const api = setupTestApi(dir)
+  const mockProvider = {
+    async generateStudySummary({ documentTitle, sections }) {
+      return {
+        title: documentTitle,
+        chapters: [{ title: sections[0]?.title || 'Chapitre', summary: 'Synthèse provider distante', keyPoints: ['Point essentiel 1', 'Point essentiel 2'] }]
+      }
+    },
+    async generateStudyQuestions({ documentTitle, count, sections }) {
+      return [{
+        id: 'mock-q-1',
+        prompt: `Question sur ${documentTitle} ?`,
+        options: ['Choix A', 'Choix B', 'Choix C', 'Choix D'],
+        correct: [0],
+        why: ['Explication A', 'Explication B', 'Explication C', 'Explication D'],
+        sourceSectionId: sections[0]?.id,
+        sourceExcerpt: 'Extrait source provider',
+        difficulty: 'essentiel',
+        format: 'single'
+      }]
+    }
+  }
+  const api = setupTestApi(dir, { provider: mockProvider })
   const pw = 'mot-de-passe-securise-2026'
 
   try {
@@ -320,14 +341,14 @@ test('Système de quota IA : non atteint, atteint, reset mensuel, isolation et a
     assert.equal(upAlice.status, 201)
     const docAliceId = upAlice.data.document.id
 
-    // 3. Quota non atteint : synthèse puis QCM
+    // 3. Quota non atteint : synthèse puis QCM via distant provider
     const sumAlice1 = await api.call(`/api/study/documents/${docAliceId}/summarize`, {}, aliceCookie)
     assert.equal(sumAlice1.status, 200)
 
     const qAlice1 = await api.call(`/api/study/documents/${docAliceId}/questions`, { count: 3 }, aliceCookie)
     assert.equal(qAlice1.status, 201)
 
-    // Vérifier incrémentation normale (2 générations consommées)
+    // Vérifier incrémentation normale (2 générations consommées via distant provider)
     const quotaAfter2 = await api.call('/api/study/quotas', undefined, aliceCookie)
     assert.equal(quotaAfter2.data.quota.generationsUsed, 2)
 
@@ -403,5 +424,175 @@ test('Système de quota IA : non atteint, atteint, reset mensuel, isolation et a
     try { rmSync(dir, { recursive: true, force: true }) } catch { /* cleanup */ }
   }
 })
+
+test('Le fallback local sans provider externe ne consomme pas le quota et n\'est pas bloqué', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'mycorpus-local-fallback-'))
+  const api = setupTestApi(dir) // aucun provider externe
+  const pw = 'mot-de-passe-securise-2026'
+
+  try {
+    const reg = await api.call('/api/account/register', {
+      email: 'claire@fac.fr',
+      name: 'Claire',
+      password: pw
+    })
+    const cookie = reg.cookie
+
+    const pdf = makePdf([
+      'Chapitre : Cardiologie clinique.',
+      'Le ventricule gauche assure l ejection systolique du sang vers l aorte.',
+      'La fraction d ejection normale est superieure a cinquante-cinq pour cent.'
+    ])
+    const up = await api.call('/api/study/documents/upload', {
+      title: 'Cardiologie',
+      filename: 'cardio.pdf',
+      data: pdf.toString('base64')
+    }, cookie)
+    assert.equal(up.status, 201)
+    const docId = up.data.document.id
+
+    // 1. Synthèse en fallback local
+    const sum = await api.call(`/api/study/documents/${docId}/summarize`, {}, cookie)
+    assert.equal(sum.status, 200)
+
+    // 2. QCM en fallback local
+    const qcm = await api.call(`/api/study/documents/${docId}/questions`, { count: 3 }, cookie)
+    assert.equal(qcm.status, 201)
+
+    // 3. Vérifier que generations_used est resté à 0
+    const quota = await api.call('/api/study/quotas', undefined, cookie)
+    assert.equal(quota.data.quota.generationsUsed, 0, 'Le fallback local ne doit pas consommer le quota')
+
+    // 4. Même si generations_used est à 100, le fallback local n\'est pas bloqué
+    const db = new DatabaseSync(path.join(dir, 'mycorpus.sqlite'))
+    db.prepare('UPDATE study_quotas SET generations_used = 100 WHERE user_id = (SELECT id FROM users WHERE email = ?)').run('claire@fac.fr')
+    db.close()
+
+    const sum2 = await api.call(`/api/study/documents/${docId}/summarize`, {}, cookie)
+    assert.equal(sum2.status, 200, 'Le fallback local doit fonctionner même à quota épuisé')
+  } finally {
+    try { rmSync(dir, { recursive: true, force: true }) } catch { /* cleanup */ }
+  }
+})
+
+test('Aucune génération n’est débitée en cas d’échec réel du provider distant (stub qui throw)', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'mycorpus-provider-fail-'))
+  const failingProvider = {
+    async generateStudySummary() {
+      throw new Error('Upstream provider timeout (504)')
+    },
+    async generateStudyQuestions() {
+      throw new Error('Upstream provider rate limited (429)')
+    }
+  }
+  const api = setupTestApi(dir, { provider: failingProvider })
+  const pw = 'mot-de-passe-securise-2026'
+
+  try {
+    const reg = await api.call('/api/account/register', {
+      email: 'david@fac.fr',
+      name: 'David',
+      password: pw
+    })
+    const cookie = reg.cookie
+
+    const pdf = makePdf([
+      'Chapitre : Gastro-enterologie.',
+      'Le foie produit la bile stockee dans la vesicule biliaire.',
+      'L absorption des lipides necessite une emulsion par les sels biliaires.'
+    ])
+    const up = await api.call('/api/study/documents/upload', {
+      title: 'Gastroenterologie',
+      filename: 'gastro.pdf',
+      data: pdf.toString('base64')
+    }, cookie)
+    assert.equal(up.status, 201)
+    const docId = up.data.document.id
+
+    // 1. Synthèse : le provider throw, le fallback local prend le relais avec succès
+    const sum = await api.call(`/api/study/documents/${docId}/summarize`, {}, cookie)
+    assert.equal(sum.status, 200)
+    assert.ok(sum.data.summary.chapters.length >= 1)
+
+    // Vérifier que la génération n'a PAS été débitée
+    const quotaAfterSum = await api.call('/api/study/quotas', undefined, cookie)
+    assert.equal(quotaAfterSum.data.quota.generationsUsed, 0, 'La réservation doit être libérée en cas d\'échec du provider')
+
+    // 2. QCM : le provider throw, le fallback local prend le relais avec succès
+    const qcm = await api.call(`/api/study/documents/${docId}/questions`, { count: 3 }, cookie)
+    assert.equal(qcm.status, 201)
+    assert.ok(qcm.data.questions.length >= 1)
+
+    // Vérifier que la génération n'a toujours PAS été débitée
+    const quotaAfterQcm = await api.call('/api/study/quotas', undefined, cookie)
+    assert.equal(quotaAfterQcm.data.quota.generationsUsed, 0, 'Aucune génération débitée sur échec provider pour les questions')
+  } finally {
+    try { rmSync(dir, { recursive: true, force: true }) } catch { /* cleanup */ }
+  }
+})
+
+test('Concurrence et réservation atomique : deux requêtes simultanées avec 1 seule génération restante', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'mycorpus-concurrency-'))
+  const delayedProvider = {
+    async generateStudySummary({ documentTitle, sections }) {
+      // Temporisation pour assurer que la 2e requête arrive pendant le traitement de la 1ère
+      await new Promise(resolve => setTimeout(resolve, 80))
+      return {
+        title: documentTitle,
+        chapters: [{ title: sections[0]?.title || 'Chapitre', summary: 'Synthèse provider distante', keyPoints: ['Point important'] }]
+      }
+    }
+  }
+  const api = setupTestApi(dir, { provider: delayedProvider })
+  const pw = 'mot-de-passe-securise-2026'
+
+  try {
+    const reg = await api.call('/api/account/register', {
+      email: 'eva@fac.fr',
+      name: 'Eva',
+      password: pw
+    })
+    const cookie = reg.cookie
+
+    const pdf = makePdf([
+      'Chapitre : Endocrinologie.',
+      'La thyroide secrete la thyroxine T4 et la triiodothyronine T3.',
+      'L axe hypothalamo-hypophysaire regule la secretion par la TSH.'
+    ])
+    const up = await api.call('/api/study/documents/upload', {
+      title: 'Endocrinologie',
+      filename: 'endocrino.pdf',
+      data: pdf.toString('base64')
+    }, cookie)
+    assert.equal(up.status, 201)
+    const docId = up.data.document.id
+
+    // Positionner le quota à 99/100 (exactement 1 génération restante)
+    const db = new DatabaseSync(path.join(dir, 'mycorpus.sqlite'))
+    db.prepare('UPDATE study_quotas SET generations_used = 99 WHERE user_id = (SELECT id FROM users WHERE email = ?)').run('eva@fac.fr')
+    db.close()
+
+    // Lancement simultané de deux requêtes de synthèse
+    const [res1, res2] = await Promise.all([
+      api.call(`/api/study/documents/${docId}/summarize`, {}, cookie),
+      api.call(`/api/study/documents/${docId}/summarize`, {}, cookie)
+    ])
+
+    const statuses = [res1.status, res2.status].sort((a, b) => a - b)
+    // L'une doit réussir (200), l'autre doit être bloquée immédiatement (403)
+    assert.deepEqual(statuses, [200, 403], 'Une seule requête doit passer et l\'autre doit être bloquée avec 403')
+
+    const blockedRes = res1.status === 403 ? res1 : res2
+    assert.equal(blockedRes.data.code, 'ERR_GENERATION_QUOTA_EXCEEDED')
+    assert.ok(blockedRes.data.error.includes('Quota mensuel de générations IA atteint'))
+
+    // Vérifier que le compteur final en base est exactement 100 et n'a pas débordé à 101
+    const quotaFinal = await api.call('/api/study/quotas', undefined, cookie)
+    assert.equal(quotaFinal.data.quota.generationsUsed, 100, 'Le compteur ne doit jamais dépasser 100')
+  } finally {
+    try { rmSync(dir, { recursive: true, force: true }) } catch { /* cleanup */ }
+  }
+})
+
 
 
