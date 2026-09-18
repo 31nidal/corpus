@@ -77,6 +77,69 @@ export function initStudySchema(db) {
   `)
 }
 
+export function computeNextMonthlyReset(from = new Date()) {
+  const date = new Date(from)
+  date.setMonth(date.getMonth() + 1)
+  return date.toISOString()
+}
+
+export function getOrResetStudyQuota(userId, d) {
+  let quota = d.prepare('SELECT * FROM study_quotas WHERE user_id = ?').get(userId)
+  const now = new Date()
+
+  if (!quota) {
+    const resetsAt = computeNextMonthlyReset(now)
+    d.prepare(`
+      INSERT INTO study_quotas(user_id, max_documents, max_file_size_bytes, monthly_generations, generations_used, quota_resets_at)
+      VALUES(?, 25, 30000000, 100, 0, ?)
+    `).run(userId, resetsAt)
+    return d.prepare('SELECT * FROM study_quotas WHERE user_id = ?').get(userId)
+  }
+
+  // Si quota_resets_at est manquant, initialiser
+  if (!quota.quota_resets_at) {
+    const resetsAt = computeNextMonthlyReset(now)
+    d.prepare('UPDATE study_quotas SET quota_resets_at = ? WHERE user_id = ?').run(resetsAt, userId)
+    quota.quota_resets_at = resetsAt
+  }
+
+  // Vérifier si la date de renouvellement mensuel est échue
+  const resetDate = new Date(quota.quota_resets_at)
+  if (!isNaN(resetDate.getTime()) && now >= resetDate) {
+    let nextReset = new Date(resetDate)
+    while (nextReset <= now) {
+      nextReset.setMonth(nextReset.getMonth() + 1)
+    }
+    const nextResetIso = nextReset.toISOString()
+    d.prepare(`
+      UPDATE study_quotas 
+      SET generations_used = 0, quota_resets_at = ?
+      WHERE user_id = ?
+    `).run(nextResetIso, userId)
+    quota.generations_used = 0
+    quota.quota_resets_at = nextResetIso
+  }
+
+  return quota
+}
+
+export function checkGenerationQuota(userId, d) {
+  const quota = getOrResetStudyQuota(userId, d)
+  if (quota.generations_used >= quota.monthly_generations) {
+    let resetDateFormatted = ''
+    try {
+      resetDateFormatted = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long', timeZone: 'Europe/Paris' }).format(new Date(quota.quota_resets_at))
+    } catch {
+      resetDateFormatted = quota.quota_resets_at
+    }
+    const err = new Error(`Quota mensuel de générations IA atteint (${quota.generations_used}/${quota.monthly_generations}). Votre quota sera réinitialisé le ${resetDateFormatted}.`)
+    err.status = 403
+    err.code = 'ERR_GENERATION_QUOTA_EXCEEDED'
+    throw err
+  }
+  return quota
+}
+
 export function createStudyHandler(config = process.env, dependencies = {}) {
   let db = dependencies.db
   const provider = dependencies.provider || null
@@ -106,11 +169,7 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
   }
 
   const checkQuota = (userId, d, fileSize = 0) => {
-    let quota = d.prepare('SELECT * FROM study_quotas WHERE user_id = ?').get(userId)
-    if (!quota) {
-      d.prepare('INSERT INTO study_quotas(user_id) VALUES(?)').run(userId)
-      quota = d.prepare('SELECT * FROM study_quotas WHERE user_id = ?').get(userId)
-    }
+    const quota = getOrResetStudyQuota(userId, d)
 
     const currentDocCount = d.prepare('SELECT COUNT(*) as count FROM study_documents WHERE user_id = ?').get(userId)?.count || 0
     if (currentDocCount >= quota.max_documents) {
@@ -152,12 +211,7 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
 
       // GET /api/study/quotas
       if (req.method === 'GET' && subpath === 'quotas') {
-        const quota = d.prepare('SELECT * FROM study_quotas WHERE user_id = ?').get(user.id) || {
-          max_documents: 25,
-          max_file_size_bytes: 30000000,
-          monthly_generations: 100,
-          generations_used: 0
-        }
+        const quota = getOrResetStudyQuota(user.id, d)
         const docCount = d.prepare('SELECT COUNT(*) as count FROM study_documents WHERE user_id = ?').get(user.id)?.count || 0
         return send(200, {
           quota: {
@@ -165,7 +219,8 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
             documentsUsed: docCount,
             maxFileSizeBytes: quota.max_file_size_bytes,
             monthlyGenerations: quota.monthly_generations,
-            generationsUsed: quota.generations_used
+            generationsUsed: quota.generations_used,
+            quotaResetsAt: quota.quota_resets_at
           }
         })
       }
@@ -416,6 +471,8 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
 
         // POST /documents/:id/summarize
         if (req.method === 'POST' && action === 'summarize') {
+          checkGenerationQuota(user.id, d)
+
           const sections = d.prepare(`
             SELECT id, title, section_order as sectionOrder, start_page as startPage, end_page as endPage, content
             FROM study_sections
@@ -462,6 +519,8 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
 
         // POST /documents/:id/questions (Generate QCM)
         if (req.method === 'POST' && action === 'questions') {
+          checkGenerationQuota(user.id, d)
+
           let count = 5
           let sectionId = null
           try {
@@ -622,7 +681,10 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
       return send(404, { error: 'Route MyCorpus Study inconnue.' })
     } catch (error) {
       console.error('Study API error:', error)
-      return send(error.status || 500, { error: error.message || 'Erreur interne du service d’études.' })
+      return send(error.status || 500, {
+        error: error.message || 'Erreur interne du service d’études.',
+        ...(error.code ? { code: error.code } : {})
+      })
     }
   }
 }

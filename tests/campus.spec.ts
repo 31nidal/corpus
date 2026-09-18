@@ -1,6 +1,7 @@
 import {test,expect} from '@playwright/test'
 import {questions} from '../src/study/questions'
-async function answer(page:any,correct=true){const title=await page.locator('.question-layout h1').innerText();const q=questions.find(q=>q.prompt===title)!;const picks=correct?q.correct:[q.options.findIndex((_,i)=>!q.correct.includes(i))];for(const i of picks)await page.locator('.answer-options button').nth(i).click();return q}
+const norm=(s:string)=>s.replace(/\s+/g,' ').trim()
+async function answer(page:any,correct=true){const title=await page.locator('.question-layout h1').innerText();const q=questions.find(q=>norm(q.prompt)===norm(title))||questions.find(q=>norm(q.prompt).startsWith(norm(title).slice(0,40)))!;const picks=correct?q.correct:[q.options.findIndex((_,i)=>!q.correct.includes(i))];for(const i of picks)await page.locator('.answer-options button').nth(i).click();return q}
 
 test('cours dédiés : recherche, lien profond, rappel actif et retour au modèle',async({page})=>{
  const glbs:string[]=[];page.on('request',r=>{if(r.url().endsWith('.glb'))glbs.push(r.url())})
@@ -26,12 +27,11 @@ test('QCM : correction complète, erreur mémorisée et révision ciblée',async
  await page.getByRole('button',{name:'Commencer la série'}).click()
  await expect(page.getByRole('button',{name:'Valider ma réponse'})).toBeDisabled()
  const failed=await answer(page,false)
- await page.getByRole('button',{name:'Valider ma réponse'}).click();await expect(page.locator('.answer-correction>div')).toHaveCount(4)
+ await page.getByRole('button',{name:'Valider ma réponse'}).click();await expect(page.locator('.answer-correction>div')).toHaveCount(failed.options.length)
  await expect(page.locator('.question-feedback')).toContainText('Une notion à consolider')
- await page.getByRole('button',{name:'Question suivante',exact:true}).click();await answer(page)
- await page.getByRole('button',{name:'Valider ma réponse'}).click()
+ for(let i=1;i<5;i++){await page.getByRole('button',{name:'Question suivante',exact:true}).click();await answer(page);await page.getByRole('button',{name:'Valider ma réponse'}).click()}
  await page.getByRole('button',{name:'Terminer et voir mon bilan'}).click()
- await expect(page.locator('.result-score strong')).toHaveText('1/2')
+ await expect(page.locator('.result-score strong')).toHaveText('4/5')
  await page.getByRole('button',{name:'Nouvelle série'}).click();await expect(page.locator('.mistake-card strong')).toHaveText('1')
  await page.getByRole('button',{name:'Revoir mes erreurs'}).click();await expect(page.locator('.question-layout h1')).toHaveText(failed.prompt)
  await answer(page);await page.getByRole('button',{name:'Valider ma réponse'}).click();await page.getByRole('button',{name:'Terminer et voir mon bilan'}).click()

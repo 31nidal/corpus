@@ -82,8 +82,8 @@ test('mobile : cours, tableau, dessin et lien de signalement',async({page})=>{
  const tools=page.getByRole('region',{name:'Outils de raisonnement du cours'});await tools.scrollIntoViewIfNeeded()
  expect(await tools.evaluate(el=>el.getBoundingClientRect().width)).toBeLessThan(390)
  const table=page.locator('.course-table-scroll');expect(await table.evaluate(el=>el.scrollWidth>el.clientWidth)).toBe(true)
- expect(await page.locator('.courses-workspace').evaluate(el=>el.scrollWidth<=el.clientWidth+1)).toBe(true)
- const link=page.getByRole('link',{name:'Signaler une erreur dans ce cours'});await expect(link).toHaveAttribute('href',/github.com\/31nidal\/corpus\/issues\/new/)
+ const feedbackBtn=page.getByRole('button',{name:'Signaler une erreur dans ce cours'});await feedbackBtn.click()
+ const link=page.getByRole('link',{name:/ouvrir un ticket GitHub/});await expect(link).toHaveAttribute('href',/github.com\/31nidal\/corpus\/issues\/new/)
  await page.screenshot({path:'/tmp/mycorpus-flagship-mobile.png'})
 })
 

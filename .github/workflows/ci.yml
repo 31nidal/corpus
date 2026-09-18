@@ -32,6 +32,12 @@ jobs:
       - name: Account tests
         run: npm run test:accounts
 
+      - name: Study tests
+        run: npm run test:study
+
+      - name: Feedback tests
+        run: npm run test:feedback
+
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 

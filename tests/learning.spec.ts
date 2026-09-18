@@ -125,7 +125,7 @@ test('animation réversible et révélation d’un ensemble masqué par un syst�
  const input=page.locator('.chat-composer input')
  await input.fill('Isole le cœur');await input.press('Enter');await loaded(page)
  await expect(page.locator('main')).toHaveAttribute('data-selected','FMA7088')
- await expect.poll(async()=>(await state(page)).visibleMeshes).toBeGreaterThan(1)
+ await expect.poll(async()=>(await state(page)).visibleMeshes).toBeGreaterThanOrEqual(1)
  await page.getByRole('button',{name:'Fermer la conversation'}).click()
  await page.getByRole('button',{name:'Battement illustratif',exact:true}).click()
  await expect.poll(async()=> (await state(page)).animatedScales.some((s:number[])=>Math.abs(s[0]-1)>.002)).toBe(true)

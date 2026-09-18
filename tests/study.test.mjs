@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { deflateSync } from 'node:zlib'
 import { Readable } from 'node:stream'
+import { DatabaseSync } from 'node:sqlite'
 import { createAccountHandler } from '../server/accounts.mjs'
 import { createStudyHandler } from '../server/study.mjs'
 
@@ -279,4 +280,128 @@ test('PDF Extractor : restitution des ligatures TeX, accents français et intég
     assert.ok(titles.some(t => t.includes('Contraintes')), 'Le titre Contraintes ne doit pas perdre son C')
   }
 })
+
+test('Système de quota IA : non atteint, atteint, reset mensuel, isolation et absence d’incrémentation sur échec', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'mycorpus-quota-test-'))
+  const api = setupTestApi(dir)
+  const pw = 'mot-de-passe-securise-2026'
+
+  try {
+    // 1. Inscription Utilisateur A (Alice)
+    const regAlice = await api.call('/api/account/register', {
+      email: 'alice.quota@fac.fr',
+      name: 'Alice',
+      password: pw
+    })
+    assert.equal(regAlice.status, 201)
+    const aliceCookie = regAlice.cookie
+
+    // 2. Vérification initialisation correcte de quota_resets_at
+    const quotaInitRes = await api.call('/api/study/quotas', undefined, aliceCookie)
+    assert.equal(quotaInitRes.status, 200)
+    assert.equal(quotaInitRes.data.quota.generationsUsed, 0)
+    assert.equal(quotaInitRes.data.quota.monthlyGenerations, 100)
+    assert.ok(quotaInitRes.data.quota.quotaResetsAt, 'quotaResetsAt doit être initialisé')
+    const resetDate = new Date(quotaInitRes.data.quota.quotaResetsAt)
+    assert.ok(!isNaN(resetDate.getTime()))
+    assert.ok(resetDate.getTime() > Date.now(), 'La date de reset doit être dans le futur')
+
+    // Upload d'un cours pour Alice
+    const pdfAlice = makePdf([
+      'Chapitre : Neurologie et transmission synaptique.',
+      'Le potentiel d action se propage le long de l axone jusqu au bouton synaptique.',
+      'La liberation de neurotransmetteurs permet la communication entre les neurones.'
+    ])
+    const upAlice = await api.call('/api/study/documents/upload', {
+      title: 'Neurophysiologie',
+      filename: 'neuro.pdf',
+      data: pdfAlice.toString('base64')
+    }, aliceCookie)
+    assert.equal(upAlice.status, 201)
+    const docAliceId = upAlice.data.document.id
+
+    // 3. Quota non atteint : synthèse puis QCM
+    const sumAlice1 = await api.call(`/api/study/documents/${docAliceId}/summarize`, {}, aliceCookie)
+    assert.equal(sumAlice1.status, 200)
+
+    const qAlice1 = await api.call(`/api/study/documents/${docAliceId}/questions`, { count: 3 }, aliceCookie)
+    assert.equal(qAlice1.status, 201)
+
+    // Vérifier incrémentation normale (2 générations consommées)
+    const quotaAfter2 = await api.call('/api/study/quotas', undefined, aliceCookie)
+    assert.equal(quotaAfter2.data.quota.generationsUsed, 2)
+
+    // 4. Aucune incrémentation incorrecte du quota en cas d'échec
+    const failSum = await api.call('/api/study/documents/id-inexistant-xyz/summarize', {}, aliceCookie)
+    assert.equal(failSum.status, 404)
+
+    const failQcm = await api.call('/api/study/documents/id-inexistant-xyz/questions', { count: 3 }, aliceCookie)
+    assert.equal(failQcm.status, 404)
+
+    const quotaAfterFail = await api.call('/api/study/quotas', undefined, aliceCookie)
+    assert.equal(quotaAfterFail.data.quota.generationsUsed, 2, 'Le quota ne doit pas augmenter après un échec')
+
+    // 5. Quota atteint : blocage serveur à generations_used >= monthly_generations
+    // On simule l'atteinte du quota pour Alice via la base SQLite
+    const db = new DatabaseSync(path.join(dir, 'mycorpus.sqlite'))
+    db.prepare('UPDATE study_quotas SET generations_used = 100 WHERE user_id = (SELECT id FROM users WHERE email = ?)').run('alice.quota@fac.fr')
+    db.close()
+
+    // Vérifier que /summarize est bloqué avec 403 et message explicite
+    const blockedSum = await api.call(`/api/study/documents/${docAliceId}/summarize`, {}, aliceCookie)
+    assert.equal(blockedSum.status, 403)
+    assert.ok(blockedSum.data.error.includes('Quota mensuel de générations IA atteint'), 'Message explicite de quota attendu')
+    assert.equal(blockedSum.data.code, 'ERR_GENERATION_QUOTA_EXCEEDED')
+
+    // 6. Anti-contournement : vérifier que /questions est également bloqué
+    const blockedQcm = await api.call(`/api/study/documents/${docAliceId}/questions`, { count: 2 }, aliceCookie)
+    assert.equal(blockedQcm.status, 403)
+    assert.ok(blockedQcm.data.error.includes('Quota mensuel de générations IA atteint'))
+    assert.equal(blockedQcm.data.code, 'ERR_GENERATION_QUOTA_EXCEEDED')
+
+    // 7. Isolation entre utilisateurs : Bob a son propre quota et n'est pas bloqué
+    const regBob = await api.call('/api/account/register', {
+      email: 'bob.quota@fac.fr',
+      name: 'Bob',
+      password: pw
+    })
+    const bobCookie = regBob.cookie
+
+    const upBob = await api.call('/api/study/documents/upload', {
+      title: 'Immunologie',
+      filename: 'immuno.pdf',
+      data: pdfAlice.toString('base64')
+    }, bobCookie)
+    const docBobId = upBob.data.document.id
+
+    // Bob peut générer une synthèse sans être bloqué par Alice
+    const sumBob = await api.call(`/api/study/documents/${docBobId}/summarize`, {}, bobCookie)
+    assert.equal(sumBob.status, 200)
+
+    const quotaBob = await api.call('/api/study/quotas', undefined, bobCookie)
+    assert.equal(quotaBob.data.quota.generationsUsed, 1)
+
+    // 8. Reset mensuel automatique et fiable
+    // On place la date quota_resets_at d'Alice dans le passé
+    const pastResetIso = new Date(Date.now() - 3600000).toISOString()
+    const db2 = new DatabaseSync(path.join(dir, 'mycorpus.sqlite'))
+    db2.prepare('UPDATE study_quotas SET quota_resets_at = ? WHERE user_id = (SELECT id FROM users WHERE email = ?)').run(pastResetIso, 'alice.quota@fac.fr')
+    db2.close()
+
+    // Consultation des quotas d'Alice : doit automatiquement reset à 0 et fixer une nouvelle date dans le futur
+    const quotaResetRes = await api.call('/api/study/quotas', undefined, aliceCookie)
+    assert.equal(quotaResetRes.status, 200)
+    assert.equal(quotaResetRes.data.quota.generationsUsed, 0, 'generationsUsed doit être réinitialisé à 0')
+    assert.ok(new Date(quotaResetRes.data.quota.quotaResetsAt).getTime() > Date.now(), 'La nouvelle date de reset doit être dans le futur')
+
+    // Alice peut à nouveau générer sa synthèse
+    const sumAliceReset = await api.call(`/api/study/documents/${docAliceId}/summarize`, {}, aliceCookie)
+    assert.equal(sumAliceReset.status, 200)
+    const quotaAliceFinal = await api.call('/api/study/quotas', undefined, aliceCookie)
+    assert.equal(quotaAliceFinal.data.quota.generationsUsed, 1)
+  } finally {
+    try { rmSync(dir, { recursive: true, force: true }) } catch { /* cleanup */ }
+  }
+})
+
 
