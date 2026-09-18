@@ -20,7 +20,7 @@ const prerequisites:Record<string,string[]>={
 const words=(course:Course)=>course.sections.map(s=>s.text+' '+(s.bullets??[]).join(' ')).join(' ').trim().split(/\s+/).filter(Boolean).length
 
 export function finalizeCourseQuality(catalog:Course[]):Course[]{
- return catalog.map(course=>({...course,prerequisites:course.prerequisites??prerequisites[course.category]??['Notions fondamentales du chapitre'],readingMinutes:course.readingMinutes??Math.max(2,Math.ceil(words(course)/180))}))
+ return catalog.map(course=>({...course,prerequisites:course.prerequisites??prerequisites[course.category]??['Notions fondamentales du chapitre'],readingMinutes:course.readingMinutes??Math.max(2,Math.ceil(words(course)/180)),review:course.review??{status:'unreviewed',updatedAt:'2026-09-14',sourcesUpdatedAt:'2026-09-14'}}))
 }
 
 const concise=(text:string,max=220)=>{

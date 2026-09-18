@@ -1,11 +1,12 @@
 import AccountPanel from './account/AccountPanel'
 import {storageScope,profileRequested} from './account/store'
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { BookOpen, Box, GraduationCap, ArrowLeft, ArrowRight, ArrowUpRight, Bone, Copy, SlidersHorizontal, Moon, Sun, ChevronDown, CircleHelp, Eye, Heart, Layers3, Minus, MoveUpRight, Plus, Rotate3D, RotateCcw, Search, ShieldCheck, Sparkles, UserRound, X } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState, lazy, Suspense } from 'react'
+import { BookOpen, Box, GraduationCap, ArrowLeft, ArrowRight, ArrowUpRight, Bone, Copy, SlidersHorizontal, Moon, Sun, ChevronDown, CircleHelp, Eye, Heart, Layers3, Minus, MoveUpRight, Plus, Rotate3D, RotateCcw, Search, ShieldCheck, Sparkles, UserRound, X, FileText } from 'lucide-react'
 import {breastMeshIds} from './data/female-regions'
 import ChatAssistant from './ChatAssistant'
 import CoursesWorkspace from './study/CoursesWorkspace'
 import PracticeWorkspace from './study/PracticeWorkspace'
+const MyCoursesWorkspace = lazy(() => import('./study/MyCoursesWorkspace'))
 import {courses} from './study/curriculum'
 import {lessonFor,profileFor,type LearningLevel} from './learning'
 import {systems} from './systems'
@@ -54,9 +55,11 @@ export default function App() {
   const [accountStorage]=useState(storageScope)
   const [dark, setDark] = useState(() => { try { return accountStorage.getItem('corpus-theme') === 'dark' } catch { return false } })
   const [learningOpen,setLearningOpen]=useState(()=>new URLSearchParams(location.hash.slice(1)).get('tab')==='cours')
-  const [atlasVisited,setAtlasVisited]=useState(()=>!['cours','entrainement'].includes(new URLSearchParams(location.hash.slice(1)).get('tab')??''))
+  const [myCoursesOpen,setMyCoursesOpen]=useState(()=>new URLSearchParams(location.hash.slice(1)).get('tab')==='mes-cours')
+  const [myCourseDocId,setMyCourseDocId]=useState<string|null>(()=>new URLSearchParams(location.hash.slice(1)).get('doc'))
+  const [atlasVisited,setAtlasVisited]=useState(()=>!['cours','entrainement','mes-cours'].includes(new URLSearchParams(location.hash.slice(1)).get('tab')??''))
   const [practiceOpen,setPracticeOpen]=useState(()=>new URLSearchParams(location.hash.slice(1)).get('tab')==='entrainement')
-  useEffect(()=>{if(!learningOpen&&!practiceOpen)setAtlasVisited(true)},[learningOpen,practiceOpen])
+  useEffect(()=>{if(!learningOpen&&!practiceOpen&&!myCoursesOpen)setAtlasVisited(true)},[learningOpen,practiceOpen,myCoursesOpen])
   const [courseToOpen,setCourseToOpen]=useState<string|null>(()=>new URLSearchParams(location.hash.slice(1)).get('cours'))
   const [practiceCourse,setPracticeCourse]=useState<string|null>(()=>new URLSearchParams(location.hash.slice(1)).get('cours'))
   const currentLesson=courseToOpen??''
@@ -111,7 +114,7 @@ export default function App() {
   const detailCloseRef = useRef<HTMLButtonElement>(null)
 
   const writeRoute = (id: string | null, detail = detailMode, reference = body) => {
-    setLearningOpen(false);setPracticeOpen(false)
+    setLearningOpen(false);setPracticeOpen(false);setMyCoursesOpen(false)
     const url = new URL(window.location.href)
     const params = new URLSearchParams()
     if (id) params.set('structure', id)
@@ -125,7 +128,7 @@ export default function App() {
   const changeBody=(next:'male'|'female')=>{setBody(next);setDetailMode(true);setGuided(false);setQuiz(null);setAnimation(null);setCut(defaultCut);setOpacity(defaultOpacity);setVisibility(initialVisibility);setActiveSystems([]);setLabels('off');setCatalogOpen(false);setHover(null);writeRoute(null,true,next)}
   const changeMode = (detail: boolean) => { setGuided(false); setDetailMode(detail); writeRoute(null, detail) }
   useEffect(() => {
-    const restore = () => { const params=new URLSearchParams(location.hash.slice(1));setBody(params.get('body')==='female'?'female':'male');setLearningOpen(params.get('tab')==='cours');setPracticeOpen(params.get('tab')==='entrainement');setPracticeCourse(params.get('tab')==='entrainement'?params.get('cours'):null);setCourseToOpen(params.get('cours')); const next = readRoute(); setRoute(next); setDetailMode(next.detail); setShareStatus('') }
+    const restore = () => { const params=new URLSearchParams(location.hash.slice(1));setBody(params.get('body')==='female'?'female':'male');setLearningOpen(params.get('tab')==='cours');setPracticeOpen(params.get('tab')==='entrainement');setMyCoursesOpen(params.get('tab')==='mes-cours');setMyCourseDocId(params.get('tab')==='mes-cours'?params.get('doc'):null);setPracticeCourse(params.get('tab')==='entrainement'?params.get('cours'):null);setCourseToOpen(params.get('cours')); const next = readRoute(); setRoute(next); setDetailMode(next.detail); setShareStatus('') }
     window.addEventListener('popstate', restore)
     window.addEventListener('hashchange', restore)
     return () => { window.removeEventListener('popstate', restore); window.removeEventListener('hashchange', restore) }
@@ -189,7 +192,7 @@ export default function App() {
     else if (dialogRef.current?.open) { dialogRef.current.close(); previousFocus.current?.focus() }
   }, [modal])
 
-  const isLoaded = learningOpen || practiceOpen || Boolean(manifest && load.complete && (load.error || manifest.groups.every(g => !visibility[g.id] || load.ready.includes(g.id))))
+  const isLoaded = learningOpen || practiceOpen || myCoursesOpen || Boolean(manifest && load.complete && (load.error || manifest.groups.every(g => !visibility[g.id] || load.ready.includes(g.id))))
   const structures = manifest?.structures ?? []
   const selected = structures.find(s => s.id === selectedId)
   const description = selected ? describeStructure(selected.name, selected.group) : null
@@ -271,7 +274,8 @@ export default function App() {
     setVisibility(Object.fromEntries(Object.keys(initialVisibility).map(id=>[id,id==='skin'||members.some(s=>s.group===id)])) as Visibility)
     setOpacity(defaultOpacity);setCut(defaultCut);setCameraRestore(null);setResetKey(k=>k+1)
   }
-  const openStudy=(tab:'cours'|'entrainement',id:string|null=null)=>{setAnimation(null);setChatOpen(false);setLearningOpen(tab==='cours');setPracticeOpen(tab==='entrainement');setCourseToOpen(id);setPracticeCourse(tab==='entrainement'?id:null);setToolsOpen(false);setProfileOpen(false);setQuiz(null);setCatalogOpen(false);const params=new URLSearchParams(location.hash.slice(1));params.delete('view');params.set('tab',tab);if(id)params.set('cours',id);else params.delete('cours');history.pushState(null,'','#'+params.toString())}
+  const openStudy=(tab:'cours'|'entrainement',id:string|null=null)=>{setAnimation(null);setChatOpen(false);setLearningOpen(tab==='cours');setPracticeOpen(tab==='entrainement');setMyCoursesOpen(false);setCourseToOpen(id);setPracticeCourse(tab==='entrainement'?id:null);setToolsOpen(false);setProfileOpen(false);setQuiz(null);setCatalogOpen(false);const params=new URLSearchParams(location.hash.slice(1));params.delete('view');params.set('tab',tab);if(id)params.set('cours',id);else params.delete('cours');history.pushState(null,'','#'+params.toString())}
+  const openMyCourses=(docId:string|null=null)=>{setAnimation(null);setChatOpen(false);setLearningOpen(false);setPracticeOpen(false);setMyCoursesOpen(true);setMyCourseDocId(docId);setToolsOpen(false);setProfileOpen(false);setQuiz(null);setCatalogOpen(false);const params=new URLSearchParams(location.hash.slice(1));params.delete('view');params.set('tab','mes-cours');if(docId)params.set('doc',docId);else params.delete('doc');history.pushState(null,'','#'+params.toString())}
   const femaleCourse=selected?.meshNames.some(n=>breastMeshIds.includes(n))?'anat-breast':'anat-female-pelvis'
   const openLearning=()=>openStudy('cours',body==='female'?femaleCourse:lessonFor(selected)?.id??null)
   const openPractice=()=>openStudy('entrainement',body==='female'?femaleCourse:null)
@@ -303,11 +307,11 @@ export default function App() {
   useEffect(()=>{if(learningOpen&&courseToOpen)accountStorage.event('course',{id:courseToOpen,title:courses.find(c=>c.id===courseToOpen)?.title||courseToOpen,url:location.hash})},[learningOpen,courseToOpen])
   useEffect(()=>{if(quiz?.done)accountStorage.event('quiz',{title:'Identification anatomique 3D',score:quiz.score,total:quizQuestions.length,results:quiz.results})},[quiz?.done])
   const selectedAnimation=animationRegistry.find(a=>a.targets.some(id=>id===selectedId))
-  return <main className="experience" data-body={body} data-workspace={learningOpen?'courses':practiceOpen?'practice':'atlas'} data-chat={chatOpen} data-selected={selectedId ?? ''} data-loaded={isLoaded}>
+  return <main className="experience" data-body={body} data-workspace={learningOpen?'courses':practiceOpen?'practice':myCoursesOpen?'my-courses':'atlas'} data-chat={chatOpen} data-selected={selectedId ?? ''} data-loaded={isLoaded}>
     <div className="ambient ambient-one" /><div className="ambient ambient-two" /><div className="world-grid" />
     <header className="topbar">
       <Brand />
-      <nav aria-label="Navigation principale"><button className={!learningOpen&&!practiceOpen?"nav-active":""} onClick={()=>{setChatOpen(false);setLearningOpen(false);setPracticeOpen(false);setToolsOpen(false);setQuiz(null);setProfileOpen(false);writeRoute(selectedId)}}><Box size={15}/>Atlas 3D</button><button onClick={()=>openStudy('cours')} aria-pressed={learningOpen}><BookOpen size={15}/>Cours</button><button onClick={openPractice} aria-pressed={practiceOpen||Boolean(quiz)}><GraduationCap size={16}/>Entraînement</button><button aria-label="Mon compte" onClick={()=>{setChatOpen(false);setProfileOpen(v=>!v);setToolsOpen(false);setQuiz(null);setCatalogOpen(false)}}>Compte</button></nav>
+      <nav aria-label="Navigation principale"><button className={!learningOpen&&!practiceOpen&&!myCoursesOpen?"nav-active":""} onClick={()=>{setChatOpen(false);setLearningOpen(false);setPracticeOpen(false);setMyCoursesOpen(false);setToolsOpen(false);setQuiz(null);setProfileOpen(false);writeRoute(selectedId)}}><Box size={15}/>Atlas 3D</button><button onClick={()=>openStudy('cours')} aria-pressed={learningOpen}><BookOpen size={15}/>Cours</button><button onClick={()=>openMyCourses()} aria-pressed={myCoursesOpen}><FileText size={15}/>Mes cours</button><button onClick={openPractice} aria-pressed={practiceOpen||Boolean(quiz)}><GraduationCap size={16}/>Entraînement</button><button aria-label="Mon compte" onClick={()=>{setChatOpen(false);setProfileOpen(v=>!v);setToolsOpen(false);setQuiz(null);setCatalogOpen(false)}}>Compte</button></nav>
       <button className="theme-toggle" aria-label={dark ? 'Activer le thème clair' : 'Activer le thème sombre'} title={dark ? 'Thème clair' : 'Thème sombre'} onClick={()=>setDark(v=>!v)}>{dark ? <Sun size={18}/> : <Moon size={18}/>}</button>
       <div className="search-wrap" ref={searchBox}>
         <div className={`search-input ${searchOpen ? 'is-open' : ''}`}>
@@ -323,13 +327,13 @@ export default function App() {
     </header>
 
     {profileOpen && <AccountPanel close={()=>setProfileOpen(false)}/>}
-    <div className="atlas-workspace" hidden={learningOpen||practiceOpen}>
+    <div className="atlas-workspace" hidden={learningOpen||practiceOpen||myCoursesOpen}>
     <aside className="intro">
       <div className="edition"><span className="pulse-dot" /> ATLAS ANATOMIQUE <span className="edition-number">ÉDITION 03</span></div>
       <h1>{body==='female'?'Anatomie féminine.':'Le corps humain.'}<br /><em>{body==='female'?'Explorer par région.':'Une autre dimension.'}</em></h1>
       <p className="intro-text">Votre laboratoire d’anatomie personnel.</p>
       {body==='male'?<details className="female-specialty"><summary>Anatomie féminine <ArrowUpRight size={14}/></summary><div className="female-specialty-menu"><p>Trois explorations ciblées sur de vrais modèles féminins.</p>{[{id:'pelvis',name:'Bassin féminin'},{id:'reproductive',name:'Appareil reproducteur'},{id:'breast',name:'Sein et glandes mammaires'}].map(r=><button key={r.id} onClick={()=>openFemaleRegion('HRA-region-'+r.id)}>{r.name}<ArrowRight size={14}/></button>)}</div></details>:<button className="return-main-atlas" onClick={()=>changeBody('male')}><ArrowLeft size={14}/>Revenir au corps entier</button>}
-      {body==='male'&&<div className="atlas-mode" aria-label="Niveau de détail"><button title="Structures regroupées pour découvrir les principaux repères" aria-pressed={!detailMode} onClick={() => changeMode(false)}>Vue d’ensemble</button><button title="Structures anatomiques séparées et sélectionnables" aria-pressed={detailMode} onClick={() => changeMode(true)}>Atlas détaillé</button></div>}<p className="mode-explanation">{manifest?structures.filter(s=>!s.aggregate).length.toLocaleString('fr-FR')+(body==='female'?' structures · explorations régionales':' structures · référence masculine'):'Chargement de la référence…'}</p>{body==='female'&&<p className="female-coverage"><span className="coverage-full">Modèles féminins HRA : bassin, appareil reproducteur et sein. Une sélection régionale, sans ajout de maillages masculins.</span><span className="coverage-compact">HRA · explorations féminines régionales</span></p>}<button className="mobile-learn" onClick={()=>openStudy('cours')}>Cours</button><button className="mobile-start-quiz" onClick={openPractice}>Entraînement</button><button className="mobile-profile" onClick={()=>{setChatOpen(false);setProfileOpen(true);setToolsOpen(false);setQuiz(null)}}>Profil</button><button className="mobile-start-tour" onClick={()=>visitStep(0)}>Visite guidée <ArrowRight size={13}/></button>
+      {body==='male'&&<div className="atlas-mode" aria-label="Niveau de détail"><button title="Structures regroupées pour découvrir les principaux repères" aria-pressed={!detailMode} onClick={() => changeMode(false)}>Vue d’ensemble</button><button title="Structures anatomiques séparées et sélectionnables" aria-pressed={detailMode} onClick={() => changeMode(true)}>Atlas détaillé</button></div>}<p className="mode-explanation">{manifest?structures.filter(s=>!s.aggregate).length.toLocaleString('fr-FR')+(body==='female'?' structures · explorations régionales':' structures · référence masculine'):'Chargement de la référence…'}</p>{body==='female'&&<p className="female-coverage"><span className="coverage-full">Modèles féminins HRA : bassin, appareil reproducteur et sein. Une sélection régionale, sans ajout de maillages masculins.</span><span className="coverage-compact">HRA · explorations féminines régionales</span></p>}<button className="mobile-learn" onClick={()=>openStudy('cours')}>Cours</button><button className="mobile-learn" onClick={()=>openMyCourses()}>Mes cours</button><button className="mobile-start-quiz" onClick={openPractice}>Entraînement</button><button className="mobile-profile" onClick={()=>{setChatOpen(false);setProfileOpen(true);setToolsOpen(false);setQuiz(null)}}>Profil</button><button className="mobile-start-tour" onClick={()=>visitStep(0)}>Visite guidée <ArrowRight size={13}/></button>
     </aside>
 
     {body==='female'?<div className="view-presets female-region-presets" aria-label="Régions féminines">{[{id:'pelvis',name:'Bassin'},{id:'reproductive',name:'Reproduction'},{id:'breast',name:'Sein'}].map(r=><button key={r.id} aria-pressed={selectedId==='HRA-region-'+r.id} onClick={()=>openFemaleRegion('HRA-region-'+r.id)}>{r.name}</button>)}</div>:<div className="view-presets" aria-label="Vues rapides"><span>Vues rapides</span>{([
@@ -377,8 +381,25 @@ export default function App() {
     <footer className="bottombar"><div className="model-status"><span className={`status-dot ${load.complete ? 'is-ready' : ''}`} /><span>{load.complete ? `${visibleCount} structures actives` : 'Préparation de l’exploration'}</span><span className="footer-divider">/</span><span>{body==='female'?'Human Reference Atlas':'BodyParts3D'}</span></div><button className="education-note" onClick={()=>{setSelectedId(null);setIsolated(false);setCatalogOpen(v=>!v)}}>Index des structures <ArrowUpRight size={12}/></button><div className="footer-actions"><a href="/confidentialite.html" target="_blank">Confidentialité</a><button onClick={() => setModal('about')}>Sources & crédits <ArrowUpRight size={12} /></button><button onClick={() => setModal('help')} aria-label="Aide à la navigation"><CircleHelp size={17} /></button></div></footer>
 
     </div>
-    {learningOpen&&<CoursesWorkspace initial={courseToOpen} completed={completed} complete={completeCourse} explore={id=>{const reference=id.startsWith('HRA-')?'female':'male';setBody(reference);setDetailMode(true);setLearningOpen(false);setPracticeOpen(false);writeRoute(id,true,reference)}} practice={id=>openStudy('entrainement',id)} navigate={id=>openStudy('cours',id)}/>}
+    {learningOpen&&<CoursesWorkspace initial={courseToOpen} completed={completed} complete={completeCourse} explore={id=>{const reference=id.startsWith('HRA-')?'female':'male';setBody(reference);setDetailMode(true);setLearningOpen(false);setPracticeOpen(false);setMyCoursesOpen(false);writeRoute(id,true,reference)}} practice={id=>openStudy('entrainement',id)} navigate={id=>openStudy('cours',id)}/>}
     {practiceOpen&&<PracticeWorkspace course={practiceCourse} navigate={id=>openStudy('entrainement',id)} learn={id=>openStudy('cours',id)} start3D={startQuiz}/>}
+    {myCoursesOpen&&(
+      <Suspense fallback={<div className="study-workspace" style={{padding:'4rem 1rem',textAlign:'center',color:'#64748b'}}>Chargement de vos cours…</div>}>
+        <MyCoursesWorkspace
+          initialDocumentId={myCourseDocId}
+          onOpenDocument={docId=>{
+            setMyCourseDocId(docId)
+            const params=new URLSearchParams(location.hash.slice(1))
+            if(docId)params.set('doc',docId);else params.delete('doc')
+            history.replaceState(null,'','#'+params.toString())
+          }}
+          onNavigateAtlas={()=>{
+            setMyCoursesOpen(false)
+            writeRoute(selectedId)
+          }}
+        />
+      </Suspense>
+    )}
     <dialog ref={dialogRef} className="info-dialog" onCancel={() => setModal(null)} onClick={e => { if (e.target === dialogRef.current) setModal(null) }}><div className="dialog-inner"><button className="dialog-close icon-button" aria-label="Fermer" onClick={() => setModal(null)}><X size={20} /></button><span className="eyebrow">MYCORPUS · ATLAS OUVERT</span><h2>{modal === 'help' ? 'Prenez le corps en main.' : 'Le vivant appartient à tous.'}</h2>{modal === 'help' ? <><p>Un espace pour observer, explorer et comprendre, à votre rythme.</p><div className="help-row"><Rotate3D /><div><strong>Changer de perspective</strong><p>Glissez avec la souris ou un doigt pour tourner. Pointez la zone à explorer puis utilisez la molette pour zoomer dessus. Glissez avec le bouton droit pour déplacer le corps. Sur téléphone, pincez autour de la zone souhaitée ; glissez avec deux doigts pour la déplacer.</p></div></div><div className="help-row"><Search /><div><strong>Suivre votre curiosité</strong><p>Survolez une structure pour connaître son nom. Cliquez, touchez ou utilisez la recherche pour ouvrir sa fiche. La recherche accepte les accents ou leur absence.</p></div></div><div className="help-row"><Layers3 /><div><strong>Voir sous la surface</strong><p>Activez les couches anatomiques. Sur téléphone, ouvrez « Couches anatomiques ». Masquer le squelette facilite l’exploration des organes.</p></div></div><div className="help-row"><RotateCcw /><div><strong>Retrouver vos repères</strong><p>Le bouton de réinitialisation retrouve la vue de face. Les réglages de couches sont conservés.</p></div></div></> : <><p>MyCorpus est une invitation à explorer l’anatomie humaine grâce à de véritables maillages 3D, indépendants et sélectionnables.</p><h3>Des modèles scientifiques ouverts</h3><p>BodyParts3D, © The Database Center for Life Science (DBCLS), sous licence Creative Commons Attribution 4.0 International.</p><p>Modèles issus de l’archive officielle BodyParts3D 4.0, complétés par les cinq surfaces lobaires pulmonaires de l’archive officielle 3.0 dans le même repère. Ils sont simplifiés, regroupés, orientés et convertis en GLB pour le Web. Les couleurs sont des choix de visualisation. La page actuelle indique CC BY 4.0 (27 février 2025), mais les fichiers OBJ téléchargés portent CC BY-SA 2.1 Japon. Nos GLB conservent cette dernière licence : attribution et partage des adaptations sous les mêmes conditions.</p><div className="dialog-links"><a href="https://dbarchive.biosciencedbc.jp/en/bodyparts3d/download.html" target="_blank" rel="noreferrer">Modèles d’origine <ArrowUpRight size={14} /></a><a href="https://dbarchive.biosciencedbc.jp/en/bodyparts3d/lic.html" target="_blank" rel="noreferrer">Licence de la source <ArrowUpRight size={14} /></a><a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0 <ArrowUpRight size={14} /></a><a href={`${import.meta.env.BASE_URL}SOURCES.md`} target="_blank">Sources pédagogiques <ArrowUpRight size={14} /></a></div><p>Attribution des fichiers : BodyParts3D, © The Database Center for Life Science (DBCLS), sous licence Creative Commons Attribution – Partage dans les mêmes conditions 2.1 Japon.</p><div className="dialog-links"><a href="https://creativecommons.org/licenses/by-sa/2.1/jp/" target="_blank" rel="noreferrer">Licence des GLB : CC BY-SA 2.1 Japon <ArrowUpRight size={14} /></a><a href={`${import.meta.env.BASE_URL}licenses/detailed-provenance.json`} target="_blank">Provenance des fichiers <ArrowUpRight size={14} /></a></div><div className="dialog-links"><a href={`${import.meta.env.BASE_URL}licenses/lung-surfaces-provenance.json`} target="_blank">Provenance des lobes pulmonaires <ArrowUpRight size={14} /></a><a href={`${import.meta.env.BASE_URL}models/LICENSE.txt`} target="_blank">Notice de redistribution <ArrowUpRight size={14} /></a></div><h3>Référence féminine Human Reference Atlas</h3><p>Modèle United Female v1.5, Kristen Browne et Heidi Schlehlein, HuBMAP, à partir du Visible Human Female de la National Library of Medicine. Licence CC BY 4.0. Maillages simplifiés et répartis en couches pour le Web. Le squelette et les muscles sont partiels ; cette référence composite ne remplace pas un corps féminin exhaustif.</p><a href={import.meta.env.BASE_URL+'licenses/female-provenance.json'} target="_blank" rel="noreferrer">Provenance et transformations du modèle féminin ↗</a><a href={import.meta.env.BASE_URL+'models/female-regions/LICENSE.txt'} target="_blank" rel="noreferrer">Crédits et licence du modèle féminin ↗</a><h3>Un atlas étendu, pas une anatomie exhaustive</h3><p>Le mode détaillé utilise les éléments nommés de l’archive ISA 4.0 : os, dents, muscles, vaisseaux, nerfs, organes et tissus de soutien. Les fichiers sans identification sont exclus. Ce corps de référence masculin ne couvre ni toutes les variantes anatomiques ni les détails microscopiques. Certaines fiches donnent uniquement des repères de groupe.</p><p>La nomenclature française provient de Z-Anatomy (TA2.csv), sous CC BY-SA 4.0. Les noms sont complétés par des traductions descriptives des portions, côtés et branches. Les noms sources restent conservés dans les données de provenance ; les libellés français ne constituent pas une nouvelle nomenclature officielle.</p><a href={`${import.meta.env.BASE_URL}licenses/terminology-LICENSE.txt`} target="_blank">Crédits de la nomenclature</a><h3>Apprendre avec des repères fiables</h3><p>Les fiches sont rédigées en français à partir de ressources pédagogiques du NIH et d’OpenStax. Chaque fiche renvoie à sa source.</p><div className="educational-box"><ShieldCheck size={22} /><p>Un outil pédagogique, pas un outil de diagnostic. Ce modèle représente une anatomie de référence ; les formes et les proportions varient d’une personne à l’autre. Il ne constitue pas un atlas exhaustif.</p></div></>}<button className="dialog-action" onClick={() => setModal(null)}>Revenir à l’exploration <ArrowRight size={16} /></button></div></dialog>
     <span className="sr-only" aria-live="polite">{description ? `Structure sélectionnée : ${description.name}. ${description.role}` : ''}</span>
   </main>

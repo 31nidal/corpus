@@ -60,6 +60,12 @@ Les actions inconnues et identifiants invalides sont écartés ; aucun code reç
 - Animations : `src/animations.ts`, registre de cibles, période et amplitude. Le moteur applique et restaure des transformations illustratives. Des valves, flux sanguins ou mouvements articulaires demanderaient des animations/contraintes spécifiques ; ils ne sont pas simulés actuellement.
 
 
+## Signalements pédagogiques
+
+`POST /api/feedback` permet de signaler une erreur depuis un cours sans compte GitHub. Les champs `course`, `courseTitle`, `passage` et `correction` sont obligatoires ; `source` et `email` sont facultatifs. Les signalements sont enregistrés dans la table `feedback_reports` de `mycorpus.sqlite`, avec le statut initial `new`. Le formulaire refuse les données trop longues, limite les envois par adresse réseau et recommande de ne transmettre aucune donnée médicale personnelle.
+
+Pour examiner les signalements sur une copie de la base : `SELECT id, course, passage, correction, source, email, created FROM feedback_reports WHERE status='new' ORDER BY created;`. Le stockage persistant Railway doit être configuré comme pour les comptes.
+
 ## Comptes et historique
 
 Le serveur utilise SQLite intégré à Node, sans dépendance ni API payante. En local, `.data/mycorpus.sqlite` est créé au premier accès à l’API de comptes. Ce dossier est ignoré par Git. `.env` reste facultatif : les variables peuvent provenir directement de `process.env`.

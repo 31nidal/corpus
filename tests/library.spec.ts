@@ -24,6 +24,13 @@ test('banque pédagogique : identifiants, corrections et couverture des nouveaux
 test('chapitre complet : schéma, raisonnement, favoris et notes conservées séparément',async({page})=>{
  await page.goto('/#tab=cours&cours=organelles')
  await expect(page.locator('.course-article>h1')).toHaveText('La cellule : organites et trafic des protéines')
+ await expect(page.getByLabel('Transparence éditoriale')).toContainText('Non relu par un professionnel de santé')
+ await expect(page.getByLabel('Transparence éditoriale')).toContainText('14 septembre 2026')
+ await expect(page.getByRole('button',{name:'Exporter en PDF'})).toBeVisible()
+ await page.evaluate(()=>{Object.defineProperty(window,'print',{configurable:true,value:()=>document.body.dataset.printRequested='yes'})})
+ await page.getByRole('button',{name:'Exporter en PDF'}).click()
+ await expect.poll(()=>page.evaluate(()=>document.body.dataset.printRequested)).toBe('yes')
+ await expect(page).toHaveTitle('MyCorpus - La cellule : organites et trafic des protéines')
  await expect(page.locator('.course-flow li')).toHaveCount(5)
  await page.locator('.course-case summary').click();await expect(page.locator('.course-case details')).toContainText('Non.')
  await page.getByLabel('Mes notes de cours').fill('Le Golgi trie les protéines. À revoir demain.')
@@ -36,6 +43,16 @@ test('chapitre complet : schéma, raisonnement, favoris et notes conservées sé
  await page.getByLabel('Afficher les cours', {exact:true}).selectOption('saved')
  await expect(page.locator('.course-tile')).toHaveCount(1)
  await page.locator('.course-tile').click();await expect(page).toHaveURL(/cours=organelles/)
+})
+
+test('un étudiant peut signaler une erreur sans compte GitHub',async({page})=>{
+ await page.route('**/api/feedback',async route=>route.fulfill({status:201,contentType:'application/json',body:'{"received":true}'}))
+ await page.goto('/#tab=cours&cours=organelles')
+ await page.getByRole('button',{name:'Signaler une erreur dans ce cours'}).click()
+ await page.getByLabel('Passage concerné').fill('Le passage sur le réticulum.')
+ await page.getByLabel('Correction proposée').fill('Préciser la différence entre REL et RER.')
+ await page.getByRole('button',{name:'Envoyer le signalement'}).click()
+ await expect(page.locator('.feedback-success')).toContainText('bien été transmis')
 })
 
 test('quiz par chapitre : URL, difficulté, navigation examen et bilan',async({page})=>{

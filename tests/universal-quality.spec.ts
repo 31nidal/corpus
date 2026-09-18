@@ -10,6 +10,9 @@ test('les 98 cours ont des prérequis, une durée et 15 à 30 questions valides'
  for(const course of courses){
   expect(course.prerequisites?.length,course.id).toBeGreaterThanOrEqual(3)
   expect(course.readingMinutes,course.id).toBeGreaterThanOrEqual(2)
+  expect(course.review?.status,course.id).toBe('unreviewed')
+  expect(course.review?.updatedAt,course.id).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+  expect(course.review?.sourcesUpdatedAt,course.id).toMatch(/^\d{4}-\d{2}-\d{2}$/)
   const bank=questions.filter(question=>question.course===course.id)
   expect(bank.length,course.id).toBeGreaterThanOrEqual(15)
   expect(bank.length,course.id).toBeLessThanOrEqual(30)

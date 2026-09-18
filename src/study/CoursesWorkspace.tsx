@@ -1,6 +1,6 @@
 import {storageScope,useAccount} from '../account/store'
-import {useEffect,useRef,useState} from 'react'
-import {ArrowLeft,ArrowRight,BookOpen,Check,CheckCircle2,Box,Bookmark,GraduationCap,PenLine} from 'lucide-react'
+import {useEffect,useRef,useState,type FormEvent} from 'react'
+import {ArrowLeft,ArrowRight,BookOpen,Check,CheckCircle2,Box,Bookmark,GraduationCap,PenLine,ShieldAlert,FileDown} from 'lucide-react'
 import {courses,type Course} from './curriculum'
 import {questions} from './questions'
 import CourseDiagram from './CourseDiagram'
@@ -9,6 +9,7 @@ import {subjectFor} from './subjects'
 import diseases from '../data/diseases.json'
 import {lessons} from '../learning'
 import {feedbackUrl} from './feedback'
+import AnkiExportMenu from './AnkiExportMenu'
 
 function readSaved():string[]{try{const v=JSON.parse(storageScope().getItem('corpus-saved-courses')||'[]');return Array.isArray(v)?v.filter(id=>courses.some(c=>c.id===id)):[]}catch{return []}}
 function Notebook({course}:{course:Course}){
@@ -16,6 +17,16 @@ function Notebook({course}:{course:Course}){
  const key='corpus-note-'+course.id
  const [note,setNote]=useState(()=>{try{return accountStorage.getItem(key)||''}catch{return ''}}),[notice,setNotice]=useState('Enregistrées sur cet appareil uniquement.')
  return <section className="course-notebook"><h2><PenLine size={19}/>Mon carnet de cours</h2><p>Reformulez une notion, notez votre erreur ou une question à poser en cours.</p><textarea aria-label="Mes notes de cours" maxLength={8000} value={note} placeholder="Ce que je veux retenir…" onChange={e=>{setNote(e.target.value);try{accountStorage.setItem(key,e.target.value);setNotice('Notes enregistrées sur cet appareil.')}catch{setNotice('Enregistrement indisponible : copiez vos notes avant de quitter.')}}}/><small role="status">{account.user?account.status:notice}</small></section>
+}
+const frenchDate=(value:string)=>new Intl.DateTimeFormat('fr-FR',{day:'numeric',month:'long',year:'numeric'}).format(new Date(value+'T12:00:00Z'))
+function ReviewNotice({course}:{course:Course}){
+ const review=course.review!,labels={unreviewed:'Non relu par un professionnel de santé',pedagogical:'Relu pédagogiquement',professional:'Relu par un professionnel de santé'}
+ return <aside className={'course-review course-review-'+review.status} aria-label="Transparence éditoriale"><ShieldAlert size={21}/><div><span className="review-label">STATUT DU CONTENU</span><strong>{labels[review.status]}</strong><p>Dernière mise à jour : {frenchDate(review.updatedAt)} · Références associées : {frenchDate(review.sourcesUpdatedAt)} · {(course.sources?.length||1)} source{(course.sources?.length||1)>1?'s':''}</p><small>Support pédagogique indépendant, sans validation clinique ni affiliation universitaire. Vérifiez les notions avec les supports officiels de votre faculté.</small></div></aside>
+}
+function FeedbackForm({course}:{course:Course}){
+ const [open,setOpen]=useState(false),[status,setStatus]=useState<'idle'|'sending'|'sent'|'error'>('idle')
+ const submit=async(event:FormEvent<HTMLFormElement>)=>{event.preventDefault();setStatus('sending');const target=event.currentTarget,form=new FormData(target),payload={course:course.id,courseTitle:course.title,passage:String(form.get('passage')||''),correction:String(form.get('correction')||''),source:String(form.get('source')||''),email:String(form.get('email')||'')};try{const response=await fetch('/api/feedback',{method:'POST',headers:{'Content-Type':'application/json','X-MyCorpus-Request':'feedback'},body:JSON.stringify(payload)});if(!response.ok)throw new Error();setStatus('sent');target.reset()}catch{setStatus('error')}}
+ return <section className="course-feedback-panel"><button className="course-feedback" type="button" aria-expanded={open} onClick={()=>{setOpen(value=>!value);setStatus('idle')}}>Signaler une erreur dans ce cours</button>{open&&<>{status==='sent'?<div className="feedback-success" role="status"><strong>Merci, votre signalement a bien été transmis.</strong><p>Il sera relu avant toute modification du cours.</p><button type="button" onClick={()=>setOpen(false)}>Fermer</button></div>:<form onSubmit={submit}><p>Aucun compte n’est nécessaire. Décrivez précisément le passage afin de faciliter sa vérification.</p><label>Passage concerné<textarea name="passage" required maxLength={1500}/></label><label>Correction proposée<textarea name="correction" required maxLength={3000}/></label><label>Source éventuelle<input name="source" type="url" maxLength={1000} placeholder="https://…"/></label><label>E-mail pour vous répondre <small>(facultatif)</small><input name="email" type="email" maxLength={254}/></label><div className="feedback-actions"><button className="study-primary" disabled={status==='sending'}>{status==='sending'?'Envoi…':'Envoyer le signalement'}</button><a target="_blank" rel="noreferrer" href={feedbackUrl(course.id)}>Ou ouvrir un ticket GitHub ↗</a></div>{status==='error'&&<p className="feedback-error" role="alert">Le formulaire est momentanément indisponible. Vous pouvez utiliser le lien GitHub ci-dessus.</p>}<small className="feedback-privacy">Les informations saisies servent uniquement à examiner ce signalement. N’indiquez aucune donnée médicale personnelle.</small></form>}</>}</section>
 }
 export default function CoursesWorkspace(p:{initial:string|null;completed:string[];complete:(id:string)=>void;explore:(id:string)=>void;practice:(id:string)=>void;navigate:(id:string|null)=>void}){
  const [accountStorage]=useState(storageScope)
@@ -28,13 +39,15 @@ export default function CoursesWorkspace(p:{initial:string|null;completed:string
  const returnToLibrary=(subject='')=>{setQuery('');setFilter('all');browse(subject);p.navigate(null)}
  const toggleSave=(id:string)=>{const next=saved.includes(id)?saved.filter(x=>x!==id):[...saved,id];setSaved(next);try{accountStorage.setItem('corpus-saved-courses',JSON.stringify(next))}catch{/* optional */}}
  const questionCount=(id:string)=>questions.filter(q=>q.course===id).length
+ const exportPdf=()=>{if(!course)return;const previous=document.title;document.title=`MyCorpus - ${course.title}`;window.addEventListener('afterprint',()=>{document.title=previous},{once:true});window.print()}
  return <section ref={workspace} onScroll={e=>{const el=e.currentTarget;setProgress(Math.round(el.scrollTop/Math.max(1,el.scrollHeight-el.clientHeight)*100))}} className="study-workspace courses-workspace" aria-label="Cours de première année">
  {course?<>
   <div className="reading-progress"><span style={{width:progress+'%'}}/></div>
-  <div className="study-breadcrumb"><button onClick={()=>returnToLibrary()}><ArrowLeft size={16}/>Tous les cours</button><span>/</span><button onClick={()=>returnToLibrary(subjectFor(course).id)}>{course.category}</button><span>/</span><span>{course.tag}</span><button className="bookmark-course" aria-pressed={saved.includes(course.id)} onClick={()=>toggleSave(course.id)}><Bookmark size={15}/>{saved.includes(course.id)?'Enregistré':'Garder pour plus tard'}</button></div>
+  <div className="study-breadcrumb"><button onClick={()=>returnToLibrary()}><ArrowLeft size={16}/>Tous les cours</button><span>/</span><button onClick={()=>returnToLibrary(subjectFor(course).id)}>{course.category}</button><span>/</span><span>{course.tag}</span><div className="course-document-actions"><button className="export-course" onClick={exportPdf}><FileDown size={15}/>Exporter en PDF</button><AnkiExportMenu course={course} storage={accountStorage}/><button className="bookmark-course" aria-pressed={saved.includes(course.id)} onClick={()=>toggleSave(course.id)}><Bookmark size={15}/>{saved.includes(course.id)?'Enregistré':'Garder pour plus tard'}</button></div></div>
   <div className="reading-layout"><article className="course-article">
    <div className="study-eyebrow">{course.category} · {course.caseStudy?'COURS & APPLICATIONS':'REPÈRES ANATOMIQUES'}</div><h1>{course.title}</h1>
    <div className="course-meta"><span><BookOpen size={14}/>{course.readingMinutes?`${course.readingMinutes} min de lecture · exercices en plus`:`${course.minutes} min avec exercices`}</span><span><GraduationCap size={15}/>Première année</span><span>{questionCount(course.id)} questions associées</span>{p.completed.includes(course.id)&&<span><CheckCircle2 size={15}/>Terminé</span>}</div>
+   <ReviewNotice course={course}/>
    <div className="objectives"><h2>À la fin de ce cours</h2>{course.objectives.map(o=><p key={o}><Check size={16}/>{o}</p>)}</div>
    {course.prerequisites&&<aside className="course-prerequisites"><strong>Avant de commencer</strong><p>{course.prerequisites.join(' · ')}</p><small>Durée de lecture indicative, calculée à 180 mots/minute. Prenez le temps de refaire les exemples.</small></aside>}
    <CourseDiagram key={'diagram-'+course.id} courseId={course.id}/>
@@ -51,7 +64,7 @@ export default function CoursesWorkspace(p:{initial:string|null;completed:string
    {course.caseStudy&&<section className="course-case"><span className="study-eyebrow">PASSER DE LA NOTION AU RAISONNEMENT</span><h2>À vous de l’expliquer.</h2><p>{course.caseStudy.prompt}</p><details key={course.id}><summary>Comparer avec le raisonnement corrigé</summary><p>{course.caseStudy.answer}</p></details></section>}
    <section className="active-recall"><div className="study-eyebrow">RAPPEL ACTIF</div><h2>Fermez le cours. Retrouvez l’idée.</h2><p>{course.recall}</p><button className="study-secondary" aria-expanded={reveal} onClick={()=>setReveal(v=>!v)}>{reveal?'Masquer la réponse':'Vérifier ma réponse'}</button>{reveal&&<p className="recall-answer">{course.answer}</p>}</section>
    {lessons.find(l=>l.id===course.id)?.diseases.length?<section className="course-pathologies"><h2>Ouverture clinique</h2><p>À aborder après les bases. Ces repères ne constituent pas un avis médical.</p><div className="pathology-pills">{lessons.find(l=>l.id===course.id)!.diseases.map(id=><button key={id} onClick={()=>setPathology(pathology===id?null:id)} aria-expanded={pathology===id}>{diseases.find(d=>d.id===id)?.name}</button>)}</div>{disease&&<div className="disease-reading"><h3>{disease.name}</h3>{Object.entries(disease.sections).map(([k,v])=><section key={k}><h4>{k}</h4><p>{v}</p></section>)}<a href={disease.source} target="_blank" rel="noreferrer">Consulter la source médicale ↗</a></div>}</section>:null}
-   <a className="course-feedback" target="_blank" rel="noreferrer" href={feedbackUrl(course.id)}>Signaler une erreur dans ce cours ↗</a>
+   <FeedbackForm course={course}/>
    <Notebook key={course.id} course={course}/>
    <footer className="course-source"><h2>Pour vérifier et approfondir</h2>{(course.sources||[{label:'Source pédagogique du cours',url:course.source}]).map(s=><a key={s.url} href={s.url} target="_blank" rel="noreferrer">{s.label} ↗</a>)}<p>Synthèse pédagogique en français. Complétez-la avec les supports et les attendus de votre faculté.</p></footer>
    <div className="course-completion"><button className="study-secondary" onClick={()=>p.complete(course.id)} disabled={p.completed.includes(course.id)}><CheckCircle2 size={17}/>{p.completed.includes(course.id)?'Cours terminé':'Marquer ce cours terminé'}</button><button className="study-primary" onClick={()=>p.practice(course.id)}>M’entraîner sur ce cours<ArrowRight size={17}/></button></div>
