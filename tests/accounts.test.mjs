@@ -1,6 +1,6 @@
 import {test} from 'node:test'
 import assert from 'node:assert/strict'
-import {mkdtempSync,rmSync} from 'node:fs'
+import {existsSync,mkdtempSync,mkdirSync,rmSync,writeFileSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import path from 'node:path'
 import {Readable} from 'node:stream'
@@ -67,7 +67,11 @@ test('comptes : isolation, sécurité, persistance, fusion, récupération et su
   assert.equal((await api.call('session',undefined,alice.cookie)).data.user,null)
   assert.equal((await api.call('recover',{email:'alice@example.test',password:pw,recovery:alice.data.recovery})).status,400)
   assert.equal((await api.call('export',undefined,reset.cookie)).data.history.length,5)
+  const uploadDirectory=path.join(dir,'uploads',alice.data.user.id)
+  mkdirSync(uploadDirectory,{recursive:true})
+  writeFileSync(path.join(uploadDirectory,'cours-test.pdf'),'pdf privé')
   assert.equal((await api.call('delete',{password:pw+'new'},reset.cookie)).status,200)
+  assert.equal(existsSync(uploadDirectory),false)
   assert.equal((await api.call('session',undefined,reset.cookie)).data.user,null)
   assert.equal((await api.call('session',undefined,bob.cookie)).data.user.name,'Bob')
  }finally{rmSync(dir,{recursive:true,force:true})}

@@ -232,6 +232,10 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
       const url = new URL(req.url, 'http://localhost')
       const subpath = url.pathname.replace('/api/study/', '').replace(/\/$/, '')
       const origin = (config.APP_ORIGIN || `${config.RAILWAY_ENVIRONMENT_ID ? 'https' : 'http'}://${req.headers.host || 'localhost:5173'}`).replace(/\/$/, '')
+      const mutating = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)
+      if (mutating && (req.headers['x-mycorpus-request'] !== '1' || (req.headers.origin && req.headers.origin !== origin))) {
+        return send(403, { error: 'Origine de la requête refusée.' })
+      }
 
       // GET /api/study/quotas
       if (req.method === 'GET' && subpath === 'quotas') {
@@ -962,4 +966,3 @@ export function formatAnkiCsv(title, filename, questions) {
   const directives = ['#separator:Comma', '#html:true', '#columns:Recto,Verso,Tags,NotionId', '#tags column:3']
   return '\uFEFF' + [...directives, ...rows.map(row => row.map(csv).join(','))].join('\r\n') + '\r\n'
 }
-

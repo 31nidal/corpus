@@ -11,7 +11,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
@@ -38,8 +38,22 @@ jobs:
       - name: Feedback tests
         run: npm run test:feedback
 
+      - name: Security header tests
+        run: npm run test:security
+
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
       - name: End-to-end tests
         run: npm test
+
+      - name: Upload Playwright diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-diagnostics
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7

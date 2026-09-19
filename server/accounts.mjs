@@ -1,7 +1,7 @@
 import {DatabaseSync} from 'node:sqlite'
 import {createHash, randomBytes, randomUUID, scrypt, timingSafeEqual} from 'node:crypto'
 import {promisify} from 'node:util'
-import {mkdirSync} from 'node:fs'
+import {mkdirSync, rmSync} from 'node:fs'
 import path from 'node:path'
 import {OAuth2Client} from 'google-auth-library'
 
@@ -74,15 +74,15 @@ function passwordIsValid(password) {
 export function createAccountHandler(config = process.env, dependencies = {}) {
   let db
   let active = 0
+  const dataDirectory = config.RAILWAY_VOLUME_MOUNT_PATH || config.ACCOUNT_DATA_DIR || path.resolve('.data')
   const available = !config.RAILWAY_ENVIRONMENT_ID || Boolean(config.RAILWAY_VOLUME_MOUNT_PATH)
   const googleAvailable = Boolean(config.GOOGLE_CLIENT_ID && config.GOOGLE_CLIENT_SECRET)
   const makeGoogleClient = dependencies.makeGoogleClient || ((clientId, clientSecret, redirectUri) => new OAuth2Client(clientId, clientSecret, redirectUri))
 
   const database = () => {
     if (db) return db
-    const directory = config.RAILWAY_VOLUME_MOUNT_PATH || config.ACCOUNT_DATA_DIR || path.resolve('.data')
-    mkdirSync(directory, {recursive: true, mode: 0o700})
-    db = new DatabaseSync(path.join(directory, 'mycorpus.sqlite'))
+    mkdirSync(dataDirectory, {recursive: true, mode: 0o700})
+    db = new DatabaseSync(path.join(dataDirectory, 'mycorpus.sqlite'))
     db.exec(`
       PRAGMA journal_mode=WAL;
       PRAGMA foreign_keys=ON;
@@ -319,6 +319,7 @@ export function createAccountHandler(config = process.env, dependencies = {}) {
           if (!user || !account || user.id !== account.id) return send(401, {error: 'Connexion requise.'})
           if (route === 'delete') {
             if (account.password_enabled && (!passwordIsValid(body.password) || !await verify(body.password, account.password))) return send(401, {error: 'Mot de passe incorrect.'})
+            rmSync(path.join(dataDirectory, 'uploads', user.id), {recursive: true, force: true})
             d.prepare('DELETE FROM users WHERE id=?').run(user.id)
             addCookie('mycorpus_session', '', 0)
             return send(200, {ok: true})

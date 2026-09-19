@@ -48,7 +48,7 @@ function setupTestApi(dataDir, options = {}) {
 
   async function call(route, body, cookie = '', headers = {}) {
     let raw = ''
-    let reqHeaders = { cookie, ...headers }
+    let reqHeaders = { cookie }
 
     if (Buffer.isBuffer(body)) {
       raw = body
@@ -58,6 +58,7 @@ function setupTestApi(dataDir, options = {}) {
       reqHeaders['content-type'] = 'application/json'
       reqHeaders['x-mycorpus-request'] = '1'
     }
+    Object.assign(reqHeaders, headers)
 
     const req = Readable.from(raw ? [Buffer.isBuffer(raw) ? raw : Buffer.from(raw)] : [])
     req.url = route.startsWith('/api/') ? route : `/api/${route}`
@@ -132,6 +133,11 @@ test('Study API : inscription, upload PDF, extraction, structuration et quotas',
     })
     assert.equal(reg.status, 201)
     const sessionCookie = reg.cookie
+
+    const rejectedOrigin = await api.call('/api/study/documents/upload', {}, sessionCookie, { origin: 'https://evil.test' })
+    assert.equal(rejectedOrigin.status, 403)
+    const rejectedCsrf = await api.call('/api/study/documents/upload', {}, sessionCookie, { 'x-mycorpus-request': undefined })
+    assert.equal(rejectedCsrf.status, 403)
 
     // 2. Check Quotas
     const quotaRes = await api.call('/api/study/quotas', undefined, sessionCookie)
@@ -593,6 +599,5 @@ test('Concurrence et réservation atomique : deux requêtes simultanées avec 1 
     try { rmSync(dir, { recursive: true, force: true }) } catch { /* cleanup */ }
   }
 })
-
 
 

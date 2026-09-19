@@ -72,6 +72,7 @@ export async function uploadStudyDocument(file: File, title?: string): Promise<S
 export async function deleteStudyDocument(id: string): Promise<void> {
   const res = await fetch(`/api/study/documents/${encodeURIComponent(id)}`, {
     method: 'DELETE',
+    headers: { 'x-mycorpus-request': '1' },
     credentials: 'same-origin'
   })
   if (!res.ok) {
@@ -118,4 +119,3 @@ export async function fetchDocumentQuestions(id: string): Promise<StudyQuestion[
   if (!res.ok) throw new Error(body.error || 'Échec du chargement des questions.')
   return body.questions || []
 }
-
