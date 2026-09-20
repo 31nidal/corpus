@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import {createAccountHandler} from './accounts.mjs'
 import {createFeedbackHandler} from './feedback.mjs'
 import {createStudyHandler} from './study.mjs'
+import {createFlashcardHandler} from './flashcards/handler.mjs'
 import path from 'node:path'
 import {createProvider} from './providers.mjs'
 import {validateAction} from '../shared/actions.mjs'
@@ -44,11 +45,13 @@ export function createApiHandler(config=process.env){
  const feedback=createFeedbackHandler(config)
  const provider=createProvider(config)
  const study=createStudyHandler(config,{provider})
+ const flashcards=createFlashcardHandler(config,{provider})
  return async(req,res,next)=>{
   const path=req.url?.split('?')[0]
   if(!path?.startsWith('/api/'))return next?.()
   if(path.startsWith('/api/account/'))return account(req,res)
   if(path.startsWith('/api/study/'))return study(req,res)
+  if(path.startsWith('/api/flashcards/'))return flashcards(req,res)
   if(path==='/api/feedback')return feedback(req,res)
   const send=(status,body)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(body))}
   if(path==='/api/status'&&req.method==='GET')return send(200,{mode:provider?'connected':'local',label:provider?'Assistant connecté':'Ressources locales'})

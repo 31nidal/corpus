@@ -64,6 +64,12 @@ Les actions inconnues et identifiants invalides sont écartés ; aucun code reç
 
 `POST /api/feedback` permet de signaler une erreur depuis un cours sans compte GitHub. Les champs `course`, `courseTitle`, `passage` et `correction` sont obligatoires ; `source` et `email` sont facultatifs. Les signalements sont enregistrés dans la table `feedback_reports` de `mycorpus.sqlite`, avec le statut initial `new`. Le formulaire refuse les données trop longues, limite les envois par adresse réseau et recommande de ne transmettre aucune donnée médicale personnelle.
 
+## Flashcards
+
+Les routes `/api/flashcards/*` gèrent les decks, les cartes, la répétition espacée, les statistiques, la génération en brouillon et l’export Anki. Toutes les lectures et écritures sont filtrées par l’utilisateur authentifié. Les générations depuis les cours, Study, les erreurs QCM ou du texte libre ne persistent rien : seules les cartes sélectionnées dans l’aperçu sont enregistrées via `POST /api/flashcards/cards/bulk`. Sans fournisseur distant, un générateur local extrait les formulations explicites de la source. Avec un fournisseur, `generateFlashcards(context)` utilise le quota Study et revient au générateur local en libérant la réservation si le fournisseur échoue.
+
+Le texte libre est limité à 300 000 caractères et reste en mémoire le temps de la requête. Les tables `flashcard_decks`, `flashcards`, `flashcard_reviews` et `flashcard_review_logs` sont séparées du stockage de synchronisation historique. Les références visuelles facultatives sont prévues dans `visual_json`; aucun fichier image de flashcard n’est encore importé.
+
 Pour examiner les signalements sur une copie de la base : `SELECT id, course, passage, correction, source, email, created FROM feedback_reports WHERE status='new' ORDER BY created;`. Le stockage persistant Railway doit être configuré comme pour les comptes.
 
 ## Comptes et historique

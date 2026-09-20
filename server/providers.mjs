@@ -62,6 +62,20 @@ export class HttpProvider {
     const result = JSON.parse(raw)
     return result.questions || (Array.isArray(result) ? result : null)
   }
+
+  async generateFlashcards(context) {
+    const response = await fetch(this.url, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', ...(this.token ? {Authorization: `Bearer ${this.token}`} : {})},
+      body: JSON.stringify({task: 'flashcards', ...context}),
+      signal: AbortSignal.timeout(30000)
+    })
+    if (!response.ok) throw new Error('provider_unavailable')
+    const raw = await response.text()
+    if (raw.length > 256000) throw new Error('provider_response_too_large')
+    const result = JSON.parse(raw)
+    return result.flashcards || result.cards || (Array.isArray(result) ? result : null)
+  }
 }
 
 export function createProvider(config) {

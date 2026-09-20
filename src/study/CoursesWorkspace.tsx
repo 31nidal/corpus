@@ -1,6 +1,6 @@
 import {storageScope,useAccount} from '../account/store'
 import {useEffect,useRef,useState,type FormEvent} from 'react'
-import {ArrowLeft,ArrowRight,BookOpen,Check,CheckCircle2,Box,Bookmark,GraduationCap,PenLine,ShieldAlert,FileDown} from 'lucide-react'
+import {ArrowLeft,ArrowRight,BookOpen,Check,CheckCircle2,Box,Bookmark,GraduationCap,PenLine,ShieldAlert,FileDown,Sparkles} from 'lucide-react'
 import {courses,type Course} from './curriculum'
 import {questions} from './questions'
 import CourseDiagram from './CourseDiagram'
@@ -10,6 +10,10 @@ import diseases from '../data/diseases.json'
 import {lessons} from '../learning'
 import {feedbackUrl} from './feedback'
 import AnkiExportMenu from './AnkiExportMenu'
+import GenerationDialog from '../flashcards/GenerationDialog'
+import type{GenerationSource}from'../flashcards/flashcardsTypes'
+
+const sectionSlug=(title:string,index:number)=>`${index+1}-${title.toLocaleLowerCase('fr').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,70)}`
 
 function readSaved():string[]{try{const v=JSON.parse(storageScope().getItem('corpus-saved-courses')||'[]');return Array.isArray(v)?v.filter(id=>courses.some(c=>c.id===id)):[]}catch{return []}}
 function Notebook({course}:{course:Course}){
@@ -31,8 +35,10 @@ function FeedbackForm({course}:{course:Course}){
 export default function CoursesWorkspace(p:{initial:string|null;completed:string[];complete:(id:string)=>void;explore:(id:string)=>void;practice:(id:string)=>void;navigate:(id:string|null)=>void}){
  const [accountStorage]=useState(storageScope)
  const [query,setQuery]=useState(''),[category,setCategory]=useState(()=>new URLSearchParams(location.hash.slice(1)).get('matiere')??''),[group,setGroup]=useState(()=>new URLSearchParams(location.hash.slice(1)).get('module')??''),[filter,setFilter]=useState('all'),[saved,setSaved]=useState(readSaved),[reveal,setReveal]=useState(false),[pathology,setPathology]=useState<string|null>(null),[progress,setProgress]=useState(0)
+ const [generation,setGeneration]=useState<GenerationSource|null>(null),[selectedPassage,setSelectedPassage]=useState('')
  const workspace=useRef<HTMLElement>(null),course=courses.find(c=>c.id===p.initial)
  useEffect(()=>{setReveal(false);setPathology(null);setProgress(0);workspace.current?.scrollTo(0,0)},[p.initial])
+ useEffect(()=>{if(!course)return;const section=new URLSearchParams(location.hash.slice(1)).get('section');if(section)requestAnimationFrame(()=>document.getElementById('section-'+section)?.scrollIntoView({behavior:'smooth',block:'start'}))},[course?.id])
  const browse=(subject:string,module='')=>{setCategory(subject);setGroup(module);const params=new URLSearchParams(location.hash.slice(1));if(subject)params.set('matiere',subject);else params.delete('matiere');if(module)params.set('module',module);else params.delete('module');history.pushState(null,'','#'+params.toString());workspace.current?.scrollTo(0,0)}
  useEffect(()=>{const sync=()=>{const params=new URLSearchParams(location.hash.slice(1));setCategory(params.get('matiere')??'');setGroup(params.get('module')??'')};window.addEventListener('popstate',sync);window.addEventListener('hashchange',sync);return()=>{window.removeEventListener('popstate',sync);window.removeEventListener('hashchange',sync)}},[])
  const disease=diseases.find(d=>d.id===pathology),siblings=course?courses.filter(c=>c.category===course.category):[],nextCourse=course?siblings[siblings.indexOf(course)+1]:null
@@ -43,15 +49,16 @@ export default function CoursesWorkspace(p:{initial:string|null;completed:string
  return <section ref={workspace} onScroll={e=>{const el=e.currentTarget;setProgress(Math.round(el.scrollTop/Math.max(1,el.scrollHeight-el.clientHeight)*100))}} className="study-workspace courses-workspace" aria-label="Cours de première année">
  {course?<>
   <div className="reading-progress"><span style={{width:progress+'%'}}/></div>
-  <div className="study-breadcrumb"><button onClick={()=>returnToLibrary()}><ArrowLeft size={16}/>Tous les cours</button><span>/</span><button onClick={()=>returnToLibrary(subjectFor(course).id)}>{course.category}</button><span>/</span><span>{course.tag}</span><div className="course-document-actions"><button className="export-course" onClick={exportPdf}><FileDown size={15}/>Exporter en PDF</button><AnkiExportMenu course={course} storage={accountStorage}/><button className="bookmark-course" aria-pressed={saved.includes(course.id)} onClick={()=>toggleSave(course.id)}><Bookmark size={15}/>{saved.includes(course.id)?'Enregistré':'Garder pour plus tard'}</button></div></div>
-  <div className="reading-layout"><article className="course-article">
+  <div className="study-breadcrumb"><button onClick={()=>returnToLibrary()}><ArrowLeft size={16}/>Tous les cours</button><span>/</span><button onClick={()=>returnToLibrary(subjectFor(course).id)}>{course.category}</button><span>/</span><span>{course.tag}</span><div className="course-document-actions"><button className="study-primary" onClick={()=>setGeneration({kind:'catalog',title:course.title,courseId:course.id,subject:course.category,chapter:course.title,sections:course.sections.map((section,index)=>({id:sectionSlug(section.title,index),title:section.title,text:[section.text,...(section.bullets||[])].join(' ')}))})}><Sparkles size={15}/>Générer des flashcards</button><button className="export-course" onClick={exportPdf}><FileDown size={15}/>Exporter en PDF</button><AnkiExportMenu course={course} storage={accountStorage}/><button className="bookmark-course" aria-pressed={saved.includes(course.id)} onClick={()=>toggleSave(course.id)}><Bookmark size={15}/>{saved.includes(course.id)?'Enregistré':'Garder pour plus tard'}</button></div></div>
+  <div className="reading-layout"><article className="course-article" onMouseUp={()=>{const text=window.getSelection()?.toString().trim()||'';setSelectedPassage(text.length>=20&&text.length<=8000?text:'')}}>
    <div className="study-eyebrow">{course.category} · {course.caseStudy?'COURS & APPLICATIONS':'REPÈRES ANATOMIQUES'}</div><h1>{course.title}</h1>
    <div className="course-meta"><span><BookOpen size={14}/>{course.readingMinutes?`${course.readingMinutes} min de lecture · exercices en plus`:`${course.minutes} min avec exercices`}</span><span><GraduationCap size={15}/>Première année</span><span>{questionCount(course.id)} questions associées</span>{p.completed.includes(course.id)&&<span><CheckCircle2 size={15}/>Terminé</span>}</div>
    <ReviewNotice course={course}/>
    <div className="objectives"><h2>À la fin de ce cours</h2>{course.objectives.map(o=><p key={o}><Check size={16}/>{o}</p>)}</div>
    {course.prerequisites&&<aside className="course-prerequisites"><strong>Avant de commencer</strong><p>{course.prerequisites.join(' · ')}</p><small>Durée de lecture indicative, calculée à 180 mots/minute. Prenez le temps de refaire les exemples.</small></aside>}
    <CourseDiagram key={'diagram-'+course.id} courseId={course.id}/>
-   {course.sections.map((s,i)=><section id={'section-'+i} className="course-section" key={s.title}><span className="section-number">{String(i+1).padStart(2,'0')}</span><div><h2>{s.title}</h2>{s.text.split('\n\n').map((paragraph,j)=><p key={j}>{paragraph}</p>)}{s.bullets&&<ul>{s.bullets.map(t=><li key={t}>{t}</li>)}</ul>}</div></section>)}
+   {selectedPassage&&<aside className="flash-selection-action"><span>{selectedPassage.slice(0,120)}{selectedPassage.length>120?'…':''}</span><button className="study-secondary" onClick={()=>setGeneration({kind:'catalog',title:'Passage sélectionné',text:selectedPassage,courseId:course.id,subject:course.category,chapter:course.title,locator:{route:`#tab=cours&cours=${course.id}`}})}>Ajouter aux flashcards</button></aside>}
+   {course.sections.map((s,i)=>{const id=sectionSlug(s.title,i);return <section id={'section-'+id} className="course-section" key={s.title}><span className="section-number">{String(i+1).padStart(2,'0')}</span><div><div className="course-section-title"><h2>{s.title}</h2><button className="study-text-link" onClick={()=>setGeneration({kind:'catalog',title:s.title,text:[s.text,...(s.bullets||[])].join(' '),courseId:course.id,sectionId:id,subject:course.category,chapter:course.title,locator:{route:`#tab=cours&cours=${course.id}&section=${id}`}})}>+ Flashcards</button></div>{s.text.split('\n\n').map((paragraph,j)=><p key={j}>{paragraph}</p>)}{s.bullets&&<ul>{s.bullets.map(t=><li key={t}>{t}</li>)}</ul>}</div></section>})}
    {course.learning&&<section className="course-learning-tools" aria-label="Outils de raisonnement du cours">
     <div className="course-formula"><span className="study-eyebrow">RELATION À SAVOIR UTILISER</span><h2>{course.learning.formula.label}</h2><strong>{course.learning.formula.expression}</strong><p>{course.learning.formula.explanation}</p></div>
     <div className="course-comparison"><span className="study-eyebrow">TABLEAU COMPARATIF</span><div className="course-table-scroll"><table><thead><tr>{course.learning.comparison.headers.map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>{course.learning.comparison.rows.map(row=><tr key={row[0]}>{row.map(cell=><td key={cell}>{cell}</td>)}</tr>)}</tbody></table></div></div>
@@ -69,10 +76,10 @@ export default function CoursesWorkspace(p:{initial:string|null;completed:string
    <footer className="course-source"><h2>Pour vérifier et approfondir</h2>{(course.sources||[{label:'Source pédagogique du cours',url:course.source}]).map(s=><a key={s.url} href={s.url} target="_blank" rel="noreferrer">{s.label} ↗</a>)}<p>Synthèse pédagogique en français. Complétez-la avec les supports et les attendus de votre faculté.</p></footer>
    <div className="course-completion"><button className="study-secondary" onClick={()=>p.complete(course.id)} disabled={p.completed.includes(course.id)}><CheckCircle2 size={17}/>{p.completed.includes(course.id)?'Cours terminé':'Marquer ce cours terminé'}</button><button className="study-primary" onClick={()=>p.practice(course.id)}>M’entraîner sur ce cours<ArrowRight size={17}/></button></div>
    {nextCourse&&<button className="next-chapter" onClick={()=>p.navigate(nextCourse.id)}><span>CHAPITRE SUIVANT · {course.category.toLocaleUpperCase('fr')}<strong>{nextCourse.title}</strong></span><ArrowRight size={21}/></button>}
-  </article><aside className="reading-sidebar"><span className="study-eyebrow">DANS CE COURS · {progress}% LU</span>{course.sections.map((s,i)=><a key={s.title} href={'#section-'+i} onClick={e=>{e.preventDefault();document.getElementById('section-'+i)?.scrollIntoView({behavior:'smooth',block:'start'})}}><span>{String(i+1).padStart(2,'0')}</span>{s.title}</a>)}{course.structure&&<button className="anatomy-link" onClick={()=>p.explore(course.structure!)}><Box size={27}/><strong>Donnez du relief au cours.</strong><span>Explorer un repère du chapitre dans l’atlas 3D</span><ArrowRight size={19}/></button>}<button className="study-secondary sidebar-practice" onClick={()=>p.practice(course.id)}>Tester ce chapitre · {questionCount(course.id)} questions<ArrowRight size={15}/></button><div className="study-note">Lire → reformuler → résoudre.<br/>Le défilement mesure la lecture, pas l’acquisition.</div></aside></div>
+  </article><aside className="reading-sidebar"><span className="study-eyebrow">DANS CE COURS · {progress}% LU</span>{course.sections.map((s,i)=>{const id=sectionSlug(s.title,i);return <a key={s.title} href={'#section-'+id} onClick={e=>{e.preventDefault();document.getElementById('section-'+id)?.scrollIntoView({behavior:'smooth',block:'start'})}}><span>{String(i+1).padStart(2,'0')}</span>{s.title}</a>})}{course.structure&&<button className="anatomy-link" onClick={()=>p.explore(course.structure!)}><Box size={27}/><strong>Donnez du relief au cours.</strong><span>Explorer un repère du chapitre dans l’atlas 3D</span><ArrowRight size={19}/></button>}<button className="study-secondary sidebar-practice" onClick={()=>p.practice(course.id)}>Tester ce chapitre · {questionCount(course.id)} questions<ArrowRight size={15}/></button><div className="study-note">Lire → reformuler → résoudre.<br/>Le défilement mesure la lecture, pas l’acquisition.</div></aside></div>
  </>:<>
   <CourseLibrary subjectId={category} group={group} query={query} filter={filter} saved={saved} completed={p.completed} browse={browse} search={setQuery} setFilter={setFilter} open={p.navigate}/>
 
  </>}
- </section>
+ {generation&&<GenerationDialog source={generation} onClose={()=>setGeneration(null)}/>}</section>
 }

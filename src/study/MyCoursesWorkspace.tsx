@@ -15,6 +15,8 @@ import { isCorrect } from './questions'
 import { nextReview, validReview, type ReviewRecord } from './reviewSchedule'
 import { buildDocumentAnkiCsv, downloadAnkiCsv, documentAnkiFilename } from './ankiExport'
 import './myCourses.css'
+import GenerationDialog from '../flashcards/GenerationDialog'
+import type{GenerationSource}from'../flashcards/flashcardsTypes'
 
 type Records = Record<string, ReviewRecord>
 
@@ -30,6 +32,7 @@ function readRecords(): Records {
 
 export default function MyCoursesWorkspace(props: {
   initialDocumentId?: string | null
+  initialSectionId?: string | null
   onOpenDocument?: (id: string | null) => void
   onNavigateAtlas?: () => void
 }) {
@@ -50,6 +53,7 @@ export default function MyCoursesWorkspace(props: {
   const [generatingSummary, setGeneratingSummary] = useState(false)
   const [generatingQcm, setGeneratingQcm] = useState(false)
   const [targetPassage, setTargetPassage] = useState<{ title: string; pages: string; text: string } | null>(null)
+  const [flashGeneration,setFlashGeneration]=useState<GenerationSource|null>(null)
 
   // In-session practice state
   const [records, setRecords] = useState<Records>(readRecords)
@@ -93,6 +97,8 @@ export default function MyCoursesWorkspace(props: {
       setPracticeSession(null)
     }
   }, [selectedDocId])
+
+  useEffect(()=>{if(!currentDoc||!props.initialSectionId)return;setActiveTab('sections');requestAnimationFrame(()=>document.getElementById('study-section-'+props.initialSectionId)?.scrollIntoView({behavior:'smooth',block:'center'}))},[currentDoc?.id,props.initialSectionId])
 
   const loadDoc = async (id: string) => {
     try {
@@ -270,6 +276,7 @@ export default function MyCoursesWorkspace(props: {
           </div>
 
           <div className="mycourses-action-bar">
+            <button className="mycourses-action-btn mycourses-action-primary" onClick={()=>setFlashGeneration({kind:'study',title:currentDoc.title,documentId:currentDoc.id,pageCount:currentDoc.pageCount,chapter:currentDoc.title,sections:(currentDoc.sections||[]).map(section=>({id:section.id,title:section.title,startPage:section.startPage,endPage:section.endPage}))})}><Sparkles size={16}/>Générer des flashcards</button>
             {!currentDoc.summary ? (
               <button
                 className="mycourses-action-btn mycourses-action-primary"
@@ -507,7 +514,7 @@ export default function MyCoursesWorkspace(props: {
               Le découpage automatique identifie les chapitres et les sections à partir de la structure de votre cours.
             </p>
             {(currentDoc.sections || []).map((sec, idx) => (
-              <article key={sec.id} className="mycourses-summary-card">
+              <article key={sec.id} id={'study-section-'+sec.id} className="mycourses-summary-card">
                 <h3>
                   <span>{idx + 1}. {sec.title}</span>
                   <span>Pages {sec.startPage}–{sec.endPage}</span>
@@ -668,7 +675,7 @@ export default function MyCoursesWorkspace(props: {
             </div>
           </div>
         )}
-      </section>
+        {flashGeneration&&<GenerationDialog source={flashGeneration} onClose={()=>setFlashGeneration(null)}/>}</section>
     )
   }
 
