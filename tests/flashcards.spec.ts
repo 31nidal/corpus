@@ -458,3 +458,81 @@ test('FSRS : session de révision, affichage des 4 intervalles précalculés et 
   await page.waitForResponse(response => response.url().endsWith('/api/flashcards/stats') && response.ok())
   await expect(page.locator('.flash-hero-score strong')).toHaveText('0')
 })
+
+test('réponse /preview retardée : boutons désactivés, affichage du calcul puis activation et persistance', async ({ page }) => {
+  await register(page)
+  const headers = { 'x-mycorpus-request': '1' }
+  const deck = (await (await page.request.post('/api/flashcards/decks', { headers, data: { name: 'FSRS Latence' } })).json()).deck
+  await page.request.post('/api/flashcards/cards', { headers, data: { deckId: deck.id, front: 'Question latence', back: 'Réponse latence' } })
+  await page.reload()
+  await page.getByRole('button', { name: 'Commencer' }).click()
+  await expect(page.getByText('RECTO')).toBeVisible()
+
+  let delayResolved = false
+  await page.route('**/api/flashcards/cards/*/preview', async route => {
+    await new Promise(resolve => setTimeout(resolve, 600))
+    delayResolved = true
+    await route.continue()
+  })
+
+  await page.getByRole('button', { name: 'Afficher la réponse' }).click()
+  await expect(page.getByText('VERSO')).toBeVisible()
+
+  await expect(page.getByText('Calcul des prochains rappels…')).toBeVisible()
+  const disabledButtons = page.locator('.review-ratings button:disabled')
+  await expect(disabledButtons).toHaveCount(4)
+
+  const goodBtn = page.getByRole('button', { name: /Correct/ })
+  await expect(goodBtn).toBeEnabled({ timeout: 5000 })
+  expect(delayResolved).toBe(true)
+  await expect(goodBtn.locator('small')).toHaveText(/min|h|j/)
+  await expect(page.getByText('Calcul des prochains rappels…')).not.toBeVisible()
+
+  const [reviewResponse] = await Promise.all([
+    page.waitForResponse(response => response.url().endsWith('/review') && response.request().method() === 'POST' && response.ok()),
+    goodBtn.click(),
+  ])
+  const payload = await reviewResponse.json()
+  expect(payload.review.reviewVersion).toBe(1)
+  expect(payload.review.schedulerVersion).toContain('ts-fsrs')
+  await expect(page.getByRole('heading', { name: 'Session terminée' })).toBeVisible()
+})
+
+test('échec réseau du /preview : aucun rating possible, message d’erreur et bouton Réessayer fonctionnel', async ({ page }) => {
+  await register(page)
+  const headers = { 'x-mycorpus-request': '1' }
+  const deck = (await (await page.request.post('/api/flashcards/decks', { headers, data: { name: 'FSRS Erreur' } })).json()).deck
+  await page.request.post('/api/flashcards/cards', { headers, data: { deckId: deck.id, front: 'Question panne', back: 'Réponse panne' } })
+  await page.reload()
+  await page.getByRole('button', { name: 'Commencer' }).click()
+  await expect(page.getByText('RECTO')).toBeVisible()
+
+  await page.route('**/api/flashcards/cards/*/preview', route =>
+    route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: 'Service preview indisponible' }) })
+  )
+
+  await page.getByRole('button', { name: 'Afficher la réponse' }).click()
+  await expect(page.getByText('VERSO')).toBeVisible()
+
+  await expect(page.getByRole('alert')).toContainText('Service preview indisponible')
+  await expect(page.locator('.review-ratings')).toHaveCount(0)
+  const retryBtn = page.getByRole('button', { name: 'Réessayer' })
+  await expect(retryBtn).toBeVisible()
+
+  await page.unroute('**/api/flashcards/cards/*/preview')
+  await retryBtn.click()
+
+  const goodBtn = page.getByRole('button', { name: /Correct/ })
+  await expect(goodBtn).toBeVisible()
+  await expect(goodBtn).toBeEnabled()
+  await expect(goodBtn.locator('small')).toHaveText(/min|h|j/)
+  await expect(page.getByRole('alert')).toHaveCount(0)
+
+  const [reviewResponse] = await Promise.all([
+    page.waitForResponse(response => response.url().endsWith('/review') && response.request().method() === 'POST' && response.ok()),
+    goodBtn.click(),
+  ])
+  const payload = await reviewResponse.json()
+  expect(payload.review.reviewVersion).toBe(1)
+  await expect(page.getByRole('heading', { name: 'Session terminée' })).toBeVisible()
+})

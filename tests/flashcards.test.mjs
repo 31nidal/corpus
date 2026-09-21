@@ -59,10 +59,11 @@ test('révision, statistiques et export Anki restent isolés par compte', async 
     const user = await call('/api/account/register', 'POST', {email: 'review-flash@example.test', name: 'Révision', password})
     const deck = (await call('/api/flashcards/decks', 'POST', {name: 'UE 3'}, user.cookie)).data.deck
     const card = (await call('/api/flashcards/cards', 'POST', {deckId: deck.id, front: 'Recto', back: 'Verso', tags: []}, user.cookie)).data.card
-    assert.equal((await call('/api/flashcards/review', 'GET', undefined, user.cookie)).data.cards.length, 1)
-    const review = await call(`/api/flashcards/cards/${card.id}/review`, 'POST', {rating: 'good', responseMs: 2300}, user.cookie)
+    const prevRes = await call(`/api/flashcards/cards/${card.id}/preview`, 'POST', {}, user.cookie)
+    assert.equal(prevRes.status, 200)
+    const review = await call(`/api/flashcards/cards/${card.id}/review`, 'POST', {rating: 'good', responseMs: 2300, previewId: prevRes.data.preview.id}, user.cookie)
     assert.equal(review.status, 200); assert.equal(review.data.review.lastRating, 'good')
-    const duplicate = await call(`/api/flashcards/cards/${card.id}/review`, 'POST', {rating: 'easy', expectedDueAt: card.review.dueAt}, user.cookie)
+    const duplicate = await call(`/api/flashcards/cards/${card.id}/review`, 'POST', {rating: 'easy', expectedDueAt: card.review.dueAt, previewId: prevRes.data.preview.id}, user.cookie)
     assert.equal(duplicate.status, 409)
     const stats = (await call('/api/flashcards/stats', 'GET', undefined, user.cookie)).data.stats
     assert.equal(stats.total, 1); assert.equal(stats.reviews, 1); assert.equal(stats.successRate, 100)
@@ -275,6 +276,84 @@ test('Streak civil : décrémentation sécurisée IANA et transition DST', async
     // Le streak doit compter les 4 jours consécutifs : 27, 28, 29, 30 mars
     assert.equal(stats.streak, 4)
     db.close()
+  } finally { rmSync(directory, {recursive: true, force: true}) }
+})
+
+test('Validation stricte FSRS review : previewId obligatoire, rejet expiration, réutilisation, mismatch et carte non due', async () => {
+  const directory = mkdtempSync(path.join(tmpdir(), 'mycorpus-fsrs-validation-')), call = api(directory)
+  try {
+    const alice = await call('/api/account/register', 'POST', {email: 'alice-val@example.test', name: 'AliceVal', password})
+    const bob = await call('/api/account/register', 'POST', {email: 'bob-val@example.test', name: 'BobVal', password})
+    const deckAlice = (await call('/api/flashcards/decks', 'POST', {name: 'Deck Alice'}, alice.cookie)).data.deck
+    const deckBob = (await call('/api/flashcards/decks', 'POST', {name: 'Deck Bob'}, bob.cookie)).data.deck
+    const cardAlice = (await call('/api/flashcards/cards', 'POST', {deckId: deckAlice.id, front: 'QA', back: 'AA'}, alice.cookie)).data.card
+    const cardBob = (await call('/api/flashcards/cards', 'POST', {deckId: deckBob.id, front: 'QB', back: 'AB'}, bob.cookie)).data.card
+
+    // 1. Review sans previewId => rejet 422
+    const noPreview = await call(`/api/flashcards/cards/${cardAlice.id}/review`, 'POST', {rating: 'good'}, alice.cookie)
+    assert.equal(noPreview.status, 422)
+
+    // 2. Mauvais preview/card ou preview d'un autre utilisateur => rejet 403
+    const prevBob = await call(`/api/flashcards/cards/${cardBob.id}/preview`, 'POST', {}, bob.cookie)
+    assert.equal(prevBob.status, 200)
+    const crossCard = await call(`/api/flashcards/cards/${cardAlice.id}/review`, 'POST', {rating: 'good', previewId: prevBob.data.preview.id}, alice.cookie)
+    assert.equal(crossCard.status, 403)
+
+    // 3. Preview expiré => rejet 409
+    const prevAlice = await call(`/api/flashcards/cards/${cardAlice.id}/preview`, 'POST', {}, alice.cookie)
+    assert.equal(prevAlice.status, 200)
+    const database = new DatabaseSync(path.join(directory, 'mycorpus.sqlite'))
+    database.prepare('UPDATE flashcard_review_previews SET expires_at=? WHERE id=?').run(Date.now() - 1000, prevAlice.data.preview.id)
+    database.close()
+    const expiredRes = await call(`/api/flashcards/cards/${cardAlice.id}/review`, 'POST', {rating: 'good', previewId: prevAlice.data.preview.id}, alice.cookie)
+    assert.equal(expiredRes.status, 409)
+
+    // 4. Preview valide => succès 200
+    const validPrev = await call(`/api/flashcards/cards/${cardAlice.id}/preview`, 'POST', {}, alice.cookie)
+    assert.equal(validPrev.status, 200)
+    const validReview = await call(`/api/flashcards/cards/${cardAlice.id}/review`, 'POST', {
+      rating: 'good',
+      responseMs: 1200,
+      previewId: validPrev.data.preview.id,
+    }, alice.cookie)
+    assert.equal(validReview.status, 200)
+
+    // 5. Preview déjà consommé => rejet 409
+    const reused = await call(`/api/flashcards/cards/${cardAlice.id}/review`, 'POST', {
+      rating: 'good',
+      previewId: validPrev.data.preview.id,
+    }, alice.cookie)
+    assert.equal(reused.status, 409)
+
+    // 6. Carte non due (carte qui vient d'être révisée a un due_at futur) => rejet 400 sur preview et review
+    const cardAfter = (await call(`/api/flashcards/cards?deck=${deckAlice.id}`, 'GET', undefined, alice.cookie)).data.cards[0]
+    assert.ok(cardAfter.review.dueAt > Date.now())
+    const previewNotDue = await call(`/api/flashcards/cards/${cardAlice.id}/preview`, 'POST', {}, alice.cookie)
+    assert.equal(previewNotDue.status, 400)
+
+    const {defaultFsrsScheduler} = await import('../server/flashcards/fsrsScheduler.mjs')
+    const dbNotDue = new DatabaseSync(path.join(directory, 'mycorpus.sqlite'))
+    dbNotDue.prepare(`
+      INSERT INTO flashcard_review_previews(
+        id, user_id, card_id, review_version, preview_at, expires_at, candidates_json, scheduler_version, scheduler_config_hash
+      ) VALUES('preview-future', ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      alice.data.user.id,
+      cardAlice.id,
+      cardAfter.review.reviewVersion,
+      Date.now(),
+      Date.now() + 60000,
+      JSON.stringify({good: {rating: 'good'}}),
+      defaultFsrsScheduler.schedulerVersion,
+      defaultFsrsScheduler.schedulerConfigHash
+    )
+    dbNotDue.close()
+
+    const reviewNotDue = await call(`/api/flashcards/cards/${cardAlice.id}/review`, 'POST', {
+      rating: 'good',
+      previewId: 'preview-future',
+    }, alice.cookie)
+    assert.equal(reviewNotDue.status, 400)
   } finally { rmSync(directory, {recursive: true, force: true}) }
 })
 

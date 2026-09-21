@@ -105,6 +105,9 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
         const row = d.prepare('SELECT * FROM flashcard_reviews WHERE card_id=? AND user_id=?').get(card.id, user.id)
         if (!row) return send(404, {error: 'Carte introuvable.'})
         const now = Date.now()
+        if (row.due_at > now) {
+          return send(400, {error: 'Cette carte n’est pas encore due pour révision.'})
+        }
         const snapshot = scheduler.createPreviewSnapshot(row, now)
         d.exec('BEGIN IMMEDIATE')
         try {
@@ -140,7 +143,12 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
         if (!before) return send(404, {error: 'Carte introuvable.'})
         const now = Date.now()
 
-        // Optimistic locking checks
+        // 1. previewId obligatoire pour garantir l'équivalence exacte aperçu = révision
+        if (!body.previewId || typeof body.previewId !== 'string') {
+          return send(422, {error: 'Aperçu de révision (previewId) obligatoire pour enregistrer une révision FSRS.'})
+        }
+
+        // 2. Contrôles de concurrence optimiste
         if (body.expectedVersion !== undefined && body.expectedVersion !== before.review_version) {
           return send(409, {error: 'Cette carte a déjà été révisée sur un autre onglet ou appareil. Rechargez la session.'})
         }
@@ -152,16 +160,44 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
 
         d.exec('BEGIN IMMEDIATE')
         try {
-          // Resolve snapshot preview candidate if provided and valid
-          let candidate = null
-          if (body.previewId) {
-            const previewRow = d.prepare('SELECT * FROM flashcard_review_previews WHERE id=? AND card_id=? AND user_id=?').get(body.previewId, card.id, user.id)
-            if (previewRow && previewRow.expires_at > now && previewRow.review_version === before.review_version && previewRow.scheduler_config_hash === scheduler.schedulerConfigHash) {
-              const candidates = JSON.parse(previewRow.candidates_json)
-              candidate = candidates[rating] || null
-              d.prepare('DELETE FROM flashcard_review_previews WHERE id=?').run(body.previewId)
-            }
+          const previewRow = d.prepare('SELECT * FROM flashcard_review_previews WHERE id=?').get(body.previewId)
+          if (!previewRow) {
+            d.exec('ROLLBACK')
+            return send(409, {error: 'Aperçu de révision introuvable ou déjà consommé. Rechargez la carte.'})
           }
+          if (previewRow.card_id !== card.id || previewRow.user_id !== user.id) {
+            d.exec('ROLLBACK')
+            return send(403, {error: 'Cet aperçu de révision ne correspond pas à cette carte ou cet utilisateur.'})
+          }
+          if (previewRow.expires_at <= now) {
+            d.prepare('DELETE FROM flashcard_review_previews WHERE id=?').run(body.previewId)
+            d.exec('COMMIT')
+            return send(409, {error: 'Aperçu de révision expiré. Affichez de nouveau la réponse.'})
+          }
+          if (previewRow.review_version !== before.review_version) {
+            d.exec('ROLLBACK')
+            return send(409, {error: 'Conflit de version de révision. Cette carte a déjà été révisée.'})
+          }
+          if (previewRow.scheduler_config_hash !== scheduler.schedulerConfigHash) {
+            d.exec('ROLLBACK')
+            return send(409, {error: 'La configuration du planificateur a changé. Veuillez réafficher la réponse.'})
+          }
+
+          // 3. Refus si la carte n'est pas due en mode SRS normal
+          if (before.due_at > now) {
+            d.exec('ROLLBACK')
+            return send(400, {error: 'Cette carte n’est pas encore due pour révision.'})
+          }
+
+          const candidates = JSON.parse(previewRow.candidates_json)
+          const candidate = candidates[rating]
+          if (!candidate) {
+            d.exec('ROLLBACK')
+            return send(422, {error: 'Candidat de révision introuvable dans l’aperçu.'})
+          }
+
+          // Consommer le preview immédiatement au sein de la transaction
+          d.prepare('DELETE FROM flashcard_review_previews WHERE id=?').run(body.previewId)
 
           const next = scheduler.applyReview(before, rating, now, candidate)
 
@@ -183,7 +219,7 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
             return send(409, {error: 'Cette carte a déjà été révisée sur un autre onglet ou appareil. Rechargez la session.'})
           }
 
-          // Clean up previews for this card and prune expired ones
+          // Nettoyer les previews restants pour cette carte et supprimer les expirés
           d.prepare('DELETE FROM flashcard_review_previews WHERE card_id=? AND user_id=?').run(card.id, user.id)
           d.prepare('DELETE FROM flashcard_review_previews WHERE expires_at<?').run(now)
 
