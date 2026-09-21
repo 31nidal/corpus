@@ -54,7 +54,14 @@ export function initFlashcardSchema(db) {
       repetitions INTEGER NOT NULL DEFAULT 0,
       lapses INTEGER NOT NULL DEFAULT 0,
       last_rating TEXT,
-      last_reviewed_at INTEGER
+      last_reviewed_at INTEGER,
+      fsrs_stability REAL,
+      fsrs_difficulty REAL,
+      fsrs_reps INTEGER DEFAULT 0,
+      fsrs_learning_steps INTEGER NOT NULL DEFAULT 0,
+      fsrs_scheduled_days REAL NOT NULL DEFAULT 0,
+      review_version INTEGER NOT NULL DEFAULT 0,
+      fsrs_origin TEXT
     );
     CREATE INDEX IF NOT EXISTS flashcard_reviews_due ON flashcard_reviews(user_id, due_at);
 
@@ -68,9 +75,32 @@ export function initFlashcardSchema(db) {
       previous_interval_days REAL NOT NULL,
       next_due_at INTEGER NOT NULL,
       next_interval_days REAL NOT NULL,
-      response_ms INTEGER
+      response_ms INTEGER,
+      previous_state TEXT,
+      next_state TEXT,
+      fsrs_difficulty REAL,
+      fsrs_stability REAL,
+      scheduled_days REAL,
+      elapsed_days REAL,
+      scheduler_version TEXT,
+      scheduler_config_hash TEXT,
+      scheduler_data_json TEXT
     );
     CREATE INDEX IF NOT EXISTS flashcard_logs_user_date ON flashcard_review_logs(user_id, reviewed_at DESC);
     CREATE INDEX IF NOT EXISTS flashcard_logs_card ON flashcard_review_logs(card_id, reviewed_at DESC);
+
+    CREATE TABLE IF NOT EXISTS flashcard_review_previews (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      card_id TEXT NOT NULL REFERENCES flashcards(id) ON DELETE CASCADE,
+      review_version INTEGER NOT NULL,
+      preview_at INTEGER NOT NULL,
+      expires_at INTEGER NOT NULL,
+      candidates_json TEXT NOT NULL,
+      scheduler_version TEXT NOT NULL,
+      scheduler_config_hash TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS flashcard_previews_card_user ON flashcard_review_previews(card_id, user_id);
+    CREATE INDEX IF NOT EXISTS flashcard_previews_expires ON flashcard_review_previews(expires_at);
   `)
 }

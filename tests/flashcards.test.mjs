@@ -167,3 +167,57 @@ test('enregistrement par lot : validation de chaque carte et aucun enregistremen
     for (const limit of ['1.5', 'Infinity', '-5']) assert.equal((await call('/api/flashcards/cards?limit='+limit, 'GET', undefined, user.cookie)).status, 200)
   } finally { rmSync(directory, {recursive: true, force: true}) }
 })
+
+test('FSRS preview snapshot : exactitude des candidats, concurrence optimiste 409, persistance et restart', async () => {
+  const directory = mkdtempSync(path.join(tmpdir(), 'mycorpus-fsrs-preview-')), call = api(directory)
+  try {
+    const user = await call('/api/account/register', 'POST', {email: 'fsrs-test@example.test', name: 'FsrsTester', password})
+    const deck = (await call('/api/flashcards/decks', 'POST', {name: 'Neurologie'}, user.cookie)).data.deck
+    const card = (await call('/api/flashcards/cards', 'POST', {deckId: deck.id, front: 'Aire de Broca', back: 'Production du langage'}, user.cookie)).data.card
+
+    // 1. GET /review produit un preview avec un ID et des labels pour chaque option
+    const queue = await call('/api/flashcards/review', 'GET', undefined, user.cookie)
+    assert.equal(queue.status, 200)
+    assert.equal(queue.data.cards.length, 1)
+    const reviewCard = queue.data.cards[0]
+    assert.ok(reviewCard.preview?.id)
+    assert.ok(reviewCard.preview?.labels?.good)
+    assert.ok(reviewCard.preview?.labels?.again)
+    const previewId = reviewCard.preview.id
+
+    // 2. Simulation d'un restart du serveur : une nouvelle instance d'API doit retrouver le snapshot en DB
+    const callAfterRestart = api(directory)
+
+    // 3. Application du candidat avec previewId
+    const resReview = await callAfterRestart(`/api/flashcards/cards/${card.id}/review`, 'POST', {
+      rating: 'good',
+      responseMs: 1500,
+      expectedVersion: 0,
+      previewId,
+    }, user.cookie)
+    assert.equal(resReview.status, 200)
+    assert.equal(resReview.data.review.reviewVersion, 1)
+    assert.ok(resReview.data.review.schedulerConfigHash)
+
+    // 4. Tentative de réutilisation du même previewId ou soumission concurrente avec expectedVersion 0 -> 409 Conflict
+    const concurrent = await callAfterRestart(`/api/flashcards/cards/${card.id}/review`, 'POST', {
+      rating: 'easy',
+      expectedVersion: 0,
+      previewId,
+    }, user.cookie)
+    assert.equal(concurrent.status, 409)
+
+    // 5. Vérifier que la table flashcard_review_previews n'a plus ce preview (consommé)
+    const database = new DatabaseSync(path.join(directory, 'mycorpus.sqlite'))
+    const previewInDb = database.prepare('SELECT 1 FROM flashcard_review_previews WHERE id=?').get(previewId)
+    assert.equal(previewInDb, undefined)
+
+    // 6. Vérifier que les logs contiennent scheduler_version et scheduler_config_hash
+    const log = database.prepare('SELECT * FROM flashcard_review_logs WHERE card_id=?').get(card.id)
+    assert.ok(log.scheduler_version.startsWith('ts-fsrs-'))
+    assert.ok(log.scheduler_config_hash)
+    assert.ok(log.scheduler_data_json)
+    database.close()
+  } finally { rmSync(directory, {recursive: true, force: true}) }
+})
+

@@ -407,6 +407,54 @@ test('une réponse perdue après enregistrement ne duplique pas les brouillons',
  await expect(dialog.getByRole('alert')).toContainText('Réponse réseau perdue')
  await dialog.getByRole('button',{name:'Enregistrer la sélection'}).click()
  await expect(dialog).not.toBeVisible()
- const result=await (await page.request.get('/api/flashcards/cards')).json()
- expect(result.cards).toHaveLength(2)
+  const result=await (await page.request.get('/api/flashcards/cards')).json()
+  expect(result.cards).toHaveLength(2)
+})
+
+test('FSRS : session de révision, affichage des 4 intervalles précalculés et persistance FSRS', async ({ page }) => {
+  await register(page)
+  await page.getByRole('button', { name: 'Mes decks' }).click()
+  await page.getByLabel('Nom du nouveau deck').fill('FSRS Deck')
+  await page.getByRole('button', { name: 'Créer un deck' }).click()
+  await expect(page.getByRole('heading', { name: 'FSRS Deck' })).toBeVisible()
+
+  await page.getByRole('button', { name: 'Toutes mes cartes' }).click()
+  await page.getByRole('button', { name: 'Nouvelle carte' }).click()
+  await page.getByLabel('Recto').fill('Qu’est-ce que le nœud sinusal ?')
+  await page.getByLabel('Verso').fill('Le pacemaker physiologique naturel du cœur.')
+  await page.getByRole('button', { name: 'Enregistrer' }).click()
+  await expect(page.getByText('Qu’est-ce que le nœud sinusal ?')).toBeVisible()
+
+  await page.getByRole('button', { name: 'Aujourd’hui' }).click()
+  await page.getByRole('button', { name: 'Commencer' }).click()
+  await expect(page.getByText('RECTO')).toBeVisible()
+  await page.getByRole('button', { name: 'Afficher la réponse' }).click()
+  await expect(page.getByText('VERSO')).toBeVisible()
+
+  const againBtn = page.getByRole('button', { name: /À revoir/ })
+  const hardBtn = page.getByRole('button', { name: /Difficile/ })
+  const goodBtn = page.getByRole('button', { name: /Correct/ })
+  const easyBtn = page.getByRole('button', { name: /Facile/ })
+
+  await expect(againBtn).toBeVisible()
+  await expect(hardBtn).toBeVisible()
+  await expect(goodBtn).toBeVisible()
+  await expect(easyBtn).toBeVisible()
+
+  await expect(againBtn.locator('small')).toHaveText(/min|h|j/)
+  await expect(goodBtn.locator('small')).toHaveText(/min|h|j/)
+
+  const [reviewResponse] = await Promise.all([
+    page.waitForResponse(response => response.url().endsWith('/review') && response.request().method() === 'POST' && response.ok()),
+    goodBtn.click(),
+  ])
+
+  const reviewPayload = await reviewResponse.json()
+  expect(reviewPayload.review.state).toBe('learning')
+  expect(reviewPayload.review.reviewVersion).toBe(1)
+  expect(reviewPayload.review.schedulerVersion).toContain('ts-fsrs')
+
+  await page.reload()
+  await page.waitForResponse(response => response.url().endsWith('/api/flashcards/stats') && response.ok())
+  await expect(page.locator('.flash-hero-score strong')).toHaveText('0')
 })

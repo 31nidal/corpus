@@ -3,9 +3,10 @@ import {createHash, randomUUID} from 'node:crypto'
 import {mkdirSync} from 'node:fs'
 import path from 'node:path'
 import {initFlashcardSchema} from './schema.mjs'
+import {migrateFlashcards} from './migrations.mjs'
 import {FlashcardRepository} from './repository.mjs'
 import {cleanText, ratings, validateCard, validateDeck} from './validation.mjs'
-import {scheduleReview} from './scheduler.mjs'
+import {defaultFsrsScheduler} from './fsrsScheduler.mjs'
 import {generateLocalDrafts, sanitizeGeneratedDrafts} from './generation.mjs'
 import {buildFlashcardAnki} from './anki.mjs'
 import {initStudySchema, releaseGenerationQuota, reserveGenerationQuota} from '../study.mjs'
@@ -22,13 +23,14 @@ const decodeCursor = value => { try { const parsed = JSON.parse(Buffer.from(valu
 export function createFlashcardHandler(config = process.env, dependencies = {}) {
   let db = dependencies.db
   const provider = dependencies.provider || null
+  const scheduler = dependencies.scheduler || defaultFsrsScheduler
   const getDb = () => {
     if (db) return db
     const directory = config.RAILWAY_VOLUME_MOUNT_PATH || config.ACCOUNT_DATA_DIR || path.resolve('.data')
     mkdirSync(directory, {recursive: true, mode: 0o700})
     db = new DatabaseSync(path.join(directory, 'mycorpus.sqlite'))
     db.exec('PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;')
-    initStudySchema(db); initFlashcardSchema(db)
+    initStudySchema(db); initFlashcardSchema(db); migrateFlashcards(db, scheduler)
     return db
   }
   return async (req, res) => {
@@ -102,16 +104,86 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
         const body = await readJson(req), rating = body.rating
         if (!ratings.has(rating)) return send(400, {error: 'Réponse de révision invalide.'})
         const card = repo.card(user.id, cardMatch[1]); if (!card) return send(404, {error: 'Carte introuvable.'})
-        const before = d.prepare('SELECT * FROM flashcard_reviews WHERE card_id=? AND user_id=?').get(card.id, user.id), now = Date.now(), next = scheduleReview(before, rating, now), responseMs = Number.isSafeInteger(body.responseMs) && body.responseMs >= 0 && body.responseMs <= 3600000 ? body.responseMs : null
-        if (body.expectedDueAt !== undefined && body.expectedDueAt !== before.due_at) return send(409, {error: 'Cette carte a déjà été révisée sur un autre onglet ou appareil. Rechargez la session.'})
-        d.exec('BEGIN IMMEDIATE'); try {
-          d.prepare('UPDATE flashcard_reviews SET state=?,due_at=?,interval_days=?,ease_factor=?,repetitions=?,lapses=?,last_rating=?,last_reviewed_at=? WHERE card_id=? AND user_id=?').run(next.state, next.dueAt, next.intervalDays, next.easeFactor, next.repetitions, next.lapses, next.lastRating, next.lastReviewedAt, card.id, user.id)
-          d.prepare('INSERT INTO flashcard_review_logs VALUES(?,?,?,?,?,?,?,?,?,?)').run(randomUUID(), card.id, user.id, rating, now, before.due_at, before.interval_days, next.dueAt, next.intervalDays, responseMs); d.exec('COMMIT')
-        } catch (error) { d.exec('ROLLBACK'); throw error }
-        return send(200, {review: next})
+        const before = d.prepare('SELECT * FROM flashcard_reviews WHERE card_id=? AND user_id=?').get(card.id, user.id)
+        if (!before) return send(404, {error: 'Carte introuvable.'})
+        const now = Date.now()
+
+        // Optimistic locking checks
+        if (body.expectedVersion !== undefined && body.expectedVersion !== before.review_version) {
+          return send(409, {error: 'Cette carte a déjà été révisée sur un autre onglet ou appareil. Rechargez la session.'})
+        }
+        if (body.expectedDueAt !== undefined && body.expectedDueAt !== before.due_at) {
+          return send(409, {error: 'Cette carte a déjà été révisée sur un autre onglet ou appareil. Rechargez la session.'})
+        }
+
+        const responseMs = Number.isSafeInteger(body.responseMs) && body.responseMs >= 0 && body.responseMs <= 3600000 ? body.responseMs : null
+
+        d.exec('BEGIN IMMEDIATE')
+        try {
+          // Resolve snapshot preview candidate if provided and valid
+          let candidate = null
+          if (body.previewId) {
+            const previewRow = d.prepare('SELECT * FROM flashcard_review_previews WHERE id=? AND card_id=? AND user_id=?').get(body.previewId, card.id, user.id)
+            if (previewRow && previewRow.expires_at > now && previewRow.review_version === before.review_version && previewRow.scheduler_config_hash === scheduler.schedulerConfigHash) {
+              const candidates = JSON.parse(previewRow.candidates_json)
+              candidate = candidates[rating] || null
+              d.prepare('DELETE FROM flashcard_review_previews WHERE id=?').run(body.previewId)
+            }
+          }
+
+          const next = scheduler.applyReview(before, rating, now, candidate)
+
+          const updateResult = d.prepare(`
+            UPDATE flashcard_reviews
+            SET state=?, due_at=?, interval_days=?, ease_factor=?, repetitions=?, lapses=?,
+                last_rating=?, last_reviewed_at=?, fsrs_stability=?, fsrs_difficulty=?,
+                fsrs_reps=?, fsrs_learning_steps=?, fsrs_scheduled_days=?, review_version=?
+            WHERE card_id=? AND user_id=? AND review_version=?
+          `).run(
+            next.state, next.dueAt, next.intervalDays, next.easeFactor, next.repetitions, next.lapses,
+            next.lastRating, next.lastReviewedAt, next.stability, next.difficulty,
+            next.fsrsReps, next.learningSteps, next.scheduledDays, next.reviewVersion,
+            card.id, user.id, before.review_version
+          )
+
+          if (!updateResult.changes) {
+            d.exec('ROLLBACK')
+            return send(409, {error: 'Cette carte a déjà été révisée sur un autre onglet ou appareil. Rechargez la session.'})
+          }
+
+          // Clean up previews for this card and prune expired ones
+          d.prepare('DELETE FROM flashcard_review_previews WHERE card_id=? AND user_id=?').run(card.id, user.id)
+          d.prepare('DELETE FROM flashcard_review_previews WHERE expires_at<?').run(now)
+
+          d.prepare(`
+            INSERT INTO flashcard_review_logs(
+              id, card_id, user_id, rating, reviewed_at,
+              previous_due_at, previous_interval_days, next_due_at, next_interval_days, response_ms,
+              previous_state, next_state, fsrs_difficulty, fsrs_stability, scheduled_days, elapsed_days,
+              scheduler_version, scheduler_config_hash, scheduler_data_json
+            ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+          `).run(
+            randomUUID(), card.id, user.id, rating, now,
+            before.due_at, before.interval_days, next.dueAt, next.intervalDays, responseMs,
+            before.state, next.state, next.difficulty, next.stability, next.scheduledDays, next.elapsedDays,
+            next.schedulerVersion, next.schedulerConfigHash, next.auditJson
+          )
+
+          d.exec('COMMIT')
+          return send(200, {review: next})
+        } catch (error) {
+          d.exec('ROLLBACK')
+          throw error
+        }
       }
-      if (req.method === 'GET' && subpath === 'review') return send(200, {cards: repo.reviewQueue(user.id, cleanText(url.searchParams.get('deck'), 100), Number(url.searchParams.get('limit')) || 30)})
-      if (req.method === 'GET' && subpath === 'stats') return send(200, {stats: repo.stats(user.id)})
+      if (req.method === 'GET' && subpath === 'review') {
+        const cards = repo.reviewQueue(user.id, cleanText(url.searchParams.get('deck'), 100), Number(url.searchParams.get('limit')) || 30, scheduler)
+        return send(200, {cards})
+      }
+      if (req.method === 'GET' && subpath === 'stats') {
+        const timeZone = cleanText(req.headers['x-timezone'] || url.searchParams.get('timezone'), 60) || 'Europe/Paris'
+        return send(200, {stats: repo.stats(user.id, timeZone)})
+      }
 
       if (req.method === 'POST' && subpath.startsWith('generate/')) {
         const kind = subpath.slice(9), body = await readJson(req, 1000000), level = ['essential', 'standard', 'complete'].includes(body.level) ? body.level : 'standard', requestedCount = Math.min(80, Math.max(1, Number(body.count) || 12))
