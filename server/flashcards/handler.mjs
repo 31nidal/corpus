@@ -67,9 +67,20 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
       if (req.method === 'POST' && subpath === 'cards/bulk') {
         const body = await readJson(req, 2000000)
         if (!Array.isArray(body.cards) || !body.cards.length || body.cards.length > 200) return send(400, {error: 'Entre 1 et 200 cartes sont attendues.'})
-        const values = body.cards.map(validateCard); if (values.some(value => !value)) return send(400, {error: 'Une carte du lot est invalide.'})
+        const requestId = body.requestId === undefined ? null : cleanText(body.requestId, 100, true)
+        if (body.requestId !== undefined && !requestId) return send(400, {error: 'Identifiant d’enregistrement invalide.'})
+        const payloadHash = digest(JSON.stringify(body.cards))
+        const previous = requestId && d.prepare('SELECT payload_hash,response_json FROM flashcard_save_requests WHERE user_id=? AND request_id=?').get(user.id, requestId)
+        if (previous) return previous.payload_hash === payloadHash ? send(200, JSON.parse(previous.response_json)) : send(409, {error: 'Cette demande d’enregistrement a déjà été utilisée pour un autre contenu.'})
+        const values = body.cards.map(value => validateCard(value)); if (values.some(value => !value)) return send(400, {error: 'Une carte du lot est invalide.'})
+        if (values.some(value => !repo.deck(user.id, value.deckId) || (value.source.documentId && !d.prepare('SELECT 1 FROM study_documents WHERE id=? AND user_id=?').get(value.source.documentId, user.id)))) return send(400, {error: 'Deck ou document source invalide.'})
         const cards = []; d.exec('BEGIN IMMEDIATE')
-        try { for (const value of values) { const card = repo.createCard(user.id, value); if (!card) throw new Error('Deck invalide.'); cards.push(card) } d.exec('COMMIT') } catch (error) { d.exec('ROLLBACK'); throw error }
+        try {
+          for (const value of values) { const card = repo.createCard(user.id, value); if (!card) throw new Error('Deck invalide.'); cards.push(card) }
+          if (requestId) d.prepare('INSERT INTO flashcard_save_requests VALUES(?,?,?,?,?)').run(user.id, requestId, payloadHash, JSON.stringify({cards}), Date.now())
+          d.prepare('DELETE FROM flashcard_save_requests WHERE created_at<?').run(Date.now() - 7 * 86400000)
+          d.exec('COMMIT')
+        } catch (error) { d.exec('ROLLBACK'); throw error }
         return send(201, {cards})
       }
       const cardMatch = subpath.match(/^cards\/([^/]+)(?:\/(duplicate|move|review))?$/)
@@ -92,6 +103,7 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
         if (!ratings.has(rating)) return send(400, {error: 'Réponse de révision invalide.'})
         const card = repo.card(user.id, cardMatch[1]); if (!card) return send(404, {error: 'Carte introuvable.'})
         const before = d.prepare('SELECT * FROM flashcard_reviews WHERE card_id=? AND user_id=?').get(card.id, user.id), now = Date.now(), next = scheduleReview(before, rating, now), responseMs = Number.isSafeInteger(body.responseMs) && body.responseMs >= 0 && body.responseMs <= 3600000 ? body.responseMs : null
+        if (body.expectedDueAt !== undefined && body.expectedDueAt !== before.due_at) return send(409, {error: 'Cette carte a déjà été révisée sur un autre onglet ou appareil. Rechargez la session.'})
         d.exec('BEGIN IMMEDIATE'); try {
           d.prepare('UPDATE flashcard_reviews SET state=?,due_at=?,interval_days=?,ease_factor=?,repetitions=?,lapses=?,last_rating=?,last_reviewed_at=? WHERE card_id=? AND user_id=?').run(next.state, next.dueAt, next.intervalDays, next.easeFactor, next.repetitions, next.lapses, next.lastRating, next.lastReviewedAt, card.id, user.id)
           d.prepare('INSERT INTO flashcard_review_logs VALUES(?,?,?,?,?,?,?,?,?,?)').run(randomUUID(), card.id, user.id, rating, now, before.due_at, before.interval_days, next.dueAt, next.intervalDays, responseMs); d.exec('COMMIT')
@@ -103,11 +115,14 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
 
       if (req.method === 'POST' && subpath.startsWith('generate/')) {
         const kind = subpath.slice(9), body = await readJson(req, 1000000), level = ['essential', 'standard', 'complete'].includes(body.level) ? body.level : 'standard', requestedCount = Math.min(80, Math.max(1, Number(body.count) || 12))
+        if (!['text', 'catalog', 'study', 'qcm-error'].includes(kind)) return send(404, {error: 'Source de génération inconnue.'})
+        if (body.count !== undefined && (!Number.isInteger(body.count) || body.count < 1 || body.count > 80)) return send(400, {error: 'Choisissez entre 1 et 80 cartes.'})
         let text = '', sourceSegments = [], source = {type: kind === 'text' ? 'free_text' : kind === 'qcm-error' ? 'qcm_error' : kind === 'study' ? 'study_document' : 'catalog_course'}
         let subject = cleanText(body.subject, 150) || '', chapter = cleanText(body.chapter, 200) || '', tags = Array.isArray(body.tags) ? body.tags.slice(0, 20).map(value => String(value).slice(0, 50)) : []
         if (kind === 'study') {
           const documentId = cleanText(body.documentId, 100, true); if (!documentId) return send(400, {error: 'Document requis.'})
           const document = d.prepare('SELECT id,title,page_count FROM study_documents WHERE id=? AND user_id=?').get(documentId, user.id); if (!document) return send(404, {error: 'Document introuvable.'})
+          if ([body.startPage, body.endPage].some(page => page !== undefined && (!Number.isInteger(page) || page < 1 || page > document.page_count)) || (body.startPage !== undefined && body.endPage !== undefined && body.startPage > body.endPage)) return send(400, {error: 'La plage de pages est invalide.'})
           const sectionIds = Array.isArray(body.sectionIds) ? body.sectionIds.slice(0, 100).map(String) : []
           let sections = d.prepare('SELECT id,title,start_page,end_page,content FROM study_sections WHERE document_id=? AND user_id=? ORDER BY section_order').all(documentId, user.id)
           if (sectionIds.length) sections = sections.filter(section => sectionIds.includes(section.id))
@@ -118,12 +133,12 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
           text = cleanText(body.text, 300000, true) || ''
           if (kind === 'catalog' && Array.isArray(body.segments)) sourceSegments = body.segments.slice(0, 200).flatMap(segment => { const id = cleanText(segment?.id, 180, true), segmentText = cleanText(segment?.text, 50000, true), title = cleanText(segment?.title, 200); return id && segmentText ? [{id, text: segmentText, title: title || '', startPage: null, endPage: null}] : [] })
         }
-        if (text.length < 40) return send(400, {error: 'Le contenu sélectionné est trop court pour générer des cartes utiles.'})
+        if (text.length < 20) return send(400, {error: 'Le contenu sélectionné est trop court pour générer des cartes utiles.'})
         source = {...source, courseId: cleanText(body.courseId, 150) || null, sectionId: source.sectionId || cleanText(body.sectionId, 180) || null, locator: source.locator || (body.locator && typeof body.locator === 'object' ? body.locator : null)}
         const fallback = {text, level, requestedCount, source, subject, chapter, tags}; let drafts = [], usedProvider = false, reserved = false
         if (provider?.generateFlashcards) {
           reserveGenerationQuota(user.id, d); reserved = true
-          try { drafts = sanitizeGeneratedDrafts(await provider.generateFlashcards({text, level, requestedCount, source, subject, chapter, instructions: 'Créer des cartes utiles, non triviales, sans information absente de la source. Répondre en français.'}), fallback); usedProvider = Boolean(drafts.length) } catch (error) { console.warn('Provider flashcard generation failed, falling back to local generator:', error.message) }
+          try { drafts = sanitizeGeneratedDrafts(await provider.generateFlashcards({text, level, requestedCount, source, subject, chapter, instructions: 'Créer des questions précises en français. Pour chaque carte, fournir front, back et sourceExcerpt. sourceExcerpt doit être une citation exacte du contenu fourni. sourceExcerpt doit correspondre à une phrase entière. back doit être strictement identique à cette citation, sans reformulation, sans ajout ni suppression de négation. Ne pas créer de questions avec un pronom sans antécédent.'}), fallback); usedProvider = Boolean(drafts.length) } catch (error) { console.warn('Provider flashcard generation failed, falling back to local generator:', error.message) }
           if (!usedProvider && reserved) { releaseGenerationQuota(user.id, d); reserved = false }
         }
         if (!drafts.length) drafts = generateLocalDrafts(fallback)
@@ -133,16 +148,21 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
       }
       if (req.method === 'POST' && subpath === 'export') {
         const body = await readJson(req), filters = {deckId: cleanText(body.deckId, 100), courseId: cleanText(body.courseId, 150), due: body.due === true, limit: 100}; let cursor = null, cards = []
+        for (const [key, max] of [['deckIds', 1000], ['cardIds', 10000]]) {
+          if (body[key] !== undefined) {
+            if (!Array.isArray(body[key]) || body[key].length > max || body[key].some(id => !cleanText(id, 100, true))) return send(400, {error: 'Sélection d’export invalide.'})
+            filters[key] = body[key]
+          }
+        }
         do { const page = repo.listCards(user.id, {...filters, cursor}); cards.push(...page.cards); cursor = page.nextCursor ? decodeCursor(page.nextCursor) : null } while (cursor && cards.length < 10000)
-        if (Array.isArray(body.deckIds)) { const deckIds = new Set(body.deckIds.slice(0, 1000).map(String)); cards = cards.filter(card => deckIds.has(card.deckId)) }
-        if (Array.isArray(body.cardIds)) { const ids = new Set(body.cardIds.slice(0, 10000).map(String)); cards = cards.filter(card => ids.has(card.id)) }
+        if (cursor) return send(413, {error: 'Plus de 10 000 cartes sélectionnées. Exportez vos decks en plusieurs fois.'})
         return send(200, buildFlashcardAnki(cards, repo.listDecks(user.id)), 'text/csv; charset=utf-8')
       }
       return send(404, {error: 'Route flashcards inconnue.'})
     } catch (error) {
       if (String(error?.message).includes('UNIQUE constraint failed')) return send(409, {error: 'Un deck porte déjà ce nom.'})
       console.error('Flashcard API error:', error)
-      return send(error.status || 500, {error: error.message || 'Service flashcards indisponible.'})
+      return send(error.status || 500, {error: error.status ? error.message : 'Service flashcards indisponible. Réessayez dans quelques instants.'})
     }
   }
 }

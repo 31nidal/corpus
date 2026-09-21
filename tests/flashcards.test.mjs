@@ -35,6 +35,8 @@ test('decks et cartes : CRUD, recherche, déplacement, duplication et isolation'
     assert.equal(created.status, 201); assert.equal(created.data.card.visual.resourceId, 'heart-flow')
     const id = created.data.card.id
     assert.equal((await call('/api/flashcards/cards?query=débit', 'GET', undefined, alice.cookie)).data.cards.length, 1)
+    assert.equal((await call('/api/flashcards/cards?tag=form', 'GET', undefined, alice.cookie)).data.cards.length, 0)
+    assert.equal((await call('/api/flashcards/cards?tag=formule', 'GET', undefined, alice.cookie)).data.cards.length, 1)
     assert.equal((await call(`/api/flashcards/cards/${id}`, 'PATCH', {front: 'Définir le débit cardiaque.'}, alice.cookie)).data.card.front, 'Définir le débit cardiaque.')
     assert.equal((await call(`/api/flashcards/cards/${id}/move`, 'POST', {deckId: deckB.id}, alice.cookie)).data.card.deckId, deckB.id)
     const copy = await call(`/api/flashcards/cards/${id}/duplicate`, 'POST', {}, alice.cookie)
@@ -60,10 +62,15 @@ test('révision, statistiques et export Anki restent isolés par compte', async 
     assert.equal((await call('/api/flashcards/review', 'GET', undefined, user.cookie)).data.cards.length, 1)
     const review = await call(`/api/flashcards/cards/${card.id}/review`, 'POST', {rating: 'good', responseMs: 2300}, user.cookie)
     assert.equal(review.status, 200); assert.equal(review.data.review.lastRating, 'good')
+    const duplicate = await call(`/api/flashcards/cards/${card.id}/review`, 'POST', {rating: 'easy', expectedDueAt: card.review.dueAt}, user.cookie)
+    assert.equal(duplicate.status, 409)
     const stats = (await call('/api/flashcards/stats', 'GET', undefined, user.cookie)).data.stats
     assert.equal(stats.total, 1); assert.equal(stats.reviews, 1); assert.equal(stats.successRate, 100)
     const exported = await call('/api/flashcards/export', 'POST', {deckId: deck.id}, user.cookie)
     assert.match(exported.data, /#separator:Comma/); assert.match(exported.data, /Recto/)
+    assert.match((await call('/api/flashcards/export', 'POST', {deckIds: [deck.id]}, user.cookie)).data, /Recto/)
+    assert.doesNotMatch((await call('/api/flashcards/export', 'POST', {deckIds: ['inconnu']}, user.cookie)).data, /"Recto"/)
+    assert.equal((await call('/api/flashcards/export', 'POST', {deckIds: 'invalide'}, user.cookie)).status, 400)
     assert.equal((await call('/api/flashcards/cards', 'POST', {deckId: deck.id, front: '', back: 'x'}, user.cookie)).status, 400)
     assert.equal((await call('/api/flashcards/cards', 'POST', {deckId: deck.id, front: 'x', back: 'y'}, user.cookie, {origin: 'https://evil.test'})).status, 403)
   } finally { rmSync(directory, {recursive: true, force: true}) }
@@ -78,13 +85,15 @@ test('toute génération produit des brouillons non persistés, y compris le tex
     assert.equal(generated.status, 200); assert.ok(generated.data.drafts.length >= 1); assert.equal(generated.data.generation.persisted, false)
     assert.equal((await call('/api/flashcards/cards', 'GET', undefined, user.cookie)).data.cards.length, 0)
     assert.equal((await call('/api/flashcards/generate/text', 'POST', {text: 'trop court'}, user.cookie)).status, 400)
+    assert.equal((await call('/api/flashcards/generate/unknown', 'POST', {text}, user.cookie)).status, 404)
+    assert.equal((await call('/api/flashcards/generate/text', 'POST', {text, count: 2.5}, user.cookie)).status, 400)
   } finally { rmSync(directory, {recursive: true, force: true}) }
 })
 
 test('la génération fournisseur respecte le quota et libère la réservation avant le repli local', async () => {
   const directory = mkdtempSync(path.join(tmpdir(), 'mycorpus-flash-provider-'))
   try {
-    const connected = api(directory, {async generateFlashcards() { return [{front: 'Quel est le rôle du rein ?', back: 'Le rein filtre le plasma et participe à l’homéostasie. Espace extracellulaire et pression.'}] }})
+    const connected = api(directory, {async generateFlashcards() { return [{front: 'Quel est le rôle du rein ?', back: 'Le rein filtre le plasma et participe à l’homéostasie du milieu intérieur.', sourceExcerpt: 'Le rein filtre le plasma et participe à l’homéostasie du milieu intérieur.'}] }})
     const user = await connected('/api/account/register', 'POST', {email: 'provider-flash@example.test', name: 'Provider', password})
     const text = 'Le rein filtre le plasma et participe à l’homéostasie du milieu intérieur. Il ajuste les quantités d’eau et de solutés éliminées dans les urines.'
     const generated = await connected('/api/flashcards/generate/text', 'POST', {text, level: 'essential', count: 5}, user.cookie)
@@ -98,6 +107,13 @@ test('la génération fournisseur respecte le quota et libère la réservation a
     const after = new DatabaseSync(path.join(directory, 'mycorpus.sqlite'))
     assert.equal(after.prepare('SELECT generations_used used FROM study_quotas WHERE user_id=?').get(user.data.user.id).used, 1)
     after.close()
+    const invented = api(directory, {async generateFlashcards() { return [{front: 'Quel est le rôle du rein ?', back: 'Le rein produit la bile.', sourceExcerpt: text}] }})
+    const rejected = await invented('/api/flashcards/generate/text', 'POST', {text, count: 5}, user.cookie)
+    assert.equal(rejected.data.generation.mode, 'local')
+    assert.ok(rejected.data.drafts.every(card => !card.back.includes('bile')))
+    const checked = new DatabaseSync(path.join(directory, 'mycorpus.sqlite'))
+    assert.equal(checked.prepare('SELECT generations_used used FROM study_quotas WHERE user_id=?').get(user.data.user.id).used, 1)
+    checked.close()
   } finally { rmSync(directory, {recursive: true, force: true}) }
 })
 
@@ -115,5 +131,32 @@ test('la génération Study reste limitée au document, aux sections et aux page
     const generated = await call('/api/flashcards/generate/study', 'POST', {documentId, sectionIds: ['renal-tubule'], startPage: 5, endPage: 6, level: 'complete', count: 8}, alice.cookie)
     assert.equal(generated.status, 200); assert.ok(generated.data.drafts.length); assert.ok(generated.data.drafts.every(draft => draft.source.documentId === documentId && draft.source.sectionId === 'renal-tubule'))
     assert.equal((await call('/api/flashcards/generate/study', 'POST', {documentId, sectionIds: ['renal-tubule'], level: 'standard'}, bob.cookie)).status, 404)
+    assert.equal((await call('/api/flashcards/generate/study', 'POST', {documentId, startPage: 7, endPage: 2}, alice.cookie)).status, 400)
+    assert.equal((await call('/api/flashcards/generate/study', 'POST', {documentId, startPage: 0}, alice.cookie)).status, 400)
+  } finally { rmSync(directory, {recursive: true, force: true}) }
+})
+
+test('enregistrement par lot : validation de chaque carte et aucun enregistrement partiel', async () => {
+  const directory = mkdtempSync(path.join(tmpdir(), 'mycorpus-flash-bulk-')), call = api(directory)
+  try {
+    const user = await call('/api/account/register', 'POST', {email: 'bulk@example.test', name: 'Lot', password})
+    const deck = (await call('/api/flashcards/decks', 'POST', {name: 'Anatomie'}, user.cookie)).data.deck
+    const card = {deckId: deck.id, front: 'Question complète', back: 'Réponse complète'}
+    for (const invalid of [{deckId: deck.id}, {...card, deckId: 'inconnu'}, {...card, source: {type: 'study_document', documentId: 'inconnu'}}]) {
+      const result = await call('/api/flashcards/cards/bulk', 'POST', {cards: [card, invalid]}, user.cookie)
+      assert.equal(result.status, 400)
+      assert.equal((await call('/api/flashcards/cards', 'GET', undefined, user.cookie)).data.cards.length, 0)
+    }
+    const result = await call('/api/flashcards/cards/bulk', 'POST', {cards: [card, {...card, front: 'Deuxième question'}]}, user.cookie)
+    assert.equal(result.status, 201)
+    assert.equal(result.data.cards.length, 2)
+    const payload = {cards: [card], requestId: 'retry-after-network-loss'}
+    const first = await call('/api/flashcards/cards/bulk', 'POST', payload, user.cookie)
+    const retry = await call('/api/flashcards/cards/bulk', 'POST', payload, user.cookie)
+    assert.equal(first.status, 201); assert.equal(retry.status, 200)
+    assert.equal(first.data.cards[0].id, retry.data.cards[0].id)
+    assert.equal((await call('/api/flashcards/cards', 'GET', undefined, user.cookie)).data.cards.length, 3)
+    assert.equal((await call('/api/flashcards/cards/bulk', 'POST', {...payload, cards: [{...card, front: 'Autre contenu'}]}, user.cookie)).status, 409)
+    for (const limit of ['1.5', 'Infinity', '-5']) assert.equal((await call('/api/flashcards/cards?limit='+limit, 'GET', undefined, user.cookie)).status, 200)
   } finally { rmSync(directory, {recursive: true, force: true}) }
 })

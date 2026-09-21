@@ -7,7 +7,19 @@ import { deflateSync } from 'node:zlib'
 import { Readable } from 'node:stream'
 import { DatabaseSync } from 'node:sqlite'
 import { createAccountHandler } from '../server/accounts.mjs'
-import { createStudyHandler } from '../server/study.mjs'
+import { createStudyHandler, initStudySchema, getOrResetStudyQuota, MAX_STUDY_FILE_SIZE_BYTES } from '../server/study.mjs'
+
+test('la limite PDF reste à 25 Mo pour les nouveaux comptes et les quotas existants', () => {
+  const db = new DatabaseSync(':memory:')
+  try {
+    db.exec('CREATE TABLE users(id TEXT PRIMARY KEY); INSERT INTO users VALUES(\'quota-test\');')
+    initStudySchema(db)
+    assert.equal(getOrResetStudyQuota('quota-test', db).max_file_size_bytes, MAX_STUDY_FILE_SIZE_BYTES)
+    db.exec("UPDATE study_quotas SET max_file_size_bytes=30000000 WHERE user_id='quota-test'")
+    assert.equal(getOrResetStudyQuota('quota-test', db).max_file_size_bytes, MAX_STUDY_FILE_SIZE_BYTES)
+    assert.equal(db.prepare('SELECT max_file_size_bytes size FROM study_quotas').get().size, 26214400)
+  } finally { db.close() }
+})
 
 function makePdf(textLines) {
   const streamContent = 'BT /F1 12 Tf 72 712 Td ' +
@@ -53,6 +65,7 @@ function setupTestApi(dataDir, options = {}) {
     if (Buffer.isBuffer(body)) {
       raw = body
       reqHeaders['content-type'] = headers['content-type'] || 'application/pdf'
+      reqHeaders['x-mycorpus-request'] = '1'
     } else if (body !== undefined) {
       raw = JSON.stringify(body)
       reqHeaders['content-type'] = 'application/json'
@@ -116,7 +129,16 @@ function setupTestApi(dataDir, options = {}) {
     }
   }
 
-  return { call }
+  return {
+    call,
+    uploadPdf(cookie, title, filename, buffer) {
+      return call('/api/study/documents/upload', buffer, cookie, {
+        'content-type': 'application/pdf',
+        'x-document-filename': filename,
+        'x-document-title': title
+      })
+    }
+  }
 }
 
 test('Study API : inscription, upload PDF, extraction, structuration et quotas', async () => {
@@ -134,9 +156,9 @@ test('Study API : inscription, upload PDF, extraction, structuration et quotas',
     assert.equal(reg.status, 201)
     const sessionCookie = reg.cookie
 
-    const rejectedOrigin = await api.call('/api/study/documents/upload', {}, sessionCookie, { origin: 'https://evil.test' })
+    const rejectedOrigin = await api.call('/api/study/documents/upload', Buffer.from('dummy'), sessionCookie, { origin: 'https://evil.test' })
     assert.equal(rejectedOrigin.status, 403)
-    const rejectedCsrf = await api.call('/api/study/documents/upload', {}, sessionCookie, { 'x-mycorpus-request': undefined })
+    const rejectedCsrf = await api.call('/api/study/documents/upload', Buffer.from('dummy'), sessionCookie, { 'x-mycorpus-request': undefined })
     assert.equal(rejectedCsrf.status, 403)
 
     // 2. Check Quotas
@@ -145,18 +167,22 @@ test('Study API : inscription, upload PDF, extraction, structuration et quotas',
     assert.equal(quotaRes.data.quota.documentsUsed, 0)
     assert.ok(quotaRes.data.quota.maxDocuments >= 20)
 
-    // 3. Reject scanned PDF (No OCR)
+    // Reject legacy Base64 JSON upload (415 Unsupported Media Type)
     const scannedPdf = makeScannedPdf()
-    const scannedRes = await api.call('/api/study/documents/upload', {
-      title: 'Scanned PDF',
-      filename: 'scan.pdf',
+    const legacyBase64Res = await api.call('/api/study/documents/upload', {
+      title: 'Legacy Base64',
+      filename: 'legacy.pdf',
       data: scannedPdf.toString('base64')
     }, sessionCookie)
+    assert.equal(legacyBase64Res.status, 415)
+
+    // 3. Reject scanned PDF (No OCR) via binary stream
+    const scannedRes = await api.uploadPdf(sessionCookie, 'Scanned PDF', 'scan.pdf', scannedPdf)
     assert.equal(scannedRes.status, 422)
     assert.equal(scannedRes.data.code, 'ERR_NO_EXTRACTABLE_TEXT')
     assert.ok(scannedRes.data.error.includes('scannés') || scannedRes.data.error.includes('OCR'))
 
-    // 4. Upload valid course PDF
+    // 4. Upload valid course PDF via binary stream
     const validPdf = makePdf([
       'Chapitre 1 : Physiologie respiratoire et mecanique ventilatoire.',
       'Le diaphragme est le muscle principal de la respiration chez l etre humain.',
@@ -164,11 +190,7 @@ test('Study API : inscription, upload PDF, extraction, structuration et quotas',
       'L oxygene diffuse ensuite des alveoles vers le sang capillaire pulmonaire.'
     ])
 
-    const uploadRes = await api.call('/api/study/documents/upload', {
-      title: 'Physiologie Respiratoire',
-      filename: 'respiration.pdf',
-      data: validPdf.toString('base64')
-    }, sessionCookie)
+    const uploadRes = await api.uploadPdf(sessionCookie, 'Physiologie Respiratoire', 'respiration.pdf', validPdf)
 
     assert.equal(uploadRes.status, 201)
     const docId = uploadRes.data.document.id
@@ -339,11 +361,7 @@ test('Système de quota IA : non atteint, atteint, reset mensuel, isolation et a
       'Le potentiel d action se propage le long de l axone jusqu au bouton synaptique.',
       'La liberation de neurotransmetteurs permet la communication entre les neurones.'
     ])
-    const upAlice = await api.call('/api/study/documents/upload', {
-      title: 'Neurophysiologie',
-      filename: 'neuro.pdf',
-      data: pdfAlice.toString('base64')
-    }, aliceCookie)
+    const upAlice = await api.uploadPdf(aliceCookie, 'Neurophysiologie', 'neuro.pdf', pdfAlice)
     assert.equal(upAlice.status, 201)
     const docAliceId = upAlice.data.document.id
 
@@ -394,11 +412,7 @@ test('Système de quota IA : non atteint, atteint, reset mensuel, isolation et a
     })
     const bobCookie = regBob.cookie
 
-    const upBob = await api.call('/api/study/documents/upload', {
-      title: 'Immunologie',
-      filename: 'immuno.pdf',
-      data: pdfAlice.toString('base64')
-    }, bobCookie)
+    const upBob = await api.uploadPdf(bobCookie, 'Immunologie', 'immuno.pdf', pdfAlice)
     const docBobId = upBob.data.document.id
 
     // Bob peut générer une synthèse sans être bloqué par Alice
@@ -449,11 +463,7 @@ test('Le fallback local sans provider externe ne consomme pas le quota et n\'est
       'Le ventricule gauche assure l ejection systolique du sang vers l aorte.',
       'La fraction d ejection normale est superieure a cinquante-cinq pour cent.'
     ])
-    const up = await api.call('/api/study/documents/upload', {
-      title: 'Cardiologie',
-      filename: 'cardio.pdf',
-      data: pdf.toString('base64')
-    }, cookie)
+    const up = await api.uploadPdf(cookie, 'Cardiologie', 'cardio.pdf', pdf)
     assert.equal(up.status, 201)
     const docId = up.data.document.id
 
@@ -507,11 +517,7 @@ test('Aucune génération n’est débitée en cas d’échec réel du provider 
       'Le foie produit la bile stockee dans la vesicule biliaire.',
       'L absorption des lipides necessite une emulsion par les sels biliaires.'
     ])
-    const up = await api.call('/api/study/documents/upload', {
-      title: 'Gastroenterologie',
-      filename: 'gastro.pdf',
-      data: pdf.toString('base64')
-    }, cookie)
+    const up = await api.uploadPdf(cookie, 'Gastroenterologie', 'gastro.pdf', pdf)
     assert.equal(up.status, 201)
     const docId = up.data.document.id
 
@@ -565,11 +571,7 @@ test('Concurrence et réservation atomique : deux requêtes simultanées avec 1 
       'La thyroide secrete la thyroxine T4 et la triiodothyronine T3.',
       'L axe hypothalamo-hypophysaire regule la secretion par la TSH.'
     ])
-    const up = await api.call('/api/study/documents/upload', {
-      title: 'Endocrinologie',
-      filename: 'endocrino.pdf',
-      data: pdf.toString('base64')
-    }, cookie)
+    const up = await api.uploadPdf(cookie, 'Endocrinologie', 'endocrino.pdf', pdf)
     assert.equal(up.status, 201)
     const docId = up.data.document.id
 
@@ -599,5 +601,4 @@ test('Concurrence et réservation atomique : deux requêtes simultanées avec 1 
     try { rmSync(dir, { recursive: true, force: true }) } catch { /* cleanup */ }
   }
 })
-
 

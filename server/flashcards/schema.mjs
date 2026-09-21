@@ -1,5 +1,13 @@
 export function initFlashcardSchema(db) {
   db.exec(`
+    CREATE TABLE IF NOT EXISTS flashcard_save_requests (
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      request_id TEXT NOT NULL,
+      payload_hash TEXT NOT NULL,
+      response_json TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      PRIMARY KEY(user_id, request_id)
+    );
     CREATE TABLE IF NOT EXISTS flashcard_decks (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

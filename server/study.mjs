@@ -6,6 +6,8 @@ import { extractPdfPagesAndText, chunkIntoSections } from './pdfExtractor.mjs'
 
 const digest = value => createHash('sha256').update(value).digest('hex')
 
+export const MAX_STUDY_FILE_SIZE_BYTES = 25 * 1024 * 1024 // 25 Mo (26 214 400 octets)
+
 function cookieValue(req, name) {
   return req.headers.cookie?.split(';').map(v => v.trim()).find(v => v.startsWith(`${name}=`))?.slice(name.length + 1) || ''
 }
@@ -69,7 +71,7 @@ export function initStudySchema(db) {
     CREATE TABLE IF NOT EXISTS study_quotas (
       user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
       max_documents INTEGER NOT NULL DEFAULT 25,
-      max_file_size_bytes INTEGER NOT NULL DEFAULT 30000000,
+      max_file_size_bytes INTEGER NOT NULL DEFAULT 26214400,
       monthly_generations INTEGER NOT NULL DEFAULT 100,
       generations_used INTEGER NOT NULL DEFAULT 0,
       quota_resets_at TEXT
@@ -91,11 +93,15 @@ export function getOrResetStudyQuota(userId, d) {
     const resetsAt = computeNextMonthlyReset(now)
     d.prepare(`
       INSERT INTO study_quotas(user_id, max_documents, max_file_size_bytes, monthly_generations, generations_used, quota_resets_at)
-      VALUES(?, 25, 30000000, 100, 0, ?)
+      VALUES(?, 25, 26214400, 100, 0, ?)
     `).run(userId, resetsAt)
     return d.prepare('SELECT * FROM study_quotas WHERE user_id = ?').get(userId)
   }
 
+  if (quota.max_file_size_bytes > MAX_STUDY_FILE_SIZE_BYTES) {
+    d.prepare('UPDATE study_quotas SET max_file_size_bytes=? WHERE user_id=?').run(MAX_STUDY_FILE_SIZE_BYTES, userId)
+    quota.max_file_size_bytes = MAX_STUDY_FILE_SIZE_BYTES
+  }
   // Si quota_resets_at est manquant, initialiser
   if (!quota.quota_resets_at) {
     const resetsAt = computeNextMonthlyReset(now)
@@ -202,8 +208,9 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
       throw err
     }
 
-    if (fileSize > quota.max_file_size_bytes) {
-      const maxMb = Math.round(quota.max_file_size_bytes / (1024 * 1024))
+    const maxAllowed = Math.min(quota.max_file_size_bytes || MAX_STUDY_FILE_SIZE_BYTES, MAX_STUDY_FILE_SIZE_BYTES)
+    if (fileSize > maxAllowed) {
+      const maxMb = Math.round(maxAllowed / (1024 * 1024))
       const err = new Error(`Fichier trop volumineux. La taille maximale autorisée est de ${maxMb} Mo.`)
       err.status = 413
       throw err
@@ -276,39 +283,27 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
       // POST /api/study/documents/upload
       if (req.method === 'POST' && subpath === 'documents/upload') {
         const contentType = req.headers['content-type'] || ''
-        let pdfBuffer = null
-        let title = ''
-        let filename = 'cours.pdf'
-
-        if (contentType.includes('application/json')) {
-          let raw = ''
-          for await (const chunk of req) {
-            raw += chunk
-            if (raw.length > 35 * 1024 * 1024) return send(413, { error: 'Fichier trop volumineux (max 25 Mo).' })
-          }
-          let body
-          try {
-            body = JSON.parse(raw)
-          } catch {
-            return send(400, { error: 'Requête JSON invalide.' })
-          }
-          if (!body.data) return send(400, { error: 'Aucun fichier PDF fourni.' })
-          pdfBuffer = Buffer.from(body.data, 'base64')
-          filename = String(body.filename || 'cours.pdf').replace(/[^a-zA-Z0-9_\-.]/g, '_').slice(0, 150)
-          title = String(body.title || filename.replace(/\.pdf$/i, '')).trim().slice(0, 150)
-        } else {
-          // Direct PDF binary stream
-          const chunks = []
-          let totalLen = 0
-          for await (const chunk of req) {
-            totalLen += chunk.length
-            if (totalLen > 30 * 1024 * 1024) return send(413, { error: 'Fichier trop volumineux (max 25 Mo).' })
-            chunks.push(chunk)
-          }
-          pdfBuffer = Buffer.concat(chunks)
-          filename = decodeURIComponent(req.headers['x-document-filename'] || 'cours.pdf').replace(/[^a-zA-Z0-9_\-.]/g, '_').slice(0, 150)
-          title = decodeURIComponent(req.headers['x-document-title'] || filename.replace(/\.pdf$/i, '')).trim().slice(0, 150)
+        if (!contentType.includes('application/pdf') && !contentType.includes('application/octet-stream')) {
+          return send(415, { error: 'Format non supporté. Envoyez directement le flux binaire application/pdf.' })
         }
+
+        const chunks = []
+        let totalLen = 0
+        for await (const chunk of req) {
+          totalLen += chunk.length
+          if (totalLen > MAX_STUDY_FILE_SIZE_BYTES) {
+            return send(413, { error: 'Fichier trop volumineux. La taille maximale autorisée est de 25 Mo.' })
+          }
+          chunks.push(chunk)
+        }
+
+        const pdfBuffer = Buffer.concat(chunks)
+        if (!pdfBuffer.length) {
+          return send(400, { error: 'Aucun fichier PDF fourni.' })
+        }
+
+        const filename = decodeURIComponent(req.headers['x-document-filename'] || 'cours.pdf').replace(/[^a-zA-Z0-9_\-.]/g, '_').slice(0, 150)
+        let title = decodeURIComponent(req.headers['x-document-title'] || filename.replace(/\.pdf$/i, '')).trim().slice(0, 150)
 
         checkQuota(user.id, d, pdfBuffer.length)
 

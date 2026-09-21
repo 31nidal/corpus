@@ -66,6 +66,10 @@ Les actions inconnues et identifiants invalides sont écartés ; aucun code reç
 
 ## Flashcards
 
+La génération locale sélectionne uniquement des relations explicites et ignore les pronoms sans antécédent. Elle conserve les phrases sources entières, sans compléter artificiellement le nombre demandé. Le fournisseur doit retourner `front`, `back` et `sourceExcerpt` : la citation doit correspondre à une phrase complète de l’entrée et `back` doit lui être identique. Les réponses non attestées sont rejetées ; si aucune ne convient, l’extraction locale prend le relais. Cette validation textuelle ne remplace pas la relecture pédagogique des questions.
+
+L’enregistrement par lot accepte un `requestId` stable : une reprise à contenu identique retourne le résultat précédent sans créer de doublons. Les reçus sont isolés par compte, supprimés avec le compte et nettoyés après sept jours lors des enregistrements suivants. Les révisions envoient `expectedDueAt` pour détecter une validation concurrente. L’export applique les filtres avant pagination et refuse explicitement les sélections dépassant 10 000 cartes.
+
 Les routes `/api/flashcards/*` gèrent les decks, les cartes, la répétition espacée, les statistiques, la génération en brouillon et l’export Anki. Toutes les lectures et écritures sont filtrées par l’utilisateur authentifié. Les générations depuis les cours, Study, les erreurs QCM ou du texte libre ne persistent rien : seules les cartes sélectionnées dans l’aperçu sont enregistrées via `POST /api/flashcards/cards/bulk`. Sans fournisseur distant, un générateur local extrait les formulations explicites de la source. Avec un fournisseur, `generateFlashcards(context)` utilise le quota Study et revient au générateur local en libérant la réservation si le fournisseur échoue.
 
 Le texte libre est limité à 300 000 caractères et reste en mémoire le temps de la requête. Les tables `flashcard_decks`, `flashcards`, `flashcard_reviews` et `flashcard_review_logs` sont séparées du stockage de synchronisation historique. Les références visuelles facultatives sont prévues dans `visual_json`; aucun fichier image de flashcard n’est encore importé.

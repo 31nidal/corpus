@@ -35,7 +35,8 @@ function FeedbackForm({course}:{course:Course}){
 export default function CoursesWorkspace(p:{initial:string|null;completed:string[];complete:(id:string)=>void;explore:(id:string)=>void;practice:(id:string)=>void;navigate:(id:string|null)=>void}){
  const [accountStorage]=useState(storageScope)
  const [query,setQuery]=useState(''),[category,setCategory]=useState(()=>new URLSearchParams(location.hash.slice(1)).get('matiere')??''),[group,setGroup]=useState(()=>new URLSearchParams(location.hash.slice(1)).get('module')??''),[filter,setFilter]=useState('all'),[saved,setSaved]=useState(readSaved),[reveal,setReveal]=useState(false),[pathology,setPathology]=useState<string|null>(null),[progress,setProgress]=useState(0)
- const [generation,setGeneration]=useState<GenerationSource|null>(null),[selectedPassage,setSelectedPassage]=useState('')
+ const [generation,setGeneration]=useState<GenerationSource|null>(null),[selectedPassage,setSelectedPassage]=useState(''),[toast,setToast]=useState('')
+ useEffect(()=>{if(!toast)return;const t=setTimeout(()=>setToast(''),4000);return()=>clearTimeout(t)},[toast])
  const workspace=useRef<HTMLElement>(null),course=courses.find(c=>c.id===p.initial)
  useEffect(()=>{setReveal(false);setPathology(null);setProgress(0);workspace.current?.scrollTo(0,0)},[p.initial])
  useEffect(()=>{if(!course)return;const section=new URLSearchParams(location.hash.slice(1)).get('section');if(section)requestAnimationFrame(()=>document.getElementById('section-'+section)?.scrollIntoView({behavior:'smooth',block:'start'}))},[course?.id])
@@ -77,9 +78,10 @@ export default function CoursesWorkspace(p:{initial:string|null;completed:string
    <div className="course-completion"><button className="study-secondary" onClick={()=>p.complete(course.id)} disabled={p.completed.includes(course.id)}><CheckCircle2 size={17}/>{p.completed.includes(course.id)?'Cours terminé':'Marquer ce cours terminé'}</button><button className="study-primary" onClick={()=>p.practice(course.id)}>M’entraîner sur ce cours<ArrowRight size={17}/></button></div>
    {nextCourse&&<button className="next-chapter" onClick={()=>p.navigate(nextCourse.id)}><span>CHAPITRE SUIVANT · {course.category.toLocaleUpperCase('fr')}<strong>{nextCourse.title}</strong></span><ArrowRight size={21}/></button>}
   </article><aside className="reading-sidebar"><span className="study-eyebrow">DANS CE COURS · {progress}% LU</span>{course.sections.map((s,i)=>{const id=sectionSlug(s.title,i);return <a key={s.title} href={'#section-'+id} onClick={e=>{e.preventDefault();document.getElementById('section-'+id)?.scrollIntoView({behavior:'smooth',block:'start'})}}><span>{String(i+1).padStart(2,'0')}</span>{s.title}</a>})}{course.structure&&<button className="anatomy-link" onClick={()=>p.explore(course.structure!)}><Box size={27}/><strong>Donnez du relief au cours.</strong><span>Explorer un repère du chapitre dans l’atlas 3D</span><ArrowRight size={19}/></button>}<button className="study-secondary sidebar-practice" onClick={()=>p.practice(course.id)}>Tester ce chapitre · {questionCount(course.id)} questions<ArrowRight size={15}/></button><div className="study-note">Lire → reformuler → résoudre.<br/>Le défilement mesure la lecture, pas l’acquisition.</div></aside></div>
- </>:<>
-  <CourseLibrary subjectId={category} group={group} query={query} filter={filter} saved={saved} completed={p.completed} browse={browse} search={setQuery} setFilter={setFilter} open={p.navigate}/>
+  </>:<>
+   <CourseLibrary subjectId={category} group={group} query={query} filter={filter} saved={saved} completed={p.completed} browse={browse} search={setQuery} setFilter={setFilter} open={p.navigate}/>
 
- </>}
- {generation&&<GenerationDialog source={generation} onClose={()=>setGeneration(null)}/>}</section>
+  </>}
+  {generation&&<GenerationDialog source={generation} onClose={()=>setGeneration(null)} onSaved={info=>info&&setToast(`${info.count} carte${info.count>1?'s':''} enregistrée${info.count>1?'s':''} dans le deck « ${info.deckName} »`)}/>}
+  {toast&&<div className="flash-toast" role="status"><Check size={16}/><span>{toast}</span></div>}</section>
 }

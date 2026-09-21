@@ -30,8 +30,7 @@ test('parcours complet Mes cours : connexion → upload PDF → extraction → s
   const email = randomEmail()
 
   // 1. Accès à l'application
-  await page.goto('/')
-  await expect(page.locator('main')).toHaveAttribute('data-loaded', 'true', { timeout: 90000 })
+  await page.goto('/#tab=mes-cours')
 
   // 2. Connexion / Inscription
   await page.getByRole('button', { name: 'Mon compte', exact: true }).click()

@@ -39,14 +39,17 @@ export class FlashcardRepository {
   listCards(userId, filters = {}) {
     const where = ['c.user_id=?'], args = [userId]
     if (filters.deckId) { where.push('c.deck_id=?'); args.push(filters.deckId) }
+    for (const [field, values] of [['c.deck_id', filters.deckIds], ['c.id', filters.cardIds]]) {
+      if (Array.isArray(values)) { where.push(values.length ? `${field} IN (${values.map(() => '?').join(',')})` : '0'); args.push(...values) }
+    }
     if (filters.subject) { where.push('c.subject=?'); args.push(filters.subject) }
     if (filters.chapter) { where.push('c.chapter=?'); args.push(filters.chapter) }
-    if (filters.tag) { where.push('LOWER(c.tags_json) LIKE ?'); args.push(`%${filters.tag.toLowerCase()}%`) }
+    if (filters.tag) { where.push('EXISTS (SELECT 1 FROM json_each(c.tags_json) WHERE LOWER(value)=LOWER(?))'); args.push(filters.tag) }
     if (filters.courseId) { where.push('c.source_course_id=?'); args.push(filters.courseId) }
     if (filters.due) { where.push('r.due_at<=?'); args.push(Date.now()) }
     if (filters.query) { where.push("(LOWER(c.front) LIKE ? OR LOWER(c.back) LIKE ? OR LOWER(c.subject) LIKE ? OR LOWER(c.chapter) LIKE ? OR LOWER(c.tags_json) LIKE ?)"); const q = `%${filters.query.toLowerCase()}%`; args.push(q, q, q, q, q) }
     if (filters.cursor) { where.push('(c.updated_at<? OR (c.updated_at=? AND c.id<?))'); args.push(filters.cursor.updatedAt, filters.cursor.updatedAt, filters.cursor.id) }
-    const limit = Math.min(100, Math.max(1, filters.limit || 50))
+    const limit = Number.isFinite(filters.limit) ? Math.min(100, Math.max(1, Math.floor(filters.limit))) : 50
     const rows = this.db.prepare(`SELECT c.*,r.state review_state,r.due_at,r.interval_days,r.ease_factor,r.repetitions,r.lapses,r.last_rating,r.last_reviewed_at FROM flashcards c LEFT JOIN flashcard_reviews r ON r.card_id=c.id WHERE ${where.join(' AND ')} ORDER BY c.updated_at DESC,c.id DESC LIMIT ?`).all(...args, limit + 1)
     const hasMore = rows.length > limit, page = rows.slice(0, limit), last = page.at(-1)
     return {cards: page.map(cardView), nextCursor: hasMore && last ? Buffer.from(JSON.stringify({updatedAt: last.updated_at, id: last.id})).toString('base64url') : null}
@@ -71,14 +74,14 @@ export class FlashcardRepository {
   deleteCard(userId, id) { return Boolean(this.db.prepare('DELETE FROM flashcards WHERE id=? AND user_id=?').run(id, userId).changes) }
   reviewQueue(userId, deckId, limit = 30) {
     const args = [userId, Date.now()], deck = deckId ? ' AND c.deck_id=?' : ''; if (deckId) args.push(deckId)
-    return this.db.prepare(`SELECT c.*,r.state review_state,r.due_at,r.interval_days,r.ease_factor,r.repetitions,r.lapses,r.last_rating,r.last_reviewed_at FROM flashcards c JOIN flashcard_reviews r ON r.card_id=c.id WHERE c.user_id=? AND r.due_at<=?${deck} ORDER BY r.due_at ASC LIMIT ?`).all(...args, Math.min(100, Math.max(1, limit))).map(cardView)
+    return this.db.prepare(`SELECT c.*,r.state review_state,r.due_at,r.interval_days,r.ease_factor,r.repetitions,r.lapses,r.last_rating,r.last_reviewed_at FROM flashcards c JOIN flashcard_reviews r ON r.card_id=c.id WHERE c.user_id=? AND r.due_at<=?${deck} ORDER BY r.due_at ASC,c.id ASC LIMIT ?`).all(...args, Number.isFinite(limit) ? Math.min(100, Math.max(1, Math.floor(limit))) : 30).map(cardView)
   }
   stats(userId) {
-    const now = Date.now(), day = 86400000, startToday = new Date(new Date().toDateString()).getTime()
+    const now = Date.now(), day = 86400000
     const totals = this.db.prepare(`SELECT COUNT(*) total,SUM(CASE WHEN r.state='new' THEN 1 ELSE 0 END) new_cards,SUM(CASE WHEN r.due_at<=? THEN 1 ELSE 0 END) due,SUM(CASE WHEN r.repetitions>=3 AND r.interval_days>=21 THEN 1 ELSE 0 END) mastered FROM flashcards c JOIN flashcard_reviews r ON r.card_id=c.id WHERE c.user_id=?`).get(now, userId)
     const reviews = this.db.prepare(`SELECT COUNT(*) count,SUM(CASE WHEN rating!='again' THEN 1 ELSE 0 END) success FROM flashcard_review_logs WHERE user_id=?`).get(userId)
     const days = new Set(this.db.prepare('SELECT reviewed_at FROM flashcard_review_logs WHERE user_id=? ORDER BY reviewed_at DESC').all(userId).map(row => Math.floor(row.reviewed_at / day)))
-    let streak = 0, cursor = Math.floor(startToday / day); if (!days.has(cursor)) cursor--
+    let streak = 0, cursor = Math.floor(now / day); if (!days.has(cursor)) cursor--
     while (days.has(cursor)) { streak++; cursor-- }
     const decks = this.db.prepare(`SELECT d.id,d.name,COUNT(c.id) total,SUM(CASE WHEN r.repetitions>=3 AND r.interval_days>=21 THEN 1 ELSE 0 END) mastered,SUM(CASE WHEN r.due_at<=? THEN 1 ELSE 0 END) due FROM flashcard_decks d LEFT JOIN flashcards c ON c.deck_id=d.id LEFT JOIN flashcard_reviews r ON r.card_id=c.id WHERE d.user_id=? GROUP BY d.id ORDER BY d.name`).all(now, userId)
     const courses = this.db.prepare(`SELECT source_course_id id,MAX(chapter) title,COUNT(*) total FROM flashcards WHERE user_id=? AND source_course_id IS NOT NULL GROUP BY source_course_id ORDER BY title`).all(userId)

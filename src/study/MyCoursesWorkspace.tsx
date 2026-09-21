@@ -54,6 +54,12 @@ export default function MyCoursesWorkspace(props: {
   const [generatingQcm, setGeneratingQcm] = useState(false)
   const [targetPassage, setTargetPassage] = useState<{ title: string; pages: string; text: string } | null>(null)
   const [flashGeneration,setFlashGeneration]=useState<GenerationSource|null>(null)
+  const [toast, setToast] = useState('')
+  useEffect(() => {
+    if (!toast) return
+    const t = setTimeout(() => setToast(''), 4000)
+    return () => clearTimeout(t)
+  }, [toast])
 
   // In-session practice state
   const [records, setRecords] = useState<Records>(readRecords)
@@ -126,6 +132,10 @@ export default function MyCoursesWorkspace(props: {
   const handleFileUpload = async (file: File) => {
     if (!file.name.toLowerCase().endsWith('.pdf')) {
       setError('Seuls les fichiers PDF sont acceptés.')
+      return
+    }
+    if (file.size > 25 * 1024 * 1024) {
+      setError('Le fichier dépasse la taille maximale autorisée de 25 Mo.')
       return
     }
     try {
@@ -675,7 +685,9 @@ export default function MyCoursesWorkspace(props: {
             </div>
           </div>
         )}
-        {flashGeneration&&<GenerationDialog source={flashGeneration} onClose={()=>setFlashGeneration(null)}/>}</section>
+        {flashGeneration&&<GenerationDialog source={flashGeneration} onClose={()=>setFlashGeneration(null)} onSaved={info=>info&&setToast(`${info.count} carte${info.count>1?'s':''} enregistrée${info.count>1?'s':''} dans le deck « ${info.deckName} »`)}/>}
+        {toast&&<div className="flash-toast" role="status"><Check size={16}/><span>{toast}</span></div>}
+      </section>
     )
   }
 
@@ -845,6 +857,7 @@ export default function MyCoursesWorkspace(props: {
           ))}
         </div>
       )}
+      {toast&&<div className="flash-toast" role="status"><Check size={16}/><span>{toast}</span></div>}
     </section>
   )
 }

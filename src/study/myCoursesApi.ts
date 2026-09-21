@@ -31,31 +31,25 @@ export async function fetchStudyDocument(id: string): Promise<StudyDocument> {
   return data.document
 }
 
-export async function uploadStudyDocument(file: File, title?: string): Promise<StudyDocument> {
-  const customTitle = title?.trim() || file.name.replace(/\.pdf$/i, '')
+export const MAX_STUDY_FILE_SIZE_BYTES = 25 * 1024 * 1024 // 25 Mo (26 214 400 octets)
 
-  // We can read file as base64 to send via JSON
-  const buffer = await file.arrayBuffer()
-  let binary = ''
-  const bytes = new Uint8Array(buffer)
-  const len = bytes.byteLength
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i])
+export async function uploadStudyDocument(file: File, title?: string): Promise<StudyDocument> {
+  if (file.size > MAX_STUDY_FILE_SIZE_BYTES) {
+    throw new Error('Le fichier dépasse la taille maximale autorisée de 25 Mo.')
   }
-  const base64 = btoa(binary)
+
+  const customTitle = title?.trim() || file.name.replace(/\.pdf$/i, '')
 
   const res = await fetch('/api/study/documents/upload', {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
-      'x-mycorpus-request': '1'
+      'Content-Type': 'application/pdf',
+      'x-mycorpus-request': '1',
+      'x-document-filename': encodeURIComponent(file.name),
+      'x-document-title': encodeURIComponent(customTitle)
     },
     credentials: 'same-origin',
-    body: JSON.stringify({
-      title: customTitle,
-      filename: file.name,
-      data: base64
-    })
+    body: file
   })
 
   const body = await res.json()
