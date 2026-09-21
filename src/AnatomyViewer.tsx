@@ -652,6 +652,7 @@ export default function AnatomyViewer(props: Props) {
       environment.dispose()
       key.shadow.dispose()
       renderer.dispose()
+      renderer.forceContextLoss()
       renderer.domElement.remove()
       labelOverlay.remove()
       if (props.apiRef.current === api) props.apiRef.current = null

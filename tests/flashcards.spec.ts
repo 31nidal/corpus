@@ -65,9 +65,15 @@ test('flashcards : deck, carte manuelle, génération en brouillon et révision 
   await page.getByRole('button', { name: 'Commencer' }).click()
   await expect(page.getByText('RECTO')).toBeVisible()
   await page.getByRole('button', { name: 'Afficher la réponse' }).click()
-  await page.getByRole('button', { name: /Correct/ }).click()
+  await Promise.all([
+    page.waitForResponse(response => response.url().endsWith('/review') && response.request().method() === 'POST' && response.ok()),
+    page.getByRole('button', { name: /Correct/ }).click(),
+  ])
+  const restoredStats = page.waitForResponse(response => response.url().endsWith('/api/flashcards/stats') && response.ok())
   await page.reload()
-  await expect(page.getByRole('button', { name: 'Flashcards' })).toHaveAttribute('aria-pressed', 'true')
+  await restoredStats
+  await expect(page.getByRole('region', { name: 'Flashcards', exact: true })).toHaveAttribute('aria-busy', 'false')
+  await expect(page.getByRole('navigation', { name: 'Navigation principale', exact: true }).getByRole('button', { name: 'Flashcards', exact: true })).toHaveAttribute('aria-pressed', 'true')
   await page.setViewportSize({ width: 393, height: 852 })
   await expect(page.getByText('Générer depuis un texte')).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(393)

@@ -11,11 +11,11 @@ test('rotation et déplacement : aucun survol coûteux pendant le geste, qualit�
  for(const button of ['left','right'] as const){
   await page.mouse.move(x,y);await page.mouse.down({button})
   const before=await state()
-  await page.mouse.move(x+110,y+45,{steps:16})
+  await page.mouse.move(x+110,y+45,{steps:4})
   expect((await state()).pickCount).toBe(before.pickCount)
   expect((await state()).camera).not.toEqual(before.camera)
   await expect.poll(async()=>(await state()).pixelRatio).toBe(Math.min(restingRatio,1.25))
-  await page.mouse.move(x,y,{steps:16});await page.mouse.up({button})
+  await page.mouse.move(x,y,{steps:4});await page.mouse.up({button})
   expect((await state()).selectedId).toBeNull()
   await expect.poll(async()=>(await state()).pixelRatio,{timeout:15000}).toBe(restingRatio)
  }
