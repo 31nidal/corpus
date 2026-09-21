@@ -175,20 +175,25 @@ test('FSRS preview snapshot : exactitude des candidats, concurrence optimiste 40
     const deck = (await call('/api/flashcards/decks', 'POST', {name: 'Neurologie'}, user.cookie)).data.deck
     const card = (await call('/api/flashcards/cards', 'POST', {deckId: deck.id, front: 'Aire de Broca', back: 'Production du langage'}, user.cookie)).data.card
 
-    // 1. GET /review produit un preview avec un ID et des labels pour chaque option
+    // 1. GET /review produit la queue SANS preview snapshot (généré à la demande uniquement)
     const queue = await call('/api/flashcards/review', 'GET', undefined, user.cookie)
     assert.equal(queue.status, 200)
     assert.equal(queue.data.cards.length, 1)
     const reviewCard = queue.data.cards[0]
-    assert.ok(reviewCard.preview?.id)
-    assert.ok(reviewCard.preview?.labels?.good)
-    assert.ok(reviewCard.preview?.labels?.again)
-    const previewId = reviewCard.preview.id
+    assert.equal(reviewCard.preview, undefined)
 
-    // 2. Simulation d'un restart du serveur : une nouvelle instance d'API doit retrouver le snapshot en DB
+    // 2. POST /api/flashcards/cards/:id/preview génère le preview à la demande (ex: clic « Afficher la réponse »)
+    const previewRes = await call(`/api/flashcards/cards/${card.id}/preview`, 'POST', {}, user.cookie)
+    assert.equal(previewRes.status, 200)
+    assert.ok(previewRes.data.preview?.id)
+    assert.ok(previewRes.data.preview?.labels?.good)
+    assert.ok(previewRes.data.preview?.labels?.again)
+    const previewId = previewRes.data.preview.id
+
+    // 3. Simulation d'un restart du serveur : une nouvelle instance d'API doit retrouver le snapshot en DB
     const callAfterRestart = api(directory)
 
-    // 3. Application du candidat avec previewId
+    // 4. Application du candidat avec previewId
     const resReview = await callAfterRestart(`/api/flashcards/cards/${card.id}/review`, 'POST', {
       rating: 'good',
       responseMs: 1500,
@@ -199,7 +204,7 @@ test('FSRS preview snapshot : exactitude des candidats, concurrence optimiste 40
     assert.equal(resReview.data.review.reviewVersion, 1)
     assert.ok(resReview.data.review.schedulerConfigHash)
 
-    // 4. Tentative de réutilisation du même previewId ou soumission concurrente avec expectedVersion 0 -> 409 Conflict
+    // 5. Tentative de réutilisation du même previewId ou soumission concurrente avec expectedVersion 0 -> 409 Conflict
     const concurrent = await callAfterRestart(`/api/flashcards/cards/${card.id}/review`, 'POST', {
       rating: 'easy',
       expectedVersion: 0,
@@ -207,17 +212,69 @@ test('FSRS preview snapshot : exactitude des candidats, concurrence optimiste 40
     }, user.cookie)
     assert.equal(concurrent.status, 409)
 
-    // 5. Vérifier que la table flashcard_review_previews n'a plus ce preview (consommé)
+    // 6. Vérifier que la table flashcard_review_previews n'a plus ce preview (consommé)
     const database = new DatabaseSync(path.join(directory, 'mycorpus.sqlite'))
     const previewInDb = database.prepare('SELECT 1 FROM flashcard_review_previews WHERE id=?').get(previewId)
     assert.equal(previewInDb, undefined)
 
-    // 6. Vérifier que les logs contiennent scheduler_version et scheduler_config_hash
+    // 7. Vérifier que les logs contiennent scheduler_version et scheduler_config_hash
     const log = database.prepare('SELECT * FROM flashcard_review_logs WHERE card_id=?').get(card.id)
     assert.ok(log.scheduler_version.startsWith('ts-fsrs-'))
     assert.ok(log.scheduler_config_hash)
     assert.ok(log.scheduler_data_json)
     database.close()
+  } finally { rmSync(directory, {recursive: true, force: true}) }
+})
+
+test('Streak civil : décrémentation sécurisée IANA et transition DST', async () => {
+  const {getPreviousIanaDayString} = await import('../server/flashcards/repository.mjs')
+  // Vérification de la logique de décrémentation de date civile
+  assert.equal(getPreviousIanaDayString('2026-03-29'), '2026-03-28') // Transition DST printemps
+  assert.equal(getPreviousIanaDayString('2026-10-25'), '2026-10-24') // Transition DST automne
+  assert.equal(getPreviousIanaDayString('2026-01-01'), '2025-12-31') // Changement d'année
+  assert.equal(getPreviousIanaDayString('2024-03-01'), '2024-02-29') // Année bissextile
+
+  // Test de calcul du streak en base avec logs franchissant une transition DST
+  const directory = mkdtempSync(path.join(tmpdir(), 'mycorpus-dst-streak-')), call = api(directory)
+  try {
+    const user = await call('/api/account/register', 'POST', {email: 'dst-tester@example.test', name: 'DstTester', password})
+    const deckRes = await call('/api/flashcards/decks', 'POST', {name: 'Deck 1'}, user.cookie)
+    const cardRes = await call('/api/flashcards/cards', 'POST', {deckId: deckRes.data.deck.id, front: 'Q', back: 'A'}, user.cookie)
+    const cardId = cardRes.data.card.id
+
+    // Insérer des logs de révision sur 4 jours consécutifs dans le fuseau Europe/Paris
+    // 2026-03-27 14:00 CET = 1774616400000
+    // 2026-03-28 14:00 CET = 1774702800000
+    // 2026-03-29 14:00 CEST = 1774785600000 (jour DST de 23h)
+    // 2026-03-30 01:30 CEST = 1774827000000 (juste après minuit)
+    const t27 = new Date('2026-03-27T12:00:00Z').getTime()
+    const t28 = new Date('2026-03-28T12:00:00Z').getTime()
+    const t29 = new Date('2026-03-29T00:15:00Z').getTime() // 02:15 CEST le jour du changement d'heure
+    const t30 = new Date('2026-03-30T00:30:00Z').getTime() // 02:30 CEST lendemain DST
+
+    const database = new DatabaseSync(path.join(directory, 'mycorpus.sqlite'))
+    const userRow = database.prepare('SELECT id FROM users WHERE email=?').get('dst-tester@example.test')
+
+    const insertLog = database.prepare(`
+      INSERT INTO flashcard_review_logs (id, user_id, card_id, rating, response_ms, previous_due_at, previous_interval_days, next_due_at, next_interval_days, reviewed_at)
+      VALUES (?, ?, ?, 'good', 1000, 0, 1, 0, 1, ?)
+    `)
+    insertLog.run('log-1', userRow.id, cardId, t27)
+    insertLog.run('log-2', userRow.id, cardId, t28)
+    insertLog.run('log-3', userRow.id, cardId, t29)
+    insertLog.run('log-4', userRow.id, cardId, t30)
+    database.close()
+
+    const {FlashcardRepository} = await import('../server/flashcards/repository.mjs')
+    const db = new DatabaseSync(path.join(directory, 'mycorpus.sqlite'))
+    const repo = new FlashcardRepository(db)
+
+    // Calculer les stats au 30 mars 2026 à 08:00 UTC dans Europe/Paris
+    const atTime = new Date('2026-03-30T08:00:00Z').getTime()
+    const stats = repo.stats(userRow.id, 'Europe/Paris', atTime)
+    // Le streak doit compter les 4 jours consécutifs : 27, 28, 29, 30 mars
+    assert.equal(stats.streak, 4)
+    db.close()
   } finally { rmSync(directory, {recursive: true, force: true}) }
 })
 

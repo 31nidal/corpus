@@ -85,7 +85,7 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
         } catch (error) { d.exec('ROLLBACK'); throw error }
         return send(201, {cards})
       }
-      const cardMatch = subpath.match(/^cards\/([^/]+)(?:\/(duplicate|move|review))?$/)
+      const cardMatch = subpath.match(/^cards\/([^/]+)(?:\/(duplicate|move|review|preview))?$/)
       if (cardMatch && !cardMatch[2] && req.method === 'PATCH') {
         const value = validateCard(await readJson(req), true); if (!value) return send(400, {error: 'Carte invalide.'})
         const card = repo.updateCard(user.id, cardMatch[1], value); return card ? send(200, {card}) : send(404, {error: 'Carte ou deck introuvable.'})
@@ -99,6 +99,38 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
       if (cardMatch?.[2] === 'move' && req.method === 'POST') {
         const body = await readJson(req), card = repo.updateCard(user.id, cardMatch[1], {deckId: cleanText(body.deckId, 100, true)})
         return card ? send(200, {card}) : send(400, {error: 'Carte ou deck invalide.'})
+      }
+      if (cardMatch?.[2] === 'preview' && req.method === 'POST') {
+        const card = repo.card(user.id, cardMatch[1]); if (!card) return send(404, {error: 'Carte introuvable.'})
+        const row = d.prepare('SELECT * FROM flashcard_reviews WHERE card_id=? AND user_id=?').get(card.id, user.id)
+        if (!row) return send(404, {error: 'Carte introuvable.'})
+        const now = Date.now()
+        const snapshot = scheduler.createPreviewSnapshot(row, now)
+        d.exec('BEGIN IMMEDIATE')
+        try {
+          d.prepare('DELETE FROM flashcard_review_previews WHERE card_id=? AND user_id=?').run(card.id, user.id)
+          d.prepare(`
+            INSERT INTO flashcard_review_previews(
+              id, user_id, card_id, review_version, preview_at, expires_at, candidates_json, scheduler_version, scheduler_config_hash
+            ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(
+            snapshot.id,
+            user.id,
+            card.id,
+            snapshot.reviewVersion,
+            snapshot.previewAt,
+            snapshot.expiresAt,
+            JSON.stringify(snapshot.candidates),
+            snapshot.schedulerVersion,
+            snapshot.schedulerConfigHash
+          )
+          d.prepare('DELETE FROM flashcard_review_previews WHERE expires_at<?').run(now)
+          d.exec('COMMIT')
+        } catch (err) {
+          d.exec('ROLLBACK')
+          throw err
+        }
+        return send(200, {preview: {id: snapshot.id, labels: snapshot.labels}})
       }
       if (cardMatch?.[2] === 'review' && req.method === 'POST') {
         const body = await readJson(req), rating = body.rating
@@ -177,7 +209,7 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
         }
       }
       if (req.method === 'GET' && subpath === 'review') {
-        const cards = repo.reviewQueue(user.id, cleanText(url.searchParams.get('deck'), 100), Number(url.searchParams.get('limit')) || 30, scheduler)
+        const cards = repo.reviewQueue(user.id, cleanText(url.searchParams.get('deck'), 100), Number(url.searchParams.get('limit')) || 30)
         return send(200, {cards})
       }
       if (req.method === 'GET' && subpath === 'stats') {

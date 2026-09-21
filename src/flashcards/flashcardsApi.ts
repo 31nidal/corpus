@@ -1,4 +1,4 @@
-import type {Flashcard, FlashcardDeck, FlashcardDraft, FlashcardStats, FlashcardReview, GenerationSource} from './flashcardsTypes'
+import type {Flashcard, FlashcardDeck, FlashcardDraft, FlashcardPreview, FlashcardStats, FlashcardReview, GenerationSource} from './flashcardsTypes'
 
 const headers = {'Content-Type': 'application/json', 'x-mycorpus-request': '1'}
 const clientTimezone = () => {
@@ -65,6 +65,12 @@ export const reviewQueue = async (deckId?: string) =>
   (await request<{cards: Flashcard[]}>('review' + (deckId ? `?deck=${encodeURIComponent(deckId)}` : ''), {
     headers: {'x-timezone': clientTimezone()},
   })).cards
+
+export const previewCard = async (id: string) =>
+  request<{preview: FlashcardPreview}>(`cards/${encodeURIComponent(id)}/preview`, {
+    method: 'POST',
+    body: '{}',
+  })
 
 export const reviewCard = async (
   id: string,

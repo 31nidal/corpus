@@ -4,6 +4,15 @@ import {defaultFsrsScheduler} from './fsrsScheduler.mjs'
 
 const parse = value => { try { return value ? JSON.parse(value) : null } catch { return null } }
 
+export function getPreviousIanaDayString(dayString) {
+  const [year, month, day] = dayString.split('-').map(Number)
+  const prev = new Date(Date.UTC(year, month - 1, day - 1))
+  const y = prev.getUTCFullYear()
+  const m = String(prev.getUTCMonth() + 1).padStart(2, '0')
+  const d = String(prev.getUTCDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
 export function cardView(row) {
   return {
     id: row.id,
@@ -223,49 +232,19 @@ export class FlashcardRepository {
     return Boolean(this.db.prepare('DELETE FROM flashcards WHERE id=? AND user_id=?').run(id, userId).changes)
   }
 
-  reviewQueue(userId, deckId, limit = 30, scheduler = defaultFsrsScheduler, now = Date.now()) {
-    const args = [userId, now], deck = deckId ? ' AND c.deck_id=?' : ''; if (deckId) args.push(deckId)
-    const rows = this.db.prepare(`
+  reviewQueue(userId, deckId, limit = 30) {
+    const args = [userId, Date.now()], deck = deckId ? ' AND c.deck_id=?' : ''; if (deckId) args.push(deckId)
+    return this.db.prepare(`
       SELECT ${SELECT_CARD_FIELDS}
       FROM flashcards c
       JOIN flashcard_reviews r ON r.card_id=c.id
       WHERE c.user_id=? AND r.due_at<=?${deck}
       ORDER BY r.due_at ASC, c.id ASC
       LIMIT ?
-    `).all(...args, Number.isFinite(limit) ? Math.min(100, Math.max(1, Math.floor(limit))) : 30)
-
-    const insertPreview = this.db.prepare(`
-      INSERT OR REPLACE INTO flashcard_review_previews(
-        id, user_id, card_id, review_version, preview_at, expires_at, candidates_json, scheduler_version, scheduler_config_hash
-      ) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `)
-
-    return rows.map(row => {
-      const view = cardView(row)
-      const snapshot = scheduler.createPreviewSnapshot(row, now)
-      insertPreview.run(
-        snapshot.id,
-        userId,
-        row.id,
-        snapshot.reviewVersion,
-        snapshot.previewAt,
-        snapshot.expiresAt,
-        JSON.stringify(snapshot.candidates),
-        snapshot.schedulerVersion,
-        snapshot.schedulerConfigHash
-      )
-      return {
-        ...view,
-        preview: {
-          id: snapshot.id,
-          labels: snapshot.labels,
-        },
-      }
-    })
+    `).all(...args, Number.isFinite(limit) ? Math.min(100, Math.max(1, Math.floor(limit))) : 30).map(cardView)
   }
 
-  stats(userId, timeZone = 'Europe/Paris') {
-    const now = Date.now()
+  stats(userId, timeZone = 'Europe/Paris', now = Date.now()) {
     const totals = this.db.prepare(`
       SELECT COUNT(*) total,
         SUM(CASE WHEN r.state='new' THEN 1 ELSE 0 END) new_cards,
@@ -297,13 +276,13 @@ export class FlashcardRepository {
     const days = new Set(reviewRows.map(row => toDayString(row.reviewed_at)))
 
     let streak = 0
-    let cursorMs = now
-    if (!days.has(toDayString(cursorMs))) {
-      cursorMs -= 86400000
+    let cursorDay = toDayString(now)
+    if (!days.has(cursorDay)) {
+      cursorDay = getPreviousIanaDayString(cursorDay)
     }
-    while (days.has(toDayString(cursorMs))) {
+    while (days.has(cursorDay)) {
       streak++
-      cursorMs -= 86400000
+      cursorDay = getPreviousIanaDayString(cursorDay)
     }
 
     const decks = this.db.prepare(`
