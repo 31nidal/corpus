@@ -87,6 +87,13 @@ test('toute génération produit des brouillons non persistés, y compris le tex
     assert.equal((await call('/api/flashcards/generate/text', 'POST', {text: 'trop court'}, user.cookie)).status, 400)
     assert.equal((await call('/api/flashcards/generate/unknown', 'POST', {text}, user.cookie)).status, 404)
     assert.equal((await call('/api/flashcards/generate/text', 'POST', {text, count: 2.5}, user.cookie)).status, 400)
+    const qcm = {front: 'Quel plan sépare la droite et la gauche ?', back: 'Plan sagittal — Il sépare les deux côtés.'}
+    const correction = await call('/api/flashcards/generate/qcm-error', 'POST', {qcm, courseId: 'orientation'}, user.cookie)
+    assert.equal(correction.status, 200)
+    assert.equal(correction.data.drafts[0].front, qcm.front)
+    assert.equal(correction.data.drafts[0].back, qcm.back)
+    assert.equal(correction.data.generation.persisted, false)
+    assert.equal((await call('/api/flashcards/cards', 'GET', undefined, user.cookie)).data.cards.length, 0)
   } finally { rmSync(directory, {recursive: true, force: true}) }
 })
 

@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { deflateSync } from 'node:zlib'
+import { questions } from '../src/study/questions'
 
 const password = 'Flashcards-test-solide-2026'
 
@@ -240,7 +241,12 @@ test('génération et persistance : erreur QCM (front/back non vides, dialogue e
   await page.goto('/#tab=entrainement&cours=orientation')
   await page.getByRole('button', { name: 'Commencer la série' }).click()
 
-  await page.locator('.answer-options button').nth(1).click()
+  const prompt = await page.locator('.question-layout h1').innerText()
+  const question = questions.find(item => item.prompt === prompt)!
+  expect(question).toBeTruthy()
+  // The random question may have its correct answer in any position.
+  const wrong = question.options.findIndex((_, index) => !question.correct.includes(index))
+  await page.locator('.answer-options button').nth(wrong >= 0 ? wrong : 0).click()
   await page.getByRole('button', { name: 'Valider ma réponse' }).click()
 
   const addBtn = page.getByRole('button', { name: 'Ajouter aux flashcards' })

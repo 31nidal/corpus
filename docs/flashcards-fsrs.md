@@ -39,3 +39,7 @@ Une prévision serveur utilise le même adaptateur que la notation. Le frontend 
 ## Phase 2 préparée uniquement
 
 Une future table flashcard_notes (id, user_id, contenu structuré, source) pourra être liée à flashcards par note_id nullable. Les cartes actuelles restent autonomes (note_id NULL). Les reviews restent attachées à card_id : plusieurs cartes d’un même concept doivent avoir leurs propres échéances. Aucune table de concepts ni génération multicarte n’est ajoutée dans la phase 1.
+
+### Second passage de CI (35618664683)
+
+Les trois scénarios initiaux passent. Le lot 2 révèle un autre test instable : il choisissait toujours l’option 2 d’une question tirée au hasard, parfois correcte. Certaines corrections QCM constituées de libellés courts ne produisaient pas non plus de carte avec l’extracteur de prose. Le test choisit désormais explicitement une réponse fausse ; le parcours QCM transmet la question et sa correction structurées et génère un brouillon unique, sans extraction heuristique ni appel IA.

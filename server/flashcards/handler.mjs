@@ -116,6 +116,12 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
       if (req.method === 'POST' && subpath.startsWith('generate/')) {
         const kind = subpath.slice(9), body = await readJson(req, 1000000), level = ['essential', 'standard', 'complete'].includes(body.level) ? body.level : 'standard', requestedCount = Math.min(80, Math.max(1, Number(body.count) || 12))
         if (!['text', 'catalog', 'study', 'qcm-error'].includes(kind)) return send(404, {error: 'Source de génération inconnue.'})
+        if (kind === 'qcm-error' && body.qcm !== undefined) {
+          const front = cleanText(body.qcm?.front, 2000, true), back = cleanText(body.qcm?.back, 8000, true)
+          if (!front || !back) return send(400, {error: 'Question ou correction QCM invalide.'})
+          const draft = {temporaryId: randomUUID(), front, back, selected: true, subject: cleanText(body.subject, 150) || '', chapter: cleanText(body.chapter, 200) || '', tags: [], source: {type: 'qcm_error', courseId: cleanText(body.courseId, 150) || null, excerpt: back.slice(0, 1500)}}
+          return send(200, {drafts: [draft], generation: {mode: 'local', produced: 1, persisted: false}})
+        }
         if (body.count !== undefined && (!Number.isInteger(body.count) || body.count < 1 || body.count > 80)) return send(400, {error: 'Choisissez entre 1 et 80 cartes.'})
         let text = '', sourceSegments = [], source = {type: kind === 'text' ? 'free_text' : kind === 'qcm-error' ? 'qcm_error' : kind === 'study' ? 'study_document' : 'catalog_course'}
         let subject = cleanText(body.subject, 150) || '', chapter = cleanText(body.chapter, 200) || '', tags = Array.isArray(body.tags) ? body.tags.slice(0, 20).map(value => String(value).slice(0, 50)) : []
