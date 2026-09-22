@@ -68,7 +68,7 @@ test('révision, statistiques et export Anki restent isolés par compte', async 
     const stats = (await call('/api/flashcards/stats', 'GET', undefined, user.cookie)).data.stats
     assert.equal(stats.total, 1); assert.equal(stats.reviews, 1); assert.equal(stats.successRate, 100)
     const exported = await call('/api/flashcards/export', 'POST', {deckId: deck.id}, user.cookie)
-    assert.match(exported.data, /#separator:Comma/); assert.match(exported.data, /Recto/)
+    assert.match(exported.data, /#separator:Tab/); assert.match(exported.data, /Recto/)
     assert.match((await call('/api/flashcards/export', 'POST', {deckIds: [deck.id]}, user.cookie)).data, /Recto/)
     assert.doesNotMatch((await call('/api/flashcards/export', 'POST', {deckIds: ['inconnu']}, user.cookie)).data, /"Recto"/)
     assert.equal((await call('/api/flashcards/export', 'POST', {deckIds: 'invalide'}, user.cookie)).status, 400)

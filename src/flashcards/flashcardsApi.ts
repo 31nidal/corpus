@@ -1,4 +1,4 @@
-import type {Flashcard, FlashcardDeck, FlashcardDraft, FlashcardPreview, FlashcardStats, FlashcardReview, GenerationSource} from './flashcardsTypes'
+import type {Flashcard, FlashcardDeck, FlashcardDraft, FlashcardPreview, FlashcardStats, FlashcardReview, GenerationSource, FlashcardNote} from './flashcardsTypes'
 
 const headers = {'Content-Type': 'application/json', 'x-mycorpus-request': '1'}
 const clientTimezone = () => {
@@ -52,8 +52,38 @@ export const createCards = async (cards: (Partial<Flashcard> & {deckId: string; 
 export const updateCard = async (id: string, value: Partial<Flashcard>) =>
   (await request<{card: Flashcard}>(`cards/${encodeURIComponent(id)}`, {method: 'PATCH', body: JSON.stringify(value)})).card
 
-export const deleteCard = async (id: string) =>
-  request(`cards/${encodeURIComponent(id)}`, {method: 'DELETE', body: '{}'})
+export const deleteCard = async (id: string, expectedVersion?: number) =>
+  request(`cards/${encodeURIComponent(id)}`, {method: 'DELETE', body: JSON.stringify({expectedVersion})})
+
+export async function listNotes(filters: Record<string, string | number | boolean | undefined> = {}) {
+  const params = new URLSearchParams()
+  for (const [k, v] of Object.entries(filters)) if (v !== undefined && v !== '' && v !== false) params.set(k, String(v))
+  return request<{notes: FlashcardNote[]; nextCursor: string | null}>('notes?' + params, {headers: {}})
+}
+
+export const fetchNote = async (id: string) =>
+  (await request<{note: FlashcardNote}>(`notes/${encodeURIComponent(id)}`, {headers: {}})).note
+
+export const createNote = async (value: Partial<FlashcardNote>) =>
+  (await request<{note: FlashcardNote}>('notes', {method: 'POST', body: JSON.stringify(value)})).note
+
+export const updateNote = async (id: string, value: Partial<FlashcardNote>, expectedVersion?: number) =>
+  (await request<{note: FlashcardNote}>(`notes/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    body: JSON.stringify({...value, expectedVersion}),
+  })).note
+
+export const deleteNote = async (id: string, expectedVersion?: number) =>
+  request(`notes/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    body: JSON.stringify({expectedVersion}),
+  })
+
+export const restoreDerivation = async (noteId: string, derivationKey: string, expectedVersion?: number) =>
+  (await request<{note: FlashcardNote}>(`notes/${encodeURIComponent(noteId)}/derivations/${encodeURIComponent(derivationKey)}/restore`, {
+    method: 'POST',
+    body: JSON.stringify({expectedVersion}),
+  })).note
 
 export const duplicateCard = async (id: string, deckId?: string) =>
   (await request<{card: Flashcard}>(`cards/${encodeURIComponent(id)}/duplicate`, {method: 'POST', body: JSON.stringify({deckId})})).card

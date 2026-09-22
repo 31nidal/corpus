@@ -242,7 +242,7 @@ test('génération et persistance : erreur QCM (front/back non vides, dialogue e
   await page.getByRole('button', { name: 'Commencer la série' }).click()
 
   const prompt = await page.locator('.question-layout h1').innerText()
-  const question = questions.find(item => item.prompt === prompt)!
+  const question = questions.find(item => item.prompt.replace(/\s+/g, ' ').trim() === prompt.replace(/\s+/g, ' ').trim())!
   expect(question).toBeTruthy()
   // The random question may have its correct answer in any position.
   const wrong = question.options.findIndex((_, index) => !question.correct.includes(index))
@@ -535,4 +535,122 @@ test('échec réseau du /preview : aucun rating possible, message d’erreur et 
   const payload = await reviewResponse.json()
   expect(payload.review.reviewVersion).toBe(1)
   await expect(page.getByRole('heading', { name: 'Session terminée' })).toBeVisible()
+})
+
+test('phase 2A : création note Cloze, masquage [...], révélation en révision et sibling burying', async ({ page }) => {
+  await register(page)
+  const headers = { 'x-mycorpus-request': '1' }
+  const deck = (await (await page.request.post('/api/flashcards/decks', { headers, data: { name: 'Pneumologie' } })).json()).deck
+
+  // Créer une note Cloze avec 2 trous via l'API
+  await page.request.post('/api/flashcards/notes', {
+    headers,
+    data: {
+      defaultDeckId: deck.id,
+      noteType: 'cloze',
+      fields: {
+        text: 'La {{c1::plèvre::membrane}} enveloppe les {{c2::poumons}}.',
+        extra: 'Important pour la respiration.',
+      },
+    },
+  })
+
+  await page.reload()
+
+  // Dans la vue Toutes mes cartes, les deux cartes dérivées c1 et c2 doivent apparaître
+  await page.getByRole('button', { name: 'Toutes mes cartes' }).click()
+  await expect(page.locator('.flash-card-list article')).toHaveCount(2)
+  await expect(page.getByText('Trou (c1)')).toBeVisible()
+  await expect(page.getByText('Trou (c2)')).toBeVisible()
+
+  // Démarrer la révision : grâce au sibling burying, une seule des deux cartes doit être présente
+  await page.getByRole('button', { name: 'Aujourd’hui' }).click()
+  await expect(page.getByRole('button', { name: 'Commencer' })).toBeEnabled()
+  await page.getByRole('button', { name: 'Commencer' }).click()
+
+  // Seule une carte dans la session (1 / 1)
+  await expect(page.locator('.flash-review header span')).toHaveText('1 / 1')
+  // Le recto doit afficher le trou masqué
+  await expect(page.locator('.review-face h1')).toContainText('[...')
+
+  // Afficher la réponse
+  await page.getByRole('button', { name: 'Afficher la réponse' }).click()
+  // Le verso doit afficher la classe .cloze-revealed et le complément
+  await expect(page.locator('.cloze-revealed')).toBeVisible()
+  await expect(page.locator('.review-answer')).toContainText('Important pour la respiration.')
+
+  // Noter la carte
+  await expect(page.getByRole('button', { name: /Correct/ })).toBeEnabled()
+  await page.getByRole('button', { name: /Correct/ }).click()
+
+  // La session doit se terminer sans proposer le sibling c2 le même jour !
+  await expect(page.getByRole('heading', { name: 'Session terminée' })).toBeVisible()
+})
+
+test('phase 2A : note réponse saisie (Typed Answer), validation saisie et feedback exact', async ({ page }) => {
+  await register(page)
+  const headers = { 'x-mycorpus-request': '1' }
+  const deck = (await (await page.request.post('/api/flashcards/decks', { headers, data: { name: 'Pharmacologie' } })).json()).deck
+
+  // Créer une note Typed
+  await page.request.post('/api/flashcards/notes', {
+    headers,
+    data: {
+      defaultDeckId: deck.id,
+      noteType: 'typed',
+      fields: {
+        front: 'Quel neurotransmetteur est sécrété à la jonction neuromusculaire ?',
+        answer: 'Acétylcholine',
+        acceptedAnswers: ['acetylcholine', 'Ach'],
+        extra: 'Agit sur les récepteurs nicotiniques.',
+      },
+    },
+  })
+
+  await page.reload()
+  await expect(page.getByRole('button', { name: 'Commencer' })).toBeEnabled()
+  await page.getByRole('button', { name: 'Commencer' }).click()
+
+  // Champ de saisie présent au recto
+  const input = page.locator('.review-typed-input input')
+  await expect(input).toBeVisible()
+  await input.fill('acetylcholine')
+
+  // Clic sur Vérifier
+  await page.getByRole('button', { name: 'Vérifier' }).click()
+
+  // Feedback de succès
+  await expect(page.locator('.typed-feedback.is-match')).toBeVisible()
+  await expect(page.locator('.typed-feedback')).toContainText('Correct !')
+  await expect(page.locator('.review-answer')).toContainText('Agit sur les récepteurs nicotiniques.')
+
+  // Noter la carte
+  const easyBtn = page.getByRole('button', { name: /Facile/ })
+  await expect(easyBtn).toBeEnabled()
+  await easyBtn.click()
+  await expect(page.getByRole('heading', { name: 'Session terminée' })).toBeVisible()
+})
+
+test('phase 2A : création via éditeur UI d’une note Bidirectionnelle', async ({ page }) => {
+  await register(page)
+  await page.getByRole('button', { name: 'Mes decks' }).click()
+  await page.getByLabel('Nom du nouveau deck').fill('Langues & Termes')
+  await page.getByRole('button', { name: 'Créer un deck' }).click()
+
+  await page.getByRole('button', { name: 'Toutes mes cartes' }).click()
+  await page.getByRole('button', { name: 'Nouvelle carte' }).click()
+
+  // Sélectionner le mode Bidirectionnelle
+  await page.getByRole('button', { name: 'Bidirectionnelle' }).click()
+  await expect(page.getByText('2 cartes générées (Recto ➔ Verso et Verso ➔ Recto)')).toBeVisible()
+
+  await page.locator('label:has-text("Recto") textarea').fill('Cephalalgia')
+  await page.locator('label:has-text("Verso") textarea').fill('Céphalée / Maux de tête')
+
+  await page.getByRole('button', { name: 'Enregistrer' }).click()
+
+  // 2 cartes doivent avoir été générées dans la liste
+  await expect(page.locator('.flash-card-list article')).toHaveCount(2)
+  await expect(page.getByText('Directe')).toBeVisible()
+  await expect(page.getByText('Inversée')).toBeVisible()
 })

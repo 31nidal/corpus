@@ -5,7 +5,7 @@ import path from 'node:path'
 import {initFlashcardSchema} from './schema.mjs'
 import {migrateFlashcards} from './migrations.mjs'
 import {FlashcardRepository} from './repository.mjs'
-import {cleanText, ratings, validateCard, validateDeck} from './validation.mjs'
+import {cleanText, ratings, validateCard, validateDeck, validateNote} from './validation.mjs'
 import {defaultFsrsScheduler} from './fsrsScheduler.mjs'
 import {generateLocalDrafts, sanitizeGeneratedDrafts} from './generation.mjs'
 import {buildFlashcardAnki} from './anki.mjs'
@@ -58,6 +58,52 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
         return ok ? send(200, {ok: true}) : send(400, {error: 'Deck ou destination invalide.'})
       }
 
+      if (req.method === 'GET' && subpath === 'notes') {
+        const result = repo.listNotes(user.id, {
+          deckId: cleanText(url.searchParams.get('deck'), 100),
+          noteType: cleanText(url.searchParams.get('type'), 50),
+          subject: cleanText(url.searchParams.get('subject'), 150),
+          chapter: cleanText(url.searchParams.get('chapter'), 200),
+          courseId: cleanText(url.searchParams.get('course'), 150),
+          query: cleanText(url.searchParams.get('query'), 200),
+          cursor: decodeCursor(url.searchParams.get('cursor')),
+          limit: Number(url.searchParams.get('limit')) || 50,
+        })
+        return send(200, result)
+      }
+      if (req.method === 'POST' && subpath === 'notes') {
+        const value = validateNote(await readJson(req))
+        if (!value) return send(400, {error: 'Note invalide.'})
+        const note = repo.createNote(user.id, value)
+        return send(201, {note})
+      }
+      const noteMatch = subpath.match(/^notes\/([^/]+)$/)
+      if (noteMatch && req.method === 'GET') {
+        const note = repo.note(user.id, noteMatch[1])
+        return note ? send(200, {note}) : send(404, {error: 'Note introuvable.'})
+      }
+      if (noteMatch && req.method === 'PATCH') {
+        const body = await readJson(req)
+        const value = validateNote(body, true)
+        if (!value) return send(400, {error: 'Note invalide.'})
+        const expectedVersion = Number.isSafeInteger(body.expectedVersion) ? body.expectedVersion : undefined
+        const note = repo.updateNote(user.id, noteMatch[1], value, expectedVersion)
+        return note ? send(200, {note}) : send(404, {error: 'Note introuvable.'})
+      }
+      if (noteMatch && req.method === 'DELETE') {
+        const body = await readJson(req).catch(() => ({}))
+        const expectedVersion = Number.isSafeInteger(body?.expectedVersion) ? body.expectedVersion : undefined
+        const ok = repo.deleteNote(user.id, noteMatch[1], expectedVersion)
+        return ok ? send(200, {ok: true}) : send(404, {error: 'Note introuvable.'})
+      }
+      const restoreMatch = subpath.match(/^notes\/([^/]+)\/derivations\/([^/]+)\/restore$/)
+      if (restoreMatch && req.method === 'POST') {
+        const body = await readJson(req).catch(() => ({}))
+        const expectedVersion = Number.isSafeInteger(body?.expectedVersion) ? body.expectedVersion : undefined
+        const note = repo.restoreDerivation(user.id, restoreMatch[1], restoreMatch[2], expectedVersion)
+        return note ? send(200, {note}) : send(404, {error: 'Note introuvable.'})
+      }
+
       if (req.method === 'GET' && subpath === 'cards') {
         const result = repo.listCards(user.id, {deckId: cleanText(url.searchParams.get('deck'), 100), subject: cleanText(url.searchParams.get('subject'), 150), chapter: cleanText(url.searchParams.get('chapter'), 200), tag: cleanText(url.searchParams.get('tag'), 50), courseId: cleanText(url.searchParams.get('course'), 150), query: cleanText(url.searchParams.get('query'), 200), due: url.searchParams.get('due') === '1', cursor: decodeCursor(url.searchParams.get('cursor')), limit: Number(url.searchParams.get('limit')) || 50})
         return send(200, result)
@@ -90,7 +136,11 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
         const value = validateCard(await readJson(req), true); if (!value) return send(400, {error: 'Carte invalide.'})
         const card = repo.updateCard(user.id, cardMatch[1], value); return card ? send(200, {card}) : send(404, {error: 'Carte ou deck introuvable.'})
       }
-      if (cardMatch && !cardMatch[2] && req.method === 'DELETE') return repo.deleteCard(user.id, cardMatch[1]) ? send(200, {ok: true}) : send(404, {error: 'Carte introuvable.'})
+      if (cardMatch && !cardMatch[2] && req.method === 'DELETE') {
+        const body = await readJson(req).catch(() => ({}))
+        const expectedVersion = Number.isSafeInteger(body?.expectedVersion) ? body.expectedVersion : undefined
+        return repo.deleteCard(user.id, cardMatch[1], expectedVersion) ? send(200, {ok: true}) : send(404, {error: 'Carte introuvable.'})
+      }
       if (cardMatch?.[2] === 'duplicate' && req.method === 'POST') {
         const original = repo.card(user.id, cardMatch[1]); if (!original) return send(404, {error: 'Carte introuvable.'})
         const body = await readJson(req), card = repo.createCard(user.id, {...original, deckId: cleanText(body.deckId, 100) || original.deckId})
@@ -245,7 +295,8 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
         }
       }
       if (req.method === 'GET' && subpath === 'review') {
-        const cards = repo.reviewQueue(user.id, cleanText(url.searchParams.get('deck'), 100), Number(url.searchParams.get('limit')) || 30)
+        const timeZone = cleanText(req.headers['x-timezone'] || url.searchParams.get('timezone'), 60) || 'Europe/Paris'
+        const cards = repo.reviewQueue(user.id, cleanText(url.searchParams.get('deck'), 100), Number(url.searchParams.get('limit')) || 30, timeZone)
         return send(200, {cards})
       }
       if (req.method === 'GET' && subpath === 'stats') {
@@ -302,7 +353,13 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
         }
         do { const page = repo.listCards(user.id, {...filters, cursor}); cards.push(...page.cards); cursor = page.nextCursor ? decodeCursor(page.nextCursor) : null } while (cursor && cards.length < 10000)
         if (cursor) return send(413, {error: 'Plus de 10 000 cartes sélectionnées. Exportez vos decks en plusieurs fois.'})
-        return send(200, buildFlashcardAnki(cards, repo.listDecks(user.id)), 'text/csv; charset=utf-8')
+        const noteIds = [...new Set(cards.map(c => c.noteId).filter(Boolean))]
+        const notesMap = new Map()
+        for (const nid of noteIds) {
+          const n = repo.note(user.id, nid)
+          if (n) notesMap.set(n.id, n)
+        }
+        return send(200, buildFlashcardAnki(cards, repo.listDecks(user.id), notesMap), 'text/csv; charset=utf-8')
       }
       return send(404, {error: 'Route flashcards inconnue.'})
     } catch (error) {

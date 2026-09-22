@@ -112,6 +112,57 @@ export function migrateFlashcards(db, scheduler = defaultFsrsScheduler) {
       db.prepare('INSERT INTO flashcard_migrations VALUES(1, ?)').run(Date.now())
     }
 
+    if (!db.prepare('SELECT 1 FROM flashcard_migrations WHERE version=2').get()) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS flashcard_notes (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          default_deck_id TEXT REFERENCES flashcard_decks(id) ON DELETE SET NULL,
+          note_type TEXT NOT NULL,
+          title TEXT,
+          fields_json TEXT NOT NULL,
+          suppressed_derivations_json TEXT NOT NULL DEFAULT '[]',
+          subject TEXT,
+          chapter TEXT,
+          tags_json TEXT NOT NULL DEFAULT '[]',
+          source_type TEXT NOT NULL DEFAULT 'manual',
+          source_course_id TEXT,
+          source_document_id TEXT REFERENCES study_documents(id) ON DELETE SET NULL,
+          source_section_id TEXT,
+          source_locator_json TEXT,
+          source_excerpt TEXT,
+          visual_json TEXT,
+          schema_version INTEGER NOT NULL DEFAULT 1,
+          note_version INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS flashcard_notes_user ON flashcard_notes(user_id, updated_at DESC);
+        CREATE INDEX IF NOT EXISTS flashcard_notes_default_deck ON flashcard_notes(default_deck_id);
+      `)
+
+      const cardCols = {
+        note_id: 'TEXT REFERENCES flashcard_notes(id) ON DELETE CASCADE',
+        derivation_key: 'TEXT',
+        card_type: "TEXT NOT NULL DEFAULT 'basic'",
+        typed_target: 'TEXT',
+        accepted_answers_json: 'TEXT',
+      }
+      const existingCardCols = new Set(db.prepare('PRAGMA table_info(flashcards)').all().map(c => c.name))
+      for (const [colName, colDef] of Object.entries(cardCols)) {
+        if (!existingCardCols.has(colName)) {
+          db.exec(`ALTER TABLE flashcards ADD COLUMN ${colName} ${colDef}`)
+        }
+      }
+
+      db.exec(`
+        CREATE INDEX IF NOT EXISTS flashcards_note_id ON flashcards(note_id);
+        CREATE UNIQUE INDEX IF NOT EXISTS flashcards_note_derivation ON flashcards(note_id, derivation_key) WHERE note_id IS NOT NULL;
+      `)
+
+      db.prepare('INSERT INTO flashcard_migrations VALUES(2, ?)').run(Date.now())
+    }
+
     db.exec('COMMIT')
   } catch (error) {
     db.exec('ROLLBACK')

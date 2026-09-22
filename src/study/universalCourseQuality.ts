@@ -24,7 +24,7 @@ export function finalizeCourseQuality(catalog:Course[]):Course[]{
 }
 
 const concise=(text:string,max=220)=>{
- const sentence=text.replace(/\s+/g,' ').trim().match(/^.*?[.!?](?:\s|$)/)?.[0]??text.replace(/\s+/g,' ').trim()
+ const sentence=(text.replace(/\s+/g,' ').trim().match(/^.*?[.!?](?:\s|$)/)?.[0]??text.replace(/\s+/g,' ').trim()).trim()
  return sentence.length<=max?sentence:sentence.slice(0,max).replace(/\s+\S*$/,'')+'…'
 }
 const rotate=<T,>(items:T[],from:number,count=3)=>Array.from({length:Math.min(count,items.length)},(_,i)=>items[(from+i)%items.length])

@@ -69,3 +69,132 @@ export function validateDeck(input, partial = false) {
   if (name === null || description === null || subject === null) return null
   return {name, description, subject}
 }
+
+export function validateNote(input, partial = false) {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) return null
+
+  const noteType = input.noteType === undefined && partial ? undefined : cleanText(input.noteType, 50, true)
+  if (noteType !== undefined && !['basic', 'reverse', 'bidirectional', 'cloze', 'typed'].includes(noteType)) {
+    return null
+  }
+
+  const defaultDeckId = input.defaultDeckId === undefined && partial ? undefined : cleanText(input.defaultDeckId, 100, !partial)
+  if (input.defaultDeckId !== undefined && defaultDeckId === null) return null
+
+  const title = input.title === undefined && partial ? undefined : cleanText(input.title, 200)
+  const subject = input.subject === undefined && partial ? undefined : cleanText(input.subject, 150)
+  const chapter = input.chapter === undefined && partial ? undefined : cleanText(input.chapter, 200)
+  const tags = input.tags === undefined && partial ? undefined : validateTags(input.tags)
+  const visual = input.visual === undefined && partial ? undefined : validateVisual(input.visual)
+
+  if (title === null || subject === null || chapter === null || tags === null || (input.visual !== undefined && visual === undefined)) {
+    return null
+  }
+
+  let fields = undefined
+  if (input.fields !== undefined || !partial) {
+    if (!input.fields || typeof input.fields !== 'object' || Array.isArray(input.fields)) return null
+    const f = input.fields
+    if (noteType === 'basic' || noteType === 'reverse' || noteType === 'bidirectional') {
+      const front = cleanText(f.front, 2000, true)
+      const back = cleanText(f.back, 8000, true)
+      if (!front || !back) return null
+      fields = {front, back}
+    } else if (noteType === 'cloze') {
+      const text = cleanText(f.text, 8000, true)
+      if (!text) return null
+      // Check cloze syntax
+      const keys = [...text.matchAll(/\{\{c(\d+)::([\s\S]*?)(?:::([\s\S]*?))?\}\}/g)]
+      if (!keys.length) return null
+      const extra = cleanText(f.extra, 4000)
+      if (extra === null) return null
+      fields = {text, extra: extra || ''}
+    } else if (noteType === 'typed') {
+      const front = cleanText(f.front, 2000, true)
+      const answer = cleanText(f.answer, 2000, true)
+      if (!front || !answer) return null
+      let acceptedAnswers = []
+      if (f.acceptedAnswers !== undefined) {
+        if (!Array.isArray(f.acceptedAnswers) || f.acceptedAnswers.length > 20) return null
+        const cleanedAnswers = f.acceptedAnswers.map(a => cleanText(a, 500, true))
+        if (cleanedAnswers.some(a => a === null)) return null
+        acceptedAnswers = [...new Set(cleanedAnswers)]
+      }
+      const extra = cleanText(f.extra, 4000)
+      if (extra === null) return null
+      fields = {front, answer, acceptedAnswers, extra: extra || ''}
+    } else if (partial && noteType === undefined) {
+      // Partial update without changing noteType; validate generic field strings
+      fields = {}
+      if (f.front !== undefined) {
+        const front = cleanText(f.front, 2000, true)
+        if (!front) return null
+        fields.front = front
+      }
+      if (f.back !== undefined) {
+        const back = cleanText(f.back, 8000, true)
+        if (!back) return null
+        fields.back = back
+      }
+      if (f.text !== undefined) {
+        const text = cleanText(f.text, 8000, true)
+        if (!text) return null
+        const keys = [...text.matchAll(/\{\{c(\d+)::([\s\S]*?)(?:::([\s\S]*?))?\}\}/g)]
+        if (!keys.length) return null
+        fields.text = text
+      }
+      if (f.answer !== undefined) {
+        const answer = cleanText(f.answer, 2000, true)
+        if (!answer) return null
+        fields.answer = answer
+      }
+      if (f.extra !== undefined) {
+        const extra = cleanText(f.extra, 4000)
+        if (extra === null) return null
+        fields.extra = extra || ''
+      }
+      if (f.acceptedAnswers !== undefined) {
+        if (!Array.isArray(f.acceptedAnswers) || f.acceptedAnswers.length > 20) return null
+        const cleanedAnswers = f.acceptedAnswers.map(a => cleanText(a, 500, true))
+        if (cleanedAnswers.some(a => a === null)) return null
+        fields.acceptedAnswers = [...new Set(cleanedAnswers)]
+      }
+    } else {
+      return null
+    }
+  }
+
+  const source = input.source && typeof input.source === 'object' && !Array.isArray(input.source) ? input.source : {}
+  const sourceType = input.source === undefined && partial ? undefined : (sourceTypes.has(source.type) ? source.type : 'manual')
+  const sourceFields = {}
+  for (const [key, max] of [['courseId', 150], ['documentId', 100], ['sectionId', 180], ['excerpt', 1500]]) {
+    const cleaned = cleanText(source[key], max)
+    if (cleaned === null) return null
+    sourceFields[key] = cleaned || null
+  }
+  let locator = null
+  if (source.locator != null) {
+    if (!source.locator || typeof source.locator !== 'object' || Array.isArray(source.locator) || JSON.stringify(source.locator).length > 1500) return null
+    locator = source.locator
+  }
+
+  let expectedVersion = undefined
+  if (input.expectedVersion !== undefined) {
+    if (!Number.isSafeInteger(input.expectedVersion) || input.expectedVersion < 0) return null
+    expectedVersion = input.expectedVersion
+  }
+
+  return {
+    noteType,
+    defaultDeckId,
+    title,
+    fields,
+    subject,
+    chapter,
+    tags,
+    visual,
+    expectedVersion,
+    source: sourceType === undefined ? undefined : {type: sourceType, ...sourceFields, locator},
+  }
+}
+

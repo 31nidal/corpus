@@ -56,11 +56,47 @@ export type FlashcardPreview = {
   labels: FlashcardPreviewLabels
 }
 
+export type NoteType = 'basic' | 'reverse' | 'bidirectional' | 'cloze' | 'typed'
+export type CardType = 'basic' | 'cloze' | 'typed'
+
+export type FlashcardNoteFields = {
+  front?: string
+  back?: string
+  text?: string
+  answer?: string
+  acceptedAnswers?: string[]
+  extra?: string
+}
+
+export type FlashcardNote = {
+  id: string
+  defaultDeckId?: string | null
+  noteType: NoteType
+  title: string
+  fields: FlashcardNoteFields
+  suppressedDerivations: string[]
+  subject: string
+  chapter: string
+  tags: string[]
+  visual?: FlashcardVisual | null
+  source: FlashcardSource
+  schemaVersion: number
+  noteVersion: number
+  createdAt: string
+  updatedAt: string
+  cards: Flashcard[]
+}
+
 export type Flashcard = {
   id: string
   deckId: string
+  noteId?: string | null
+  derivationKey?: string | null
+  cardType?: CardType
   front: string
   back: string
+  typedTarget?: string | null
+  acceptedAnswers?: string[]
   subject: string
   chapter: string
   tags: string[]

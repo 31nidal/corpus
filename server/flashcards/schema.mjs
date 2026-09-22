@@ -21,12 +21,43 @@ export function initFlashcardSchema(db) {
     );
     CREATE INDEX IF NOT EXISTS flashcard_decks_user ON flashcard_decks(user_id, updated_at DESC);
 
+    CREATE TABLE IF NOT EXISTS flashcard_notes (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      default_deck_id TEXT REFERENCES flashcard_decks(id) ON DELETE SET NULL,
+      note_type TEXT NOT NULL,
+      title TEXT,
+      fields_json TEXT NOT NULL,
+      suppressed_derivations_json TEXT NOT NULL DEFAULT '[]',
+      subject TEXT,
+      chapter TEXT,
+      tags_json TEXT NOT NULL DEFAULT '[]',
+      source_type TEXT NOT NULL DEFAULT 'manual',
+      source_course_id TEXT,
+      source_document_id TEXT REFERENCES study_documents(id) ON DELETE SET NULL,
+      source_section_id TEXT,
+      source_locator_json TEXT,
+      source_excerpt TEXT,
+      visual_json TEXT,
+      schema_version INTEGER NOT NULL DEFAULT 1,
+      note_version INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS flashcard_notes_user ON flashcard_notes(user_id, updated_at DESC);
+    CREATE INDEX IF NOT EXISTS flashcard_notes_default_deck ON flashcard_notes(default_deck_id);
+
     CREATE TABLE IF NOT EXISTS flashcards (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       deck_id TEXT NOT NULL REFERENCES flashcard_decks(id) ON DELETE CASCADE,
+      note_id TEXT REFERENCES flashcard_notes(id) ON DELETE CASCADE,
+      derivation_key TEXT,
+      card_type TEXT NOT NULL DEFAULT 'basic',
       front TEXT NOT NULL,
       back TEXT NOT NULL,
+      typed_target TEXT,
+      accepted_answers_json TEXT,
       subject TEXT,
       chapter TEXT,
       tags_json TEXT NOT NULL DEFAULT '[]',
@@ -43,6 +74,8 @@ export function initFlashcardSchema(db) {
     CREATE INDEX IF NOT EXISTS flashcards_user_deck ON flashcards(user_id, deck_id, updated_at DESC);
     CREATE INDEX IF NOT EXISTS flashcards_user_source_course ON flashcards(user_id, source_course_id);
     CREATE INDEX IF NOT EXISTS flashcards_user_source_document ON flashcards(user_id, source_document_id);
+    CREATE INDEX IF NOT EXISTS flashcards_note_id ON flashcards(note_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS flashcards_note_derivation ON flashcards(note_id, derivation_key) WHERE note_id IS NOT NULL;
 
     CREATE TABLE IF NOT EXISTS flashcard_reviews (
       card_id TEXT PRIMARY KEY REFERENCES flashcards(id) ON DELETE CASCADE,
