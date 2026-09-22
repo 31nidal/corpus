@@ -2,13 +2,13 @@ const html = value => String(value || '').replaceAll('&', '&amp;').replaceAll('<
 const escapeTab = value => `"${String(value ?? '').replaceAll('"', '""')}"`
 const slug = value => String(value || '').toLocaleLowerCase('fr').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
 
-export function buildFlashcardAnki(cards, decks, notesMap = new Map()) {
+export function buildFlashcardAnki(cards, decks, notesMap = new Map(), isFiltered = false) {
   const names = new Map(decks.map(deck => [deck.id, deck.name]))
   const processedNoteIds = new Set()
   const rows = []
 
   for (const card of cards) {
-    const note = card.noteId ? notesMap.get(card.noteId) : null
+    const note = (!isFiltered && card.noteId) ? notesMap.get(card.noteId) : null
     const deckName = names.get(card.deckId) || ''
     const tags = [...new Set(['mycorpus', slug(deckName), slug(card.subject), ...card.tags.map(slug)].filter(Boolean))].join(' ')
 

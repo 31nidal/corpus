@@ -58,6 +58,7 @@ export function cardView(row) {
     deckId: row.deck_id,
     noteId: row.note_id || null,
     derivationKey: row.derivation_key || null,
+    noteVersion: row.note_version ?? null,
     cardType: row.card_type || 'basic',
     front: row.front,
     back: row.back,
@@ -128,6 +129,7 @@ export function noteView(row, cards = []) {
 
 const SELECT_CARD_FIELDS = `
   c.*,
+  n.note_version,
   r.state review_state,
   r.due_at,
   r.interval_days,
@@ -215,6 +217,7 @@ export class FlashcardRepository {
     const cards = this.db.prepare(`
       SELECT ${SELECT_CARD_FIELDS}
       FROM flashcards c
+      LEFT JOIN flashcard_notes n ON n.id=c.note_id
       LEFT JOIN flashcard_reviews r ON r.card_id=c.id
       WHERE c.note_id=? AND c.user_id=?
       ORDER BY c.created_at ASC, c.id ASC
@@ -252,6 +255,7 @@ export class FlashcardRepository {
       const cards = this.db.prepare(`
         SELECT ${SELECT_CARD_FIELDS}
         FROM flashcards c
+        LEFT JOIN flashcard_notes n ON n.id=c.note_id
         LEFT JOIN flashcard_reviews r ON r.card_id=c.id
         WHERE c.note_id=? AND c.user_id=?
         ORDER BY c.created_at ASC, c.id ASC
@@ -408,7 +412,10 @@ export class FlashcardRepository {
         return null
       }
 
-      if (expectedVersion !== undefined && current.note_version !== expectedVersion) {
+      if (!Number.isSafeInteger(expectedVersion)) {
+        throw Object.assign(new Error('expectedVersion obligatoire pour modifier une note.'), {status: 422})
+      }
+      if (current.note_version !== expectedVersion) {
         throw Object.assign(new Error('Conflit de version sur la note. Veuillez recharger.'), {status: 409})
       }
 
@@ -419,7 +426,36 @@ export class FlashcardRepository {
 
       const noteType = value.noteType || current.note_type
       const currentFields = parse(current.fields_json) || {}
-      const fields = value.fields ? {...currentFields, ...value.fields} : currentFields
+
+      const isFamilyChange = (
+        (['basic', 'reverse', 'bidirectional'].includes(current.note_type) && !['basic', 'reverse', 'bidirectional'].includes(noteType)) ||
+        (current.note_type === 'cloze' && noteType !== 'cloze') ||
+        (current.note_type === 'typed' && noteType !== 'typed')
+      )
+
+      const baseFields = isFamilyChange ? {} : currentFields
+      const fields = value.fields ? {...baseFields, ...value.fields} : baseFields
+
+      // Strict validation of the complete canonical state for target noteType
+      if (['basic', 'reverse', 'bidirectional'].includes(noteType)) {
+        if (!fields.front || typeof fields.front !== 'string' || !fields.front.trim() ||
+            !fields.back || typeof fields.back !== 'string' || !fields.back.trim()) {
+          throw Object.assign(new Error(`Les champs front et back sont obligatoires et ne peuvent être vides pour le type ${noteType}.`), {status: 400})
+        }
+      } else if (noteType === 'cloze') {
+        if (!fields.text || typeof fields.text !== 'string' || !fields.text.trim()) {
+          throw Object.assign(new Error('Le champ text est obligatoire pour une note Texte à trous.'), {status: 400})
+        }
+        const matches = [...fields.text.matchAll(/\{\{c(\d+)::([\s\S]*?)(?:::([\s\S]*?))?\}\}/g)]
+        if (!matches.length) {
+          throw Object.assign(new Error('Le texte doit contenir au moins un trou valide {{c1::mot}}.'), {status: 400})
+        }
+      } else if (noteType === 'typed') {
+        if (!fields.front || typeof fields.front !== 'string' || !fields.front.trim() ||
+            !fields.answer || typeof fields.answer !== 'string' || !fields.answer.trim()) {
+          throw Object.assign(new Error('Les champs front et answer sont obligatoires pour une note Réponse saisie.'), {status: 400})
+        }
+      }
       const suppressed = parse(current.suppressed_derivations_json) || []
 
       const title = value.title !== undefined ? (value.title || null) : current.title
@@ -546,7 +582,10 @@ export class FlashcardRepository {
         this.db.exec('ROLLBACK')
         return false
       }
-      if (expectedVersion !== undefined && note.note_version !== expectedVersion) {
+      if (!Number.isSafeInteger(expectedVersion)) {
+        throw Object.assign(new Error('expectedVersion obligatoire pour supprimer une note.'), {status: 422})
+      }
+      if (note.note_version !== expectedVersion) {
         throw Object.assign(new Error('Conflit de version sur la note.'), {status: 409})
       }
       this.db.prepare('DELETE FROM flashcard_notes WHERE id=? AND user_id=?').run(id, userId)
@@ -566,7 +605,10 @@ export class FlashcardRepository {
         this.db.exec('ROLLBACK')
         return null
       }
-      if (expectedVersion !== undefined && note.note_version !== expectedVersion) {
+      if (!Number.isSafeInteger(expectedVersion)) {
+        throw Object.assign(new Error('expectedVersion obligatoire pour restaurer une dérivation.'), {status: 422})
+      }
+      if (note.note_version !== expectedVersion) {
         throw Object.assign(new Error('Conflit de version sur la note.'), {status: 409})
       }
       const suppressed = parse(note.suppressed_derivations_json) || []
@@ -598,6 +640,7 @@ export class FlashcardRepository {
     const row = this.db.prepare(`
       SELECT ${SELECT_CARD_FIELDS}
       FROM flashcards c
+      LEFT JOIN flashcard_notes n ON n.id=c.note_id
       LEFT JOIN flashcard_reviews r ON r.card_id=c.id
       WHERE c.id=? AND c.user_id=?
     `).get(id, userId)
@@ -633,6 +676,7 @@ export class FlashcardRepository {
     const rows = this.db.prepare(`
       SELECT ${SELECT_CARD_FIELDS}
       FROM flashcards c
+      LEFT JOIN flashcard_notes n ON n.id=c.note_id
       LEFT JOIN flashcard_reviews r ON r.card_id=c.id
       WHERE ${where.join(' AND ')}
       ORDER BY c.updated_at DESC, c.id DESC
@@ -678,6 +722,19 @@ export class FlashcardRepository {
 
   updateCard(userId, id, value) {
     const current = this.card(userId, id); if (!current) return null
+    if (current.noteId) {
+      const keys = Object.keys(value).filter(k => value[k] !== undefined)
+      const nonDeckKeys = keys.filter(k => k !== 'deckId')
+      if (nonDeckKeys.length > 0) {
+        throw Object.assign(new Error('Cette carte est dérivée d’une Note. Modifiez la Note parente.'), {status: 422})
+      }
+      if (value.deckId) {
+        if (!this.deck(userId, value.deckId)) return null
+        this.db.prepare('UPDATE flashcards SET deck_id=?, updated_at=? WHERE id=? AND user_id=?').run(value.deckId, new Date().toISOString(), id, userId)
+        return this.card(userId, id)
+      }
+      return current
+    }
     const next = {...current, ...Object.fromEntries(Object.entries(value).filter(([, v]) => v !== undefined))}
     if (!this.deck(userId, next.deckId)) return null
     const source = next.source || current.source
@@ -703,11 +760,14 @@ export class FlashcardRepository {
     if (!card) return false
 
     if (card.note_id) {
+      if (!Number.isSafeInteger(expectedVersion)) {
+        throw Object.assign(new Error('expectedVersion obligatoire pour supprimer une carte dérivée.'), {status: 422})
+      }
       this.db.exec('BEGIN IMMEDIATE')
       try {
         const note = this.db.prepare('SELECT id, note_version, suppressed_derivations_json FROM flashcard_notes WHERE id=? AND user_id=?').get(card.note_id, userId)
         if (note) {
-          if (expectedVersion !== undefined && note.note_version !== expectedVersion) {
+          if (note.note_version !== expectedVersion) {
             throw Object.assign(new Error('Conflit de version sur la note.'), {status: 409})
           }
           const suppressed = parse(note.suppressed_derivations_json) || []
@@ -732,6 +792,59 @@ export class FlashcardRepository {
     return Boolean(this.db.prepare('DELETE FROM flashcards WHERE id=? AND user_id=?').run(id, userId).changes)
   }
 
+  duplicateNote(userId, noteId, targetDeckId) {
+    const original = this.db.prepare('SELECT * FROM flashcard_notes WHERE id=? AND user_id=?').get(noteId, userId)
+    if (!original) return null
+    let defaultDeckId = targetDeckId || original.default_deck_id
+    if (!defaultDeckId) {
+      const existingCard = this.db.prepare('SELECT deck_id FROM flashcards WHERE note_id=? AND user_id=? LIMIT 1').get(noteId, userId)
+      defaultDeckId = existingCard?.deck_id
+    }
+    if (!defaultDeckId || !this.deck(userId, defaultDeckId)) {
+      const anyDeck = this.db.prepare('SELECT id FROM flashcard_decks WHERE user_id=? LIMIT 1').get(userId)
+      defaultDeckId = anyDeck?.id || null
+    }
+    if (!defaultDeckId) {
+      throw Object.assign(new Error('Un deck valide est requis pour dupliquer la note.'), {status: 400})
+    }
+
+    const fields = parse(original.fields_json) || {}
+    const tags = parse(original.tags_json) || []
+    const visual = parse(original.visual_json) || null
+    const source = {
+      type: original.source_type,
+      courseId: original.source_course_id,
+      documentId: original.source_document_id,
+      sectionId: original.source_section_id,
+      locator: parse(original.source_locator_json),
+      excerpt: original.source_excerpt,
+    }
+
+    return this.createNote(userId, {
+      defaultDeckId,
+      noteType: original.note_type,
+      title: original.title ? `${original.title} (copie)` : undefined,
+      fields,
+      subject: original.subject || '',
+      chapter: original.chapter || '',
+      tags,
+      visual,
+      source,
+    })
+  }
+
+  duplicateCard(userId, id, deckId) {
+    const original = this.card(userId, id)
+    if (!original) return null
+    if (original.noteId) {
+      const newNote = this.duplicateNote(userId, original.noteId, deckId)
+      if (!newNote) return null
+      const newCard = newNote.cards.find(c => c.derivationKey === original.derivationKey) || newNote.cards[0]
+      return newCard || null
+    }
+    return this.createCard(userId, {...original, deckId: deckId || original.deckId})
+  }
+
   // --- REVIEW QUEUE WITH DETERMINISTIC SIBLING BURYING ---
 
   reviewQueue(userId, deckId, limit = 30, timeZone = 'Europe/Paris', now = Date.now()) {
@@ -752,6 +865,7 @@ export class FlashcardRepository {
             ORDER BY r.due_at ASC, c.id ASC
           ) AS rn
         FROM flashcards c
+        LEFT JOIN flashcard_notes n ON n.id=c.note_id
         JOIN flashcard_reviews r ON r.card_id=c.id
         WHERE c.user_id=?
           AND r.due_at<=?

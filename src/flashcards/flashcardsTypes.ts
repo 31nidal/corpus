@@ -92,6 +92,7 @@ export type Flashcard = {
   deckId: string
   noteId?: string | null
   derivationKey?: string | null
+  noteVersion?: number | null
   cardType?: CardType
   front: string
   back: string

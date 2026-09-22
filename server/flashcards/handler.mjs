@@ -84,23 +84,35 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
       }
       if (noteMatch && req.method === 'PATCH') {
         const body = await readJson(req)
+        if (!Number.isSafeInteger(body?.expectedVersion)) {
+          return send(422, {error: 'expectedVersion obligatoire pour modifier une note.'})
+        }
         const value = validateNote(body, true)
         if (!value) return send(400, {error: 'Note invalide.'})
-        const expectedVersion = Number.isSafeInteger(body.expectedVersion) ? body.expectedVersion : undefined
-        const note = repo.updateNote(user.id, noteMatch[1], value, expectedVersion)
+        const note = repo.updateNote(user.id, noteMatch[1], value, body.expectedVersion)
         return note ? send(200, {note}) : send(404, {error: 'Note introuvable.'})
       }
       if (noteMatch && req.method === 'DELETE') {
         const body = await readJson(req).catch(() => ({}))
-        const expectedVersion = Number.isSafeInteger(body?.expectedVersion) ? body.expectedVersion : undefined
-        const ok = repo.deleteNote(user.id, noteMatch[1], expectedVersion)
+        if (!Number.isSafeInteger(body?.expectedVersion)) {
+          return send(422, {error: 'expectedVersion obligatoire pour supprimer une note.'})
+        }
+        const ok = repo.deleteNote(user.id, noteMatch[1], body.expectedVersion)
         return ok ? send(200, {ok: true}) : send(404, {error: 'Note introuvable.'})
+      }
+      const duplicateNoteMatch = subpath.match(/^notes\/([^/]+)\/duplicate$/)
+      if (duplicateNoteMatch && req.method === 'POST') {
+        const body = await readJson(req).catch(() => ({}))
+        const note = repo.duplicateNote(user.id, duplicateNoteMatch[1], cleanText(body?.deckId, 100) || undefined)
+        return note ? send(201, {note}) : send(404, {error: 'Note introuvable.'})
       }
       const restoreMatch = subpath.match(/^notes\/([^/]+)\/derivations\/([^/]+)\/restore$/)
       if (restoreMatch && req.method === 'POST') {
         const body = await readJson(req).catch(() => ({}))
-        const expectedVersion = Number.isSafeInteger(body?.expectedVersion) ? body.expectedVersion : undefined
-        const note = repo.restoreDerivation(user.id, restoreMatch[1], restoreMatch[2], expectedVersion)
+        if (!Number.isSafeInteger(body?.expectedVersion)) {
+          return send(422, {error: 'expectedVersion obligatoire pour restaurer une dérivation.'})
+        }
+        const note = repo.restoreDerivation(user.id, restoreMatch[1], restoreMatch[2], body.expectedVersion)
         return note ? send(200, {note}) : send(404, {error: 'Note introuvable.'})
       }
 
@@ -133,18 +145,31 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
       }
       const cardMatch = subpath.match(/^cards\/([^/]+)(?:\/(duplicate|move|review|preview))?$/)
       if (cardMatch && !cardMatch[2] && req.method === 'PATCH') {
+        const card = repo.card(user.id, cardMatch[1])
+        if (!card) return send(404, {error: 'Carte introuvable.'})
+        if (card.noteId) {
+          return send(422, {error: 'Cette carte est dérivée d’une Note. Modifiez la Note parente.'})
+        }
         const value = validateCard(await readJson(req), true); if (!value) return send(400, {error: 'Carte invalide.'})
-        const card = repo.updateCard(user.id, cardMatch[1], value); return card ? send(200, {card}) : send(404, {error: 'Carte ou deck introuvable.'})
+        const updated = repo.updateCard(user.id, cardMatch[1], value); return updated ? send(200, {card: updated}) : send(404, {error: 'Carte ou deck introuvable.'})
       }
       if (cardMatch && !cardMatch[2] && req.method === 'DELETE') {
         const body = await readJson(req).catch(() => ({}))
-        const expectedVersion = Number.isSafeInteger(body?.expectedVersion) ? body.expectedVersion : undefined
-        return repo.deleteCard(user.id, cardMatch[1], expectedVersion) ? send(200, {ok: true}) : send(404, {error: 'Carte introuvable.'})
+        const card = repo.card(user.id, cardMatch[1])
+        if (!card) return send(404, {error: 'Carte introuvable.'})
+        if (card.noteId && !Number.isSafeInteger(body?.expectedVersion)) {
+          return send(422, {error: 'expectedVersion obligatoire pour supprimer une carte dérivée.'})
+        }
+        return repo.deleteCard(user.id, cardMatch[1], body?.expectedVersion) ? send(200, {ok: true}) : send(404, {error: 'Carte introuvable.'})
       }
       if (cardMatch?.[2] === 'duplicate' && req.method === 'POST') {
         const original = repo.card(user.id, cardMatch[1]); if (!original) return send(404, {error: 'Carte introuvable.'})
-        const body = await readJson(req), card = repo.createCard(user.id, {...original, deckId: cleanText(body.deckId, 100) || original.deckId})
-        return card ? send(201, {card}) : send(400, {error: 'Deck invalide.'})
+        const body = await readJson(req)
+        const targetDeckId = cleanText(body.deckId, 100) || undefined
+        const card = repo.duplicateCard(user.id, original.id, targetDeckId)
+        if (!card) return send(400, {error: 'Deck invalide.'})
+        const note = card.noteId ? repo.note(user.id, card.noteId) : undefined
+        return send(201, {card, ...(note ? {note} : {})})
       }
       if (cardMatch?.[2] === 'move' && req.method === 'POST') {
         const body = await readJson(req), card = repo.updateCard(user.id, cardMatch[1], {deckId: cleanText(body.deckId, 100, true)})
@@ -344,7 +369,15 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
         return send(200, {drafts, generation: {mode: usedProvider ? 'provider' : 'local', level, requestedCount, produced: drafts.length, persisted: false}})
       }
       if (req.method === 'POST' && subpath === 'export') {
-        const body = await readJson(req), filters = {deckId: cleanText(body.deckId, 100), courseId: cleanText(body.courseId, 150), due: body.due === true, limit: 100}; let cursor = null, cards = []
+        const body = await readJson(req)
+        const isFiltered = Boolean(
+          body.deckId ||
+          (Array.isArray(body.deckIds) && body.deckIds.length > 0) ||
+          body.courseId ||
+          body.due === true ||
+          (Array.isArray(body.cardIds) && body.cardIds.length > 0)
+        )
+        const filters = {deckId: cleanText(body.deckId, 100), courseId: cleanText(body.courseId, 150), due: body.due === true, limit: 100}; let cursor = null, cards = []
         for (const [key, max] of [['deckIds', 1000], ['cardIds', 10000]]) {
           if (body[key] !== undefined) {
             if (!Array.isArray(body[key]) || body[key].length > max || body[key].some(id => !cleanText(id, 100, true))) return send(400, {error: 'Sélection d’export invalide.'})
@@ -353,17 +386,19 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
         }
         do { const page = repo.listCards(user.id, {...filters, cursor}); cards.push(...page.cards); cursor = page.nextCursor ? decodeCursor(page.nextCursor) : null } while (cursor && cards.length < 10000)
         if (cursor) return send(413, {error: 'Plus de 10 000 cartes sélectionnées. Exportez vos decks en plusieurs fois.'})
-        const noteIds = [...new Set(cards.map(c => c.noteId).filter(Boolean))]
+        const noteIds = isFiltered ? [] : [...new Set(cards.map(c => c.noteId).filter(Boolean))]
         const notesMap = new Map()
         for (const nid of noteIds) {
           const n = repo.note(user.id, nid)
           if (n) notesMap.set(n.id, n)
         }
-        return send(200, buildFlashcardAnki(cards, repo.listDecks(user.id), notesMap), 'text/csv; charset=utf-8')
+        return send(200, buildFlashcardAnki(cards, repo.listDecks(user.id), notesMap, isFiltered), 'text/csv; charset=utf-8')
       }
       return send(404, {error: 'Route flashcards inconnue.'})
     } catch (error) {
-      if (String(error?.message).includes('UNIQUE constraint failed')) return send(409, {error: 'Un deck porte déjà ce nom.'})
+      if (String(error?.message).includes('flashcard_decks')) return send(409, {error: 'Un deck porte déjà ce nom.'})
+      if (String(error?.message).includes('flashcards_note_derivation')) return send(409, {error: 'Cette dérivation existe déjà pour cette note.'})
+      if (String(error?.message).includes('UNIQUE constraint failed')) return send(409, {error: 'Un élément identique existe déjà.'})
       console.error('Flashcard API error:', error)
       return send(error.status || 500, {error: error.status ? error.message : 'Service flashcards indisponible. Réessayez dans quelques instants.'})
     }

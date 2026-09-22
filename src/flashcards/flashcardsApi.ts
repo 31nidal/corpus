@@ -67,19 +67,25 @@ export const fetchNote = async (id: string) =>
 export const createNote = async (value: Partial<FlashcardNote>) =>
   (await request<{note: FlashcardNote}>('notes', {method: 'POST', body: JSON.stringify(value)})).note
 
-export const updateNote = async (id: string, value: Partial<FlashcardNote>, expectedVersion?: number) =>
+export const updateNote = async (id: string, value: Partial<FlashcardNote>, expectedVersion: number) =>
   (await request<{note: FlashcardNote}>(`notes/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     body: JSON.stringify({...value, expectedVersion}),
   })).note
 
-export const deleteNote = async (id: string, expectedVersion?: number) =>
+export const deleteNote = async (id: string, expectedVersion: number) =>
   request(`notes/${encodeURIComponent(id)}`, {
     method: 'DELETE',
     body: JSON.stringify({expectedVersion}),
   })
 
-export const restoreDerivation = async (noteId: string, derivationKey: string, expectedVersion?: number) =>
+export const duplicateNote = async (id: string, deckId?: string) =>
+  (await request<{note: FlashcardNote}>(`notes/${encodeURIComponent(id)}/duplicate`, {
+    method: 'POST',
+    body: JSON.stringify({deckId}),
+  })).note
+
+export const restoreDerivation = async (noteId: string, derivationKey: string, expectedVersion: number) =>
   (await request<{note: FlashcardNote}>(`notes/${encodeURIComponent(noteId)}/derivations/${encodeURIComponent(derivationKey)}/restore`, {
     method: 'POST',
     body: JSON.stringify({expectedVersion}),
