@@ -391,19 +391,23 @@ export class FlashcardRepository {
     }
   }
 
+  purgeExpiredGenerationReceipts(now = Date.now()) {
+    return this.db.prepare('DELETE FROM flashcard_generation_receipts WHERE expires_at < ?').run(now)
+  }
+
   saveGenerationReceipt(userId, id, kind, source, sourceText, ttlMs = 2 * 3600 * 1000) {
     const now = Date.now()
     const expiresAt = now + ttlMs
+    this.purgeExpiredGenerationReceipts(now)
     this.db.prepare(`
       INSERT OR REPLACE INTO flashcard_generation_receipts(id, user_id, kind, source_json, source_text, created_at, expires_at)
       VALUES(?, ?, ?, ?, ?, ?, ?)
     `).run(id, userId, kind, JSON.stringify(source || {}), sourceText || '', now, expiresAt)
-    this.db.prepare('DELETE FROM flashcard_generation_receipts WHERE expires_at<?').run(now)
   }
 
   getGenerationReceipt(userId, id) {
     const now = Date.now()
-    this.db.prepare('DELETE FROM flashcard_generation_receipts WHERE expires_at<?').run(now)
+    this.purgeExpiredGenerationReceipts(now)
     const row = this.db.prepare('SELECT * FROM flashcard_generation_receipts WHERE id=? AND user_id=?').get(id, userId)
     if (!row) return null
     return {

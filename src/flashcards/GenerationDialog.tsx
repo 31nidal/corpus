@@ -565,7 +565,7 @@ export default function GenerationDialog({
                     tags: [],
                     selected: true,
                     source: {
-                      type: 'manual',
+                      type: source.kind === 'text' ? 'free_text' : source.kind === 'study' ? 'study_document' : source.kind === 'qcm-error' ? 'qcm_error' : 'catalog_course',
                       courseId: source.courseId,
                       documentId: source.documentId,
                     },

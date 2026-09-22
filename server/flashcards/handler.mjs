@@ -32,6 +32,7 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
     db = new DatabaseSync(path.join(directory, 'mycorpus.sqlite'))
     db.exec('PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;')
     initStudySchema(db); initFlashcardSchema(db); migrateFlashcards(db, scheduler)
+    new FlashcardRepository(db).purgeExpiredGenerationReceipts()
     return db
   }
   return async (req, res) => {
@@ -127,6 +128,7 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
           return send(422, {error: 'Identifiant d’enregistrement (requestId) obligatoire.'})
         }
 
+        repo.purgeExpiredGenerationReceipts()
         let receipt = null
         if (body.generationId) {
           const genId = cleanText(body.generationId, 100, true)
@@ -134,6 +136,17 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
           if (!receipt) {
             return send(400, {error: 'Reçu de génération invalide ou expiré.'})
           }
+        }
+
+        const KIND_TO_SOURCE_TYPE = {
+          text: 'free_text',
+          free_text: 'free_text',
+          catalog: 'catalog_course',
+          catalog_course: 'catalog_course',
+          study: 'study_document',
+          study_document: 'study_document',
+          'qcm-error': 'qcm_error',
+          qcm_error: 'qcm_error',
         }
 
         const validNotes = []
@@ -161,13 +174,25 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
             }
           }
 
-          // Check generation receipt alignment and re-verify medical assertions
-          if (receipt && valid.source?.type !== 'manual') {
-            if (valid.source?.courseId && receipt.source?.courseId && valid.source.courseId !== receipt.source.courseId) {
-              return send(400, {error: 'Incohérence de provenance avec le reçu de génération.'})
+          // Strict binding between generation receipt and note source
+          if (!receipt) {
+            if (valid.source?.type && valid.source.type !== 'manual') {
+              return send(400, {error: 'Un identifiant de génération (generationId) valide est obligatoire pour enregistrer des notes issues d’une source générée.'})
             }
-            if (valid.source?.documentId && receipt.source?.documentId && valid.source.documentId !== receipt.source.documentId) {
-              return send(400, {error: 'Incohérence de provenance avec le reçu de génération.'})
+          } else {
+            const expectedSourceType = KIND_TO_SOURCE_TYPE[receipt.kind]
+            if (!expectedSourceType || valid.source?.type !== expectedSourceType) {
+              return send(400, {error: 'Type de source incompatible avec le reçu de génération.'})
+            }
+
+            if ((valid.source?.courseId || null) !== (receipt.source?.courseId || null)) {
+              return send(400, {error: 'Incohérence de provenance avec le reçu de génération (courseId).'})
+            }
+            if ((valid.source?.documentId || null) !== (receipt.source?.documentId || null)) {
+              return send(400, {error: 'Incohérence de provenance avec le reçu de génération (documentId).'})
+            }
+            if (receipt.source?.sectionId && (valid.source?.sectionId || null) !== receipt.source.sectionId) {
+              return send(400, {error: 'Incohérence de provenance avec le reçu de génération (sectionId).'})
             }
 
             const normSource = normalize(receipt.sourceText)
@@ -203,10 +228,16 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
                 break
               }
             }
+
+            if (valid.source?.type !== 'free_text' && valid.source?.excerpt) {
+              if (!normSource.includes(normalize(valid.source.excerpt))) {
+                return send(400, {error: 'Citation source non attestée dans le contenu généré.'})
+              }
+            }
           }
 
           // If free_text: excerpt MUST NOT be persisted
-          if (valid.source?.type === 'free_text' || (receipt && receipt.kind === 'free_text')) {
+          if (valid.source?.type === 'free_text' || (receipt && (receipt.kind === 'free_text' || receipt.kind === 'text'))) {
             valid.source = {...valid.source, type: 'free_text', excerpt: null}
           }
 
@@ -438,6 +469,7 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
       }
 
       if (req.method === 'POST' && subpath.startsWith('generate/')) {
+        repo.purgeExpiredGenerationReceipts()
         const kind = subpath.slice(9), body = await readJson(req, 1000000), level = ['essential', 'standard', 'complete'].includes(body.level) ? body.level : 'standard', requestedCount = Math.min(80, Math.max(1, Number(body.count) || 12))
         if (!['text', 'catalog', 'study', 'qcm-error'].includes(kind)) return send(404, {error: 'Source de génération inconnue.'})
         const generationId = 'gen_' + randomUUID()

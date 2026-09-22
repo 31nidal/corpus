@@ -386,7 +386,7 @@ test('les brouillons incomplets ne disparaissent pas et la recherche garde le fo
   await expect(dialog.getByRole('alert')).toContainText('Complétez le recto')
   await expect(dialog).toBeVisible()
   await dialog.getByLabel('Recto', { exact: true }).last().fill('Question ajoutée')
-  await dialog.getByLabel('Verso', { exact: true }).last().fill('Réponse ajoutée')
+  await dialog.getByLabel('Verso', { exact: true }).last().fill('Le nœud sinusal assure normalement le rythme du cœur.')
   await dialog.getByRole('button', { name: 'Enregistrer la sélection' }).click()
   await expect(dialog).not.toBeVisible()
   await page.getByRole('button', { name: 'Toutes mes cartes' }).click()

@@ -4,8 +4,13 @@ import {mkdtempSync, rmSync} from 'node:fs'
 import {tmpdir} from 'node:os'
 import path from 'node:path'
 import {Readable} from 'node:stream'
+import {DatabaseSync} from 'node:sqlite'
 import {createFlashcardHandler} from '../server/flashcards/handler.mjs'
 import {createAccountHandler} from '../server/accounts.mjs'
+import {initFlashcardSchema} from '../server/flashcards/schema.mjs'
+import {migrateFlashcards} from '../server/flashcards/migrations.mjs'
+import {FlashcardRepository} from '../server/flashcards/repository.mjs'
+import {normalizeTypedAnswer, checkTypedAnswer} from '../server/flashcards/typedAnswer.mjs'
 import {
   generateLocalNoteDrafts,
   sanitizeGeneratedNoteDrafts,
@@ -389,3 +394,280 @@ test('Génération depuis erreur QCM : création d’une Note structurée et val
     rmSync(dir, {recursive: true, force: true})
   }
 })
+
+test('Binding strict reçu ↔ source : refus si générationId fourni mais source.type rétrogradé vers manual', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'mycorpus-tamper-manual-')), call = api(dir)
+  try {
+    const user = await call('/api/account/register', 'POST', {email: 'tamper-manual@example.test', name: 'Tamper', password})
+    const deck = (await call('/api/flashcards/decks', 'POST', {name: 'DeckTamper'}, user.cookie)).data.deck
+
+    const genRes = await call('/api/flashcards/generate/catalog', 'POST', {
+      text: 'Le muscle deltoïde est abducteur principal du bras. Il est innervé par le nerf axillaire.',
+      courseId: 'anat-bras',
+    }, user.cookie)
+    assert.equal(genRes.status, 200)
+    const genId = genRes.data.generationId
+
+    // Tentative de bypass : on fournit le generationId mais avec source.type = 'manual'
+    const res = await call('/api/flashcards/notes/bulk', 'POST', {
+      notes: [{
+        noteType: 'basic',
+        defaultDeckId: deck.id,
+        fields: {front: 'Question', back: 'Réponse inventée non attestée'},
+        source: {type: 'manual'},
+      }],
+      generationId: genId,
+      requestId: 'bypass-manual-1',
+    }, user.cookie)
+    assert.equal(res.status, 400)
+    assert.match(res.data.error, /Type de source incompatible/)
+  } finally {
+    rmSync(dir, {recursive: true, force: true})
+  }
+})
+
+test('Provenance stricte : refus si source générée sans generationId', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'mycorpus-missing-gen-')), call = api(dir)
+  try {
+    const user = await call('/api/account/register', 'POST', {email: 'missing-gen@example.test', name: 'NoGen', password})
+    const deck = (await call('/api/flashcards/decks', 'POST', {name: 'DeckNoGen'}, user.cookie)).data.deck
+
+    const res = await call('/api/flashcards/notes/bulk', 'POST', {
+      notes: [{
+        noteType: 'basic',
+        defaultDeckId: deck.id,
+        fields: {front: 'Question', back: 'Réponse'},
+        source: {type: 'catalog_course', courseId: 'cardio'},
+      }],
+      requestId: 'no-gen-req-1',
+    }, user.cookie)
+    assert.equal(res.status, 400)
+    assert.match(res.data.error, /generationId/)
+  } finally {
+    rmSync(dir, {recursive: true, force: true})
+  }
+})
+
+test('Binding strict reçu ↔ source : refus en cas d’altération de courseId ou documentId', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'mycorpus-tamper-id-')), call = api(dir)
+  try {
+    const user = await call('/api/account/register', 'POST', {email: 'tamper-id@example.test', name: 'TamperId', password})
+    const deck = (await call('/api/flashcards/decks', 'POST', {name: 'DeckTamperId'}, user.cookie)).data.deck
+
+    const text = 'Le nœud sinusal est le pacemaker physiologique du cœur humain.'
+    const genRes = await call('/api/flashcards/generate/catalog', 'POST', {text, courseId: 'cardio-101'}, user.cookie)
+    assert.equal(genRes.status, 200)
+
+    // Altération de courseId : 'pneumo-202' au lieu de 'cardio-101'
+    const resAltered = await call('/api/flashcards/notes/bulk', 'POST', {
+      notes: [{
+        noteType: 'basic',
+        defaultDeckId: deck.id,
+        fields: {front: 'Nœud sinusal ?', back: 'Le nœud sinusal est le pacemaker physiologique du cœur humain.'},
+        source: {type: 'catalog_course', courseId: 'pneumo-202'},
+      }],
+      generationId: genRes.data.generationId,
+      requestId: 'altered-id-1',
+    }, user.cookie)
+    assert.equal(resAltered.status, 400)
+    assert.match(resAltered.data.error, /Incohérence de provenance/)
+
+    // Suppression silencieuse de courseId (tentative de bypass)
+    const resRemoved = await call('/api/flashcards/notes/bulk', 'POST', {
+      notes: [{
+        noteType: 'basic',
+        defaultDeckId: deck.id,
+        fields: {front: 'Nœud sinusal ?', back: 'Le nœud sinusal est le pacemaker physiologique du cœur humain.'},
+        source: {type: 'catalog_course', courseId: null},
+      }],
+      generationId: genRes.data.generationId,
+      requestId: 'altered-id-2',
+    }, user.cookie)
+    assert.equal(resRemoved.status, 400)
+    assert.match(resRemoved.data.error, /Incohérence de provenance/)
+  } finally {
+    rmSync(dir, {recursive: true, force: true})
+  }
+})
+
+test('Validation stricte sourceExcerpt : rejet si citation inventée ou non attestée', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'mycorpus-excerpt-valid-')), call = api(dir)
+  try {
+    const user = await call('/api/account/register', 'POST', {email: 'excerpt-val@example.test', name: 'ExcerptVal', password})
+    const deck = (await call('/api/flashcards/decks', 'POST', {name: 'DeckExcerpt'}, user.cookie)).data.deck
+
+    const text = 'L’artère méningée moyenne pénètre dans le crâne par le foramen épineux.'
+    const genRes = await call('/api/flashcards/generate/catalog', 'POST', {text, courseId: 'neuro-anat'}, user.cookie)
+    assert.equal(genRes.status, 200)
+
+    // sourceExcerpt halluciné/inventé
+    const resInvalid = await call('/api/flashcards/notes/bulk', 'POST', {
+      notes: [{
+        noteType: 'basic',
+        defaultDeckId: deck.id,
+        fields: {front: 'Artère méningée moyenne ?', back: text},
+        source: {type: 'catalog_course', courseId: 'neuro-anat', excerpt: 'Cette phrase n’existe nulle part dans la source.'},
+      }],
+      generationId: genRes.data.generationId,
+      requestId: 'invalid-excerpt-1',
+    }, user.cookie)
+    assert.equal(resInvalid.status, 400)
+    assert.match(resInvalid.data.error, /Citation source non attestée/)
+
+    // sourceExcerpt valide (extrait exact du texte)
+    const resValid = await call('/api/flashcards/notes/bulk', 'POST', {
+      notes: [{
+        noteType: 'basic',
+        defaultDeckId: deck.id,
+        fields: {front: 'Artère méningée moyenne ?', back: text},
+        source: {type: 'catalog_course', courseId: 'neuro-anat', excerpt: text},
+      }],
+      generationId: genRes.data.generationId,
+      requestId: 'valid-excerpt-1',
+    }, user.cookie)
+    assert.equal(resValid.status, 201)
+    assert.equal(resValid.data.totalNotes, 1)
+  } finally {
+    rmSync(dir, {recursive: true, force: true})
+  }
+})
+
+test('Source free_text : excerpt forcé à null en base même si envoyé dans le payload', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'mycorpus-freetext-null-')), call = api(dir)
+  try {
+    const user = await call('/api/account/register', 'POST', {email: 'freetext-null@example.test', name: 'FreeTextNull', password})
+    const deck = (await call('/api/flashcards/decks', 'POST', {name: 'DeckFreeText'}, user.cookie)).data.deck
+
+    const text = 'La rate est située dans l’hypochondre gauche sous la coupole diaphragmatique.'
+    const genRes = await call('/api/flashcards/generate/text', 'POST', {text}, user.cookie)
+    assert.equal(genRes.status, 200)
+
+    const save = await call('/api/flashcards/notes/bulk', 'POST', {
+      notes: [{
+        noteType: 'basic',
+        defaultDeckId: deck.id,
+        fields: {front: 'Où est située la rate ?', back: text},
+        source: {type: 'free_text', excerpt: text},
+      }],
+      generationId: genRes.data.generationId,
+      requestId: 'freetext-req-1',
+    }, user.cookie)
+    assert.equal(save.status, 201)
+
+    // Vérifier la note enregistrée en base
+    const note = (await call('/api/flashcards/notes', 'GET', undefined, user.cookie)).data.notes[0]
+    assert.equal(note.source.type, 'free_text')
+    assert.equal(note.source.excerpt, null)
+  } finally {
+    rmSync(dir, {recursive: true, force: true})
+  }
+})
+
+test('Purge automatique des reçus de génération expirés', () => {
+  const db = new DatabaseSync(':memory:')
+  db.exec('PRAGMA foreign_keys=ON;')
+  db.exec(`
+    CREATE TABLE users (id TEXT PRIMARY KEY, email TEXT UNIQUE, name TEXT);
+  `)
+  initFlashcardSchema(db)
+
+  const userId = 'user-purge-receipt'
+  db.prepare('INSERT INTO users VALUES(?, ?, ?)').run(userId, 'purge@test.com', 'Purge')
+  const repo = new FlashcardRepository(db)
+
+  // Créer un reçu expiré (ttlMs négatif) et un reçu valide (ttlMs standard)
+  repo.saveGenerationReceipt(userId, 'gen_expired', 'catalog', {courseId: 'c1'}, 'source expirée', -10000)
+  repo.saveGenerationReceipt(userId, 'gen_valid', 'catalog', {courseId: 'c1'}, 'source valide', 3600000)
+
+  // Vérifier la purge
+  repo.purgeExpiredGenerationReceipts()
+  assert.equal(repo.getGenerationReceipt(userId, 'gen_expired'), null)
+  assert.notEqual(repo.getGenerationReceipt(userId, 'gen_valid'), null)
+  assert.equal(repo.getGenerationReceipt(userId, 'gen_valid').sourceText, 'source valide')
+})
+
+test('Typed answer : préservation stricte des accents (pas de suppression diacritique)', () => {
+  assert.equal(normalizeTypedAnswer('  Hémoglobine Glyquée  '), 'hémoglobine glyquée')
+  assert.notEqual(normalizeTypedAnswer('hémoglobine'), 'hemoglobine')
+
+  const resExact = checkTypedAnswer('hémoglobine', 'hémoglobine')
+  assert.equal(resExact.matched, true)
+
+  // Une saisie sans accent ne doit pas matcher la cible accentuée si non dans acceptedAnswers
+  const resNoAccent = checkTypedAnswer('hemoglobine', 'hémoglobine')
+  assert.equal(resNoAccent.matched, false)
+
+  // Avec acceptedAnswers incluant la version sans accent
+  const resWithAlt = checkTypedAnswer('hemoglobine', 'hémoglobine', ['hemoglobine'])
+  assert.equal(resWithAlt.matched, true)
+})
+
+test('Concurrence réelle SQLite (deux connexions DatabaseSync distinctes) : idempotence createNotesBulk sous contention', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'mycorpus-sqlite-concurrency-'))
+  const dbPath = path.join(dir, 'test_concurrency.sqlite')
+  try {
+    const db1 = new DatabaseSync(dbPath)
+    db1.exec('PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;')
+    db1.exec(`
+      CREATE TABLE users (id TEXT PRIMARY KEY, email TEXT UNIQUE, name TEXT);
+      CREATE TABLE study_documents (id TEXT PRIMARY KEY, user_id TEXT);
+    `)
+    initFlashcardSchema(db1)
+    migrateFlashcards(db1)
+
+    const db2 = new DatabaseSync(dbPath)
+    db2.exec('PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;')
+
+    const userId = 'user-concurrent-1'
+    db1.prepare('INSERT INTO users VALUES(?, ?, ?)').run(userId, 'concurrent@test.com', 'Concurrent')
+
+    const repo1 = new FlashcardRepository(db1)
+    const repo2 = new FlashcardRepository(db2)
+
+    const deck = repo1.createDeck(userId, {name: 'Deck Concurrency'})
+
+    const notesPayload = [
+      {
+        noteType: 'basic',
+        defaultDeckId: deck.id,
+        fields: {front: 'Qu’est-ce que le nœud sino-auriculaire ?', back: 'Le pacemaker naturel du cœur.'},
+        source: {type: 'manual'},
+      },
+    ]
+    const requestId = 'req-sqlite-dual-conn-999'
+    const payloadHash = 'hash-dual-conn-123'
+
+    // Lancer createNotesBulk simultanément sur deux connexions SQLite réelles distinctes
+    const [res1, res2] = await Promise.all([
+      Promise.resolve().then(() => repo1.createNotesBulk(userId, notesPayload, requestId, payloadHash)),
+      Promise.resolve().then(() => repo2.createNotesBulk(userId, notesPayload, requestId, payloadHash)),
+    ])
+
+    // Les deux doivent réussir sans SQLITE_BUSY
+    assert.ok(res1 && res2)
+    assert.equal(res1.notes.length, 1)
+    assert.equal(res2.notes.length, 1)
+    assert.equal(res1.notes[0].id, res2.notes[0].id)
+    assert.equal(res1.totalCards, 1)
+    assert.equal(res2.totalCards, 1)
+
+    // Vérifier en base : une seule note a été créée
+    const countRow = db1.prepare('SELECT COUNT(*) as count FROM flashcard_notes WHERE user_id=?').get(userId)
+    assert.equal(countRow.count, 1)
+
+    // Vérifier les cartes dérivées : exactement 1 carte en base
+    const cardCountRow = db2.prepare('SELECT COUNT(*) as count FROM flashcards WHERE user_id=?').get(userId)
+    assert.equal(cardCountRow.count, 1)
+
+    // Vérifier la table flashcard_save_requests
+    const saveReq = db1.prepare('SELECT request_id, payload_hash FROM flashcard_save_requests WHERE user_id=?').get(userId)
+    assert.equal(saveReq.request_id, `notes:${requestId}`)
+    assert.equal(saveReq.payload_hash, payloadHash)
+
+    db1.close()
+    db2.close()
+  } finally {
+    rmSync(dir, {recursive: true, force: true})
+  }
+})
+
