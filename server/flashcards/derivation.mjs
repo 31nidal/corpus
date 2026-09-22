@@ -1,7 +1,8 @@
 import {extractClozeKeys, renderClozeCard} from './cloze.mjs'
+import {getCanonicalStructureName} from './atlasRegistry.mjs'
 
-export const NOTE_TYPES = new Set(['basic', 'reverse', 'bidirectional', 'cloze', 'typed', 'image_occlusion'])
-export const CARD_TYPES = new Set(['basic', 'cloze', 'typed', 'image_occlusion'])
+export const NOTE_TYPES = new Set(['basic', 'reverse', 'bidirectional', 'cloze', 'typed', 'image_occlusion', 'atlas_3d'])
+export const CARD_TYPES = new Set(['basic', 'cloze', 'typed', 'image_occlusion', 'atlas_3d'])
 
 export function deriveCardsFromNote(noteType, fields, suppressedKeys = [], context = {}) {
   const suppressed = new Set(suppressedKeys || [])
@@ -133,6 +134,39 @@ export function deriveCardsFromNote(noteType, fields, suppressedKeys = [], conte
                 width: mask.width,
                 height: mask.height,
               },
+            },
+          })
+        }
+      }
+      break
+    }
+    case 'atlas_3d': {
+      const prompt = (fields.prompt || '').trim() || 'Identifier cette structure anatomique'
+      const extra = (fields.extra || '').trim()
+      const scene = fields.scene || {}
+      const modelKey = scene.modelKey
+      const atlasRevision = scene.atlasRevision
+      const targets = Array.isArray(fields.targets) ? fields.targets : []
+
+      for (const target of targets) {
+        const key = `atlas:${target.id}`
+        if (!suppressed.has(key)) {
+          const canonicalName = getCanonicalStructureName(modelKey, target.structureId)
+          const backContent = extra ? `${canonicalName}\n\n${extra}` : canonicalName
+
+          derivations.push({
+            derivationKey: key,
+            cardType: 'atlas_3d',
+            front: prompt,
+            back: backContent,
+            typedTarget: null,
+            acceptedAnswers: null,
+            visual: {
+              type: 'atlas_3d',
+              modelKey,
+              atlasRevision,
+              targetId: target.id,
+              structureId: target.structureId,
             },
           })
         }

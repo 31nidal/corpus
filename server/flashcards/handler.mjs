@@ -11,6 +11,7 @@ import {defaultFsrsScheduler} from './fsrsScheduler.mjs'
 import {deriveCardsFromNote} from './derivation.mjs'
 import {generateLocalDrafts, generateLocalNoteDrafts, sanitizeGeneratedDrafts, sanitizeGeneratedNoteDrafts, normalize} from './generation.mjs'
 import {buildFlashcardAnki} from './anki.mjs'
+import {checkAtlasCardCompatibility} from './atlasRegistry.mjs'
 import {initStudySchema, releaseGenerationQuota, reserveGenerationQuota} from '../study.mjs'
 
 function detectImageFormat(buffer) {
@@ -515,6 +516,16 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
         if (row.due_at > now) {
           return send(400, {error: 'Cette carte n’est pas encore due pour révision.'})
         }
+        if (card.cardType === 'atlas_3d') {
+          const note = card.noteId ? repo.note(user.id, card.noteId) : null
+          if (!note || note.noteType !== 'atlas_3d') {
+            return send(409, {code: 'ERR_ATLAS_CARD_NOT_REVIEWABLE', error: 'Note Atlas 3D introuvable.', atlasStatus: 'UNAVAILABLE'})
+          }
+          const compat = checkAtlasCardCompatibility(note.fields.modelKey, note.fields.atlasRevision, note.fields.scene, note.fields.targets || [])
+          if (!compat.reviewable) {
+            return send(409, {code: compat.code || 'ERR_ATLAS_CARD_NOT_REVIEWABLE', error: compat.error || 'Cette carte Atlas 3D ne peut pas être révisée actuellement.', atlasStatus: compat.status})
+          }
+        }
         const snapshot = scheduler.createPreviewSnapshot(row, now)
         d.exec('BEGIN IMMEDIATE')
         try {
@@ -564,6 +575,17 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
         }
 
         const responseMs = Number.isSafeInteger(body.responseMs) && body.responseMs >= 0 && body.responseMs <= 3600000 ? body.responseMs : null
+
+        if (card.cardType === 'atlas_3d') {
+          const note = card.noteId ? repo.note(user.id, card.noteId) : null
+          if (!note || note.noteType !== 'atlas_3d') {
+            return send(409, {code: 'ERR_ATLAS_CARD_NOT_REVIEWABLE', error: 'Note Atlas 3D introuvable.', atlasStatus: 'UNAVAILABLE'})
+          }
+          const compat = checkAtlasCardCompatibility(note.fields.modelKey, note.fields.atlasRevision, note.fields.scene, note.fields.targets || [])
+          if (!compat.reviewable) {
+            return send(409, {code: compat.code || 'ERR_ATLAS_CARD_NOT_REVIEWABLE', error: compat.error || 'Cette carte Atlas 3D ne peut pas être révisée actuellement.', atlasStatus: compat.status})
+          }
+        }
 
         d.exec('BEGIN IMMEDIATE')
         try {

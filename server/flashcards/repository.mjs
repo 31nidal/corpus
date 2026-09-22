@@ -1104,6 +1104,15 @@ export class FlashcardRepository {
       }
     }
 
+    if (original.note_type === 'atlas_3d') {
+      if (Array.isArray(fields.targets)) {
+        fields.targets = fields.targets.map(t => ({
+          ...t,
+          id: `target_${randomUUID()}`
+        }))
+      }
+    }
+
     return this.createNote(userId, {
       defaultDeckId,
       noteType: original.note_type,

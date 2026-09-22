@@ -207,7 +207,9 @@ def main():
         "changes": ["Selection and semantic assembly of original anatomical OBJ elements", "Quadric-error mesh simplification for Web delivery", "Shared coordinate rotation (x,y,z) to (x,z,-y), centering and uniform scaling to 3.6 units height", "Smooth normals and new display materials", "Conversion from OBJ to indexed GLB with stable selectable mesh IDs"],
     }
     manifest = {
-        "version": 1, "groups": groups, "structures": structures,
+        "version": 1,
+        "atlasRevision": "bp3d-overview-v1",
+        "groups": groups, "structures": structures,
         "bounds": {"height": 3.6, "up": "+Y", "front": "+Z", "sourceMillimeters": source_bounds.tolist(), "transform": transform.tolist()},
         "source": provenance, "license": "CC BY-SA 2.1 Japan",
         "limitations": ["Selected teaching structures from an adult male reference body, not a complete atlas", "Muscles and spleen are not included in this initial selection; no absent layer control is exposed",

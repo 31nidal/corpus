@@ -41,6 +41,10 @@ export type FlashcardVisual = {
     width: number
     height: number
   }
+  modelKey?: string
+  atlasRevision?: string
+  targetId?: string
+  structureId?: string
 }
 
 export type FlashcardAsset = {
@@ -90,8 +94,33 @@ export type FlashcardPreview = {
   labels: FlashcardPreviewLabels
 }
 
-export type NoteType = 'basic' | 'reverse' | 'bidirectional' | 'cloze' | 'typed' | 'image_occlusion'
-export type CardType = 'basic' | 'cloze' | 'typed' | 'image_occlusion'
+export type NoteType = 'basic' | 'reverse' | 'bidirectional' | 'cloze' | 'typed' | 'image_occlusion' | 'atlas_3d'
+export type CardType = 'basic' | 'cloze' | 'typed' | 'image_occlusion' | 'atlas_3d'
+
+export type Atlas3DTarget = {
+  id: string
+  structureId: string
+}
+
+export type Atlas3DScene = {
+  modelKey: 'bp3d_overview' | 'bp3d_detail' | 'female_detail'
+  atlasRevision: string
+  camera: {
+    position: [number, number, number]
+    target: [number, number, number]
+  }
+  visibility: Partial<Record<string, boolean>>
+  opacity: Partial<Record<string, number>>
+  cut: {
+    enabled: boolean
+    axis: 'x' | 'y' | 'z'
+    position: number
+    flipped: boolean
+    guide: boolean
+  }
+  isolationStructureId: string | null
+  hiddenStructureIds: string[]
+}
 
 export type FlashcardNoteFields = {
   front?: string
@@ -103,6 +132,10 @@ export type FlashcardNoteFields = {
   prompt?: string
   occlusionMode?: 'hide_one'
   masks?: ImageOcclusionMask[]
+  modelKey?: 'bp3d_overview' | 'bp3d_detail' | 'female_detail'
+  atlasRevision?: string
+  scene?: Atlas3DScene
+  targets?: Atlas3DTarget[]
 }
 
 export type FlashcardNote = {

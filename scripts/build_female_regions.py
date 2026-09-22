@@ -32,6 +32,6 @@ for group in m['groups']:
   if node in wanted:part.add_geometry(scene.geometry[geometry],node_name=node,geom_name=node,transform=transform)
  data=trimesh.exchange.gltf.export_glb(part);file=out/(group['id']+'.glb');file.write_bytes(data)
  groups.append({**group,'url':'models/female-regions/'+file.name,'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest(),'structures':len(wanted)})
-(out/'manifest.json').write_text(json.dumps({**m,'groups':groups,'structures':structures,'regions':regions,'specialist':True},ensure_ascii=False,indent=2))
+(out/'manifest.json').write_text(json.dumps({**m,'atlasRevision':'hra-female-v1','groups':groups,'structures':structures,'regions':regions,'specialist':True},ensure_ascii=False,indent=2))
 (out/'LICENSE.txt').write_text((source/'LICENSE.txt').read_text()+'\nAdditional adaptation: subset for pelvic, reproductive and breast regional exploration. Original mesh identities and coordinates retained.\n')
 print(len(ids),'regional meshes;',sum(g['bytes'] for g in groups),'bytes')

@@ -52,6 +52,18 @@ export function buildFlashcardAnki(cards, decks, notesMap = new Map(), isFiltere
       continue
     }
 
+    if (card.cardType === 'atlas_3d' || note?.noteType === 'atlas_3d') {
+      const prompt = card.front || note?.fields?.prompt || 'Identifier la structure'
+      rows.push([
+        'Basic',
+        `[Atlas 3D : ${html(prompt)}]<br><i>(Consulter la scène 3D dans MyCorpus)</i>`,
+        html(card.back),
+        card.id,
+        tags,
+      ])
+      continue
+    }
+
     rows.push([
       'Basic',
       html(card.front),

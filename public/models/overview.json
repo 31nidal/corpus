@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "atlasRevision": "bp3d-overview-v1",
   "groups": [
     {
       "id": "skin",

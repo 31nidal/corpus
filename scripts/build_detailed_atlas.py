@@ -11,7 +11,10 @@ logging.getLogger('trimesh').setLevel(logging.ERROR)
 ROOT=Path(__file__).resolve().parents[1]; CACHE=Path('/private/tmp/bodyparts3d'); OUT=ROOT/'public/models'
 legacy=OUT/'overview.json'
 if not legacy.exists():legacy.write_bytes((OUT/'manifest.json').read_bytes())
-overview=json.loads(legacy.read_text());transform=np.array(overview['bounds']['transform'])
+overview=json.loads(legacy.read_text())
+overview['atlasRevision']='bp3d-overview-v1'
+legacy.write_text(json.dumps(overview,ensure_ascii=False,indent=2))
+transform=np.array(overview['bounds']['transform'])
 z=zipfile.ZipFile(CACHE/'isa_BP3D_4.0_obj_99.zip')
 children=defaultdict(set)
 for r in csv.DictReader((CACHE/'isa_inclusion_relation_list.txt').open(),delimiter='\t'):children[r['parent id']].add(r['child id'])
@@ -79,7 +82,7 @@ for id,scene in scenes.items():
  if not scene.geometry:continue
  path=OUT/f'detail-{id}.glb';path.write_bytes(trimesh.exchange.gltf.export_glb(scene,include_normals=True))
  groups.append({'id':id,'label':labels[id],'url':f'models/detail-{id}.glb','bytes':path.stat().st_size,'structures':len(scene.geometry),'sha256':hashlib.sha256(path.read_bytes()).hexdigest()})
-manifest={'version':2,'groups':groups,'structures':structures,'bounds':overview['bounds'],'license':'CC BY-SA 2.1 Japan','source':{'database':'BodyParts3D','version':'4.0 ISA with 3.0 pulmonary lobes','archiveUrl':'https://dbarchive.biosciencedbc.jp/data/bodyparts3d/LATEST/isa_BP3D_4.0_obj_99.zip','archiveSha256':hashlib.sha256((CACHE/'isa_BP3D_4.0_obj_99.zip').read_bytes()).hexdigest(),'archiveBytes':(CACHE/'isa_BP3D_4.0_obj_99.zip').stat().st_size,'attribution':overview['source']['legacyAttribution'],'supplement':overview['source'].get('supplement'),'changes':['All named ISA source elements imported, combined only when they have the same source FMA concept','Shared original coordinate transform; web mesh simplification; GLB conversion','Virtual organ assemblies reference real components without duplicating them'],'excludedUnidentifiedFiles':excluded},'limitations':['Reference male anatomy only, not all possible human anatomy or microscopic detail','Unnamed source elements omitted because identification cannot be verified','French terminology supplemented by original English labels where no verified French correspondence exists','Organ assembly selection can activate several anatomical layers']}
+manifest={'version':2,'atlasRevision':'bp3d-detail-v1','groups':groups,'structures':structures,'bounds':overview['bounds'],'license':'CC BY-SA 2.1 Japan','source':{'database':'BodyParts3D','version':'4.0 ISA with 3.0 pulmonary lobes','archiveUrl':'https://dbarchive.biosciencedbc.jp/data/bodyparts3d/LATEST/isa_BP3D_4.0_obj_99.zip','archiveSha256':hashlib.sha256((CACHE/'isa_BP3D_4.0_obj_99.zip').read_bytes()).hexdigest(),'archiveBytes':(CACHE/'isa_BP3D_4.0_obj_99.zip').stat().st_size,'attribution':overview['source']['legacyAttribution'],'supplement':overview['source'].get('supplement'),'changes':['All named ISA source elements imported, combined only when they have the same source FMA concept','Shared original coordinate transform; web mesh simplification; GLB conversion','Virtual organ assemblies reference real components without duplicating them'],'excludedUnidentifiedFiles':excluded},'limitations':['Reference male anatomy only, not all possible human anatomy or microscopic detail','Unnamed source elements omitted because identification cannot be verified','French terminology supplemented by original English labels where no verified French correspondence exists','Organ assembly selection can activate several anatomical layers']}
 (OUT/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2))
 (ROOT/'public/licenses/detailed-provenance.json').write_text(json.dumps(manifest['source'],ensure_ascii=False,indent=2))
 print('DONE',len(by_concept),'distinct structures;',len(structures),'searchable entries;',triangles,'triangles;',sum(g['bytes'] for g in groups)/1e6,'MB',flush=True)

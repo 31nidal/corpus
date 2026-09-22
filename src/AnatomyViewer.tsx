@@ -22,6 +22,10 @@ type Props = {
   labels: LabelMode
   cameraRestore: CameraPose | null
   isolated?: boolean
+  isolationStructureId?: string | null
+  interactionMode?: 'explore' | 'review'
+  reviewTargetId?: string | null
+  reviewRevealed?: boolean
   hiddenIds?: string[]
   apiRef: RefObject<ViewerApi | null>
 }
@@ -65,7 +69,7 @@ export default function AnatomyViewer(props: Props) {
     let disposed = false
     let frame = 0
     let hoveredId: string | null = null
-    let selectedId = latest.current.selectedId
+    let selectedId = latest.current.interactionMode === 'review' ? null : latest.current.selectedId
     let visibility = latest.current.visibility
     const aborter = new AbortController()
     const scene = new THREE.Scene()
@@ -203,25 +207,59 @@ export default function AnatomyViewer(props: Props) {
       planeGuide.visible = cut.enabled && cut.guide
       planeGuide.position.copy(cutPlane.normal).multiplyScalar(-cutPlane.constant)
       planeGuide.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),cutPlane.normal)
-      faceCover.value = (visibility.muscles || visibility.organs) && !selectedId && latest.current.opacity.skin>0 ? Math.min(1,latest.current.opacity.skin/.085) : 0
+      const isReview = latest.current.interactionMode === 'review'
+      faceCover.value = (visibility.muscles || visibility.organs) && !selectedId && !isReview && latest.current.opacity.skin>0 ? Math.min(1,latest.current.opacity.skin/.085) : 0
       dirty = true
       const hiddenNames = new Set((latest.current.hiddenIds ?? []).flatMap(id => structures.get(id)?.meshNames ?? []))
+      const isolationId = isReview
+        ? (latest.current.isolationStructureId ?? null)
+        : (latest.current.isolationStructureId ?? (latest.current.isolated ? selectedId : null))
+      const targetId = isReview ? (latest.current.reviewTargetId ?? null) : null
+      const isRevealed = Boolean(latest.current.reviewRevealed)
+
       for (const mesh of allMeshes) {
         const { structureId, anatomyGroup } = mesh.userData
-        const isSelected = mesh.userData.structureIds.includes(selectedId)
-        const isHovered = structureId === hoveredId
+        const meshStructureIds: string[] = mesh.userData.structureIds || [structureId]
+        const isTarget = isReview && Boolean(targetId) && meshStructureIds.includes(targetId!)
+        const isSelected = !isReview && Boolean(selectedId) && meshStructureIds.includes(selectedId!)
+        const isHovered = !isReview && structureId === hoveredId
         const material = mesh.material
         material.color.copy(baseColors.get(mesh)!)
-        if (isSelected) material.color.lerp(highlightColor, 0.15)
-        else if (isHovered) material.color.lerp(highlightColor, 0.22)
-        material.emissive.set(isSelected ? '#1c8e98' : isHovered ? '#17666b' : '#000000')
-        material.emissiveIntensity = isSelected ? 0.12 : isHovered ? 0.18 : 0
 
-        const showSurface = !structures.get(structureId)?.detailOnly || (isSelected && !structures.get(selectedId!)?.aggregate)
-        mesh.visible = showSurface && latest.current.opacity[anatomyGroup as GroupId]>0 && !hiddenNames.has(mesh.name) && (!latest.current.isolated || !selectedId || isSelected)
-        const context = Boolean(selectedId) && !isSelected
-        const baseOpacity = latest.current.opacity[anatomyGroup as GroupId]
-        const opacity = baseOpacity * (context ? .035 : 1)
+        if (isReview) {
+          if (isTarget && isRevealed) {
+            material.color.lerp(highlightColor, 0.3)
+            material.emissive.set('#1c8e98')
+            material.emissiveIntensity = 0.35
+          } else {
+            material.emissive.set('#000000')
+            material.emissiveIntensity = 0
+          }
+        } else {
+          if (isSelected) material.color.lerp(highlightColor, 0.15)
+          else if (isHovered) material.color.lerp(highlightColor, 0.22)
+          material.emissive.set(isSelected ? '#1c8e98' : isHovered ? '#17666b' : '#000000')
+          material.emissiveIntensity = isSelected ? 0.12 : isHovered ? 0.18 : 0
+        }
+
+        const showSurface = !structures.get(structureId)?.detailOnly || (isReview && isTarget && isRevealed) || (isSelected && !structures.get(selectedId!)?.aggregate)
+        const isInIsolation = !isolationId || meshStructureIds.includes(isolationId)
+        const isHidden = hiddenNames.has(mesh.name)
+        const baseOpacity = latest.current.opacity[anatomyGroup as GroupId] ?? 1
+        const hasGroupOpacity = baseOpacity > 0
+
+        if (isReview) {
+          if (isTarget) {
+            mesh.visible = isRevealed && isInIsolation && !isHidden && showSurface
+          } else {
+            mesh.visible = showSurface && hasGroupOpacity && !isHidden && isInIsolation
+          }
+        } else {
+          mesh.visible = showSurface && hasGroupOpacity && !isHidden && isInIsolation
+        }
+
+        const context = !isReview && Boolean(selectedId) && !isSelected
+        const opacity = (isReview && isTarget && isRevealed) ? Math.max(baseOpacity, 0.95) : baseOpacity * (context ? .035 : 1)
         mesh.castShadow = mesh.visible && !context && anatomyGroup !== 'skin' && baseOpacity>=.8
         mesh.receiveShadow = anatomyGroup !== 'skin' && !context
         const wantedPlanes = latest.current.cut.enabled ? [cutPlane] : []
@@ -267,6 +305,7 @@ export default function AnatomyViewer(props: Props) {
     }
 
     const focus = (id: string | null) => {
+      if (latest.current.interactionMode === 'review') return
       selectedId = id
       hoveredId = null
       latest.current.onHover(null)
@@ -298,11 +337,17 @@ export default function AnatomyViewer(props: Props) {
       void loadGroups()
     }
 
-    runtimeRef.current = { setVisibility, select: focus, reset, refresh: updateMaterials, restore:()=>{} }
+    const restoreCamera = () => {
+      const pose = latest.current.cameraRestore
+      if (!pose) return
+      tween = null;camera.position.fromArray(pose.position);controls.target.fromArray(pose.target);controls.update();dirty=true
+    }
+    runtimeRef.current = { setVisibility, select: focus, reset, refresh: updateMaterials, restore: restoreCamera }
     const api: ViewerApi = {
       frame: (id) => focus(id),
       capture: () => ({position: camera.position.toArray() as CameraPose['position'], target:controls.target.toArray() as CameraPose['target']}),
       reset,
+      restoreCamera,
       zoom: (step) => {
         direction.copy(camera.position).sub(controls.target)
         const distance = THREE.MathUtils.clamp(direction.length() * (step > 0 ? 0.77 : 1.3), controls.minDistance, controls.maxDistance)
@@ -340,15 +385,9 @@ export default function AnatomyViewer(props: Props) {
     observer.observe(host)
     resize()
 
-    const restoreCamera = () => {
-      const pose = latest.current.cameraRestore
-      if (!pose) return
-      tween = null;camera.position.fromArray(pose.position);controls.target.fromArray(pose.target);controls.update();dirty=true
-    }
-    runtimeRef.current!.restore = restoreCamera
     restoreCamera()
     const updateLabels = () => {
-      const mode=latest.current.labels
+      const mode = latest.current.interactionMode === 'review' ? 'off' : latest.current.labels
       labelOverlay.hidden=mode==='off'
       if(mode==='off')return
       const width=host.clientWidth,height=host.clientHeight,labelWidth=Math.min(145,width*.39)
@@ -394,6 +433,7 @@ export default function AnatomyViewer(props: Props) {
 
     const handlePointerMove = (event: PointerEvent) => {
       if(pointerDown&&Math.hypot(event.clientX-pointerDown.x,event.clientY-pointerDown.y)>=7)pointerDown.moved=true
+      if (latest.current.interactionMode === 'review') return
       if (event.pointerType !== 'touch' && activePointers.size===0 && !interacting) pendingHover = { x: event.clientX, y: event.clientY }
     }
     const handlePointerDown = (event: PointerEvent) => {
@@ -406,8 +446,10 @@ export default function AnatomyViewer(props: Props) {
     }
     const handlePointerUp = (event: PointerEvent) => {
       if (activePointers.size === 1 && pointerDown && !pointerDown.moved && Math.hypot(event.clientX - pointerDown.x, event.clientY - pointerDown.y) < 7 && performance.now() - pointerDown.time < 650) {
-        const id = pick(event.clientX, event.clientY)
-        if (id) latest.current.onSelect(id)
+        if (latest.current.interactionMode !== 'review') {
+          const id = pick(event.clientX, event.clientY)
+          if (id) latest.current.onSelect(id)
+        }
       }
       activePointers.delete(event.pointerId)
       if(activePointers.size===0){interacting=false;lastInteractionEnd=performance.now()}
@@ -447,7 +489,7 @@ export default function AnatomyViewer(props: Props) {
     if (import.meta.env.DEV) Object.assign(window, { __CORPUS_TEST__: {
       project: api.project,
       pick: (x:number,y:number)=>pick(x,y)??null,
-      state: () => ({ pickCount,pixelRatio:renderer.getPixelRatio(),interacting, animation:latest.current.animation, animatedScales:[...originalTransforms.keys()].map(m=>m.scale.toArray()), selectedId, hoveredId, camera: camera.position.toArray(), target: controls.target.toArray(), visibility: { ...visibility }, faceCover: faceCover.value, opacity:{...latest.current.opacity}, cut:{...latest.current.cut}, labels:latest.current.labels, meshes: allMeshes.length, visibleMeshes: allMeshes.filter(m => visibility[m.userData.anatomyGroup as GroupId] && m.visible).length, ready: [...ready] }),
+      state: () => ({ pickCount,pixelRatio:renderer.getPixelRatio(),interacting, animation:latest.current.animation, animatedScales:[...originalTransforms.keys()].map(m=>m.scale.toArray()), selectedId, hoveredId, camera: camera.position.toArray(), target: controls.target.toArray(), visibility: { ...visibility }, faceCover: faceCover.value, opacity:{...latest.current.opacity}, cut:{...latest.current.cut}, labels:latest.current.labels, meshes: allMeshes.length, visibleMeshes: allMeshes.filter(m => visibility[m.userData.anatomyGroup as GroupId] && m.visible).length, ready: [...ready], reviewTargetId: latest.current.reviewTargetId, reviewRevealed: latest.current.reviewRevealed, interactionMode: latest.current.interactionMode }),
     } })
     const contextLost = (event: Event) => {
       event.preventDefault()
@@ -621,13 +663,17 @@ export default function AnatomyViewer(props: Props) {
       if(renderer.getPixelRatio()!==desiredRatio){renderer.setPixelRatio(desiredRatio);dirty=true}
       if (tween) dirty = true
       if (pendingHover && time - lastHoverTime > 80 && !moving && activePointers.size===0) {
-        const { x, y } = pendingHover
-        const id = pick(x, y) ?? null
-        pendingHover = null
-        lastHoverTime = time
-        if (id !== hoveredId) { hoveredId = id; updateMaterials() }
-        renderer.domElement.style.cursor = id ? 'pointer' : 'grab'
-        latest.current.onHover(id ? { id, x, y } : null)
+        if (latest.current.interactionMode !== 'review') {
+          const { x, y } = pendingHover
+          const id = pick(x, y) ?? null
+          pendingHover = null
+          lastHoverTime = time
+          if (id !== hoveredId) { hoveredId = id; updateMaterials() }
+          renderer.domElement.style.cursor = id ? 'pointer' : 'grab'
+          latest.current.onHover(id ? { id, x, y } : null)
+        } else {
+          pendingHover = null
+        }
       }
       if (dirty) { renderer.render(scene, camera); updateLabels(); dirty = false }
       frame = requestAnimationFrame(animate)
@@ -661,9 +707,25 @@ export default function AnatomyViewer(props: Props) {
   }, [props.manifest, props.apiRef])
 
   useEffect(() => { runtimeRef.current?.setVisibility(props.visibility) }, [props.visibility])
-  useEffect(() => { runtimeRef.current?.select(props.selectedId) }, [props.selectedId])
+  useEffect(() => {
+    if (props.interactionMode !== 'review') {
+      runtimeRef.current?.select(props.selectedId)
+    }
+  }, [props.selectedId, props.interactionMode])
   useEffect(() => { runtimeRef.current?.restore() }, [props.cameraRestore])
-  useEffect(() => { runtimeRef.current?.refresh() }, [props.isolated, props.hiddenIds, props.opacity, props.cut, props.labels, props.cameraRestore, props.animation])
+  useEffect(() => { runtimeRef.current?.refresh() }, [
+    props.isolated,
+    props.isolationStructureId,
+    props.interactionMode,
+    props.reviewTargetId,
+    props.reviewRevealed,
+    props.hiddenIds,
+    props.opacity,
+    props.cut,
+    props.labels,
+    props.cameraRestore,
+    props.animation
+  ])
   useEffect(() => { if (props.resetKey) runtimeRef.current?.reset() }, [props.resetKey])
 
   return <div ref={hostRef} className="anatomy-canvas" />

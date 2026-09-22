@@ -751,3 +751,85 @@ test('phase 3A : image occlusion (upload asset, création de note, hide_one revi
   // La session doit se terminer car la carte sœur est enterrée
   await expect(page.getByRole('heading', { name: 'Session terminée' })).toBeVisible()
 })
+
+test('phase 3B : atlas 3D (création note 3D, badges, révision recto/verso, vue d’origine et sibling burying)', async ({ page }) => {
+  await register(page)
+  const headers = { 'x-mycorpus-request': '1' }
+  const deck = (await (await page.request.post('/api/flashcards/decks', { headers, data: { name: 'Atlas 3D Découverte' } })).json()).deck
+
+  // 1. Création de note Atlas 3D avec 2 cibles
+  const target1Id = `target_${crypto.randomUUID()}`
+  const target2Id = `target_${crypto.randomUUID()}`
+
+  const noteRes = await page.request.post('/api/flashcards/notes', {
+    headers,
+    data: {
+      defaultDeckId: deck.id,
+      noteType: 'atlas_3d',
+      fields: {
+        modelKey: 'bp3d_overview',
+        atlasRevision: 'bp3d-overview-v1',
+        prompt: 'Identifier l’organe ciblé',
+        extra: 'Vue antérieure de référence',
+        targets: [
+          { id: target1Id, structureId: 'FMA50801' }, // Cerveau (Encéphale)
+          { id: target2Id, structureId: 'FMA7088' },  // Cœur
+        ],
+        scene: {
+          modelKey: 'bp3d_overview',
+          atlasRevision: 'bp3d-overview-v1',
+          camera: { position: [0, 0, 6], target: [0, 0, 0] },
+          visibility: { skin: true, skeleton: true, organs: true },
+          opacity: { skin: 0.12, skeleton: 1, organs: 1 },
+          cut: { enabled: false, axis: 'z', position: 0, flipped: false, guide: false },
+          isolationStructureId: null,
+          hiddenStructureIds: [],
+        },
+      },
+      subject: 'Anatomie',
+      tags: ['3D', 'organes'],
+    },
+  })
+  expect(noteRes.status()).toBe(201)
+  const note = (await noteRes.json()).note
+  expect(note.cards.length).toBe(2)
+
+  // 2. Vérifier l'affichage dans l'interface "Toutes mes cartes"
+  await page.reload()
+  await page.getByRole('button', { name: 'Toutes mes cartes' }).click()
+  await expect(page.locator('.flash-card-list article')).toHaveCount(2)
+  await expect(page.getByText('Atlas 3D').first()).toBeVisible()
+  await expect(page.getByText('Identifier l’organe ciblé').first()).toBeVisible()
+
+  // 3. Révision interactive : Recto 3D avec OrbitControls et cible masquée
+  await page.getByRole('button', { name: 'Aujourd’hui' }).click()
+  await expect(page.getByRole('button', { name: 'Commencer' })).toBeEnabled()
+  await page.getByRole('button', { name: 'Commencer' }).click()
+
+  // RECTO
+  await expect(page.getByText('RECTO')).toBeVisible()
+  await expect(page.getByText('Identifier l’organe ciblé')).toBeVisible()
+  await expect(page.getByText('Atlas 3D', { exact: true })).toBeVisible()
+  await expect(page.getByText('Structure masquée')).toBeVisible()
+  await expect(page.getByRole('button', { name: /Vue d['’]origine/ })).toBeVisible()
+
+  // Révéler le verso
+  await page.getByRole('button', { name: 'Afficher la réponse' }).click()
+
+  // VERSO
+  await expect(page.getByText('VERSO')).toBeVisible()
+  await expect(page.getByText('Structure révélée')).toBeVisible()
+  await expect(page.locator('.review-answer')).toContainText(/(Encéphale|Coeur)/)
+  await expect(page.locator('.review-answer')).toContainText('Vue antérieure de référence')
+
+  // Clic sur "Vue d'origine" pour restaurer la caméra
+  await page.getByRole('button', { name: /Vue d['’]origine/ }).click()
+
+  // Noter la carte -> Sibling burying enterre la carte sœur
+  const goodBtn = page.getByRole('button', { name: /Correct/ })
+  await expect(goodBtn).toBeEnabled()
+  await goodBtn.click()
+
+  // La session se termine immédiatement car la carte sœur est enterrée
+  await expect(page.getByRole('heading', { name: 'Session terminée' })).toBeVisible()
+})
