@@ -1,4 +1,4 @@
-import type {Flashcard, FlashcardDeck, FlashcardNoteDraft, FlashcardNoteFields, FlashcardSource, NoteType, FlashcardPreview, FlashcardStats, FlashcardReview, GenerationSource, FlashcardNote} from './flashcardsTypes'
+import type {Flashcard, FlashcardDeck, FlashcardNoteDraft, FlashcardNoteFields, FlashcardSource, NoteType, FlashcardPreview, FlashcardStats, FlashcardReview, GenerationSource, FlashcardNote, FlashcardAsset} from './flashcardsTypes'
 
 const headers = {'Content-Type': 'application/json', 'x-mycorpus-request': '1'}
 const clientTimezone = () => {
@@ -205,3 +205,41 @@ export function downloadCsv(content: string, name = 'mycorpus-flashcards.csv') {
   link.click()
   URL.revokeObjectURL(url)
 }
+
+export async function uploadFlashcardAsset(
+  fileOrBlob: Blob | File,
+  options: {
+    sourceKind?: string
+    sourceDocumentId?: string | null
+    sourcePage?: number | null
+    sourceCrop?: {x: number; y: number; width: number; height: number} | null
+  } = {}
+): Promise<FlashcardAsset> {
+  const customHeaders: Record<string, string> = {
+    'x-mycorpus-request': '1',
+    'Content-Type': fileOrBlob.type || 'application/octet-stream',
+  }
+  if (options.sourceKind) customHeaders['x-source-kind'] = options.sourceKind
+  if (options.sourceDocumentId) customHeaders['x-source-document-id'] = options.sourceDocumentId
+  if (options.sourcePage != null) customHeaders['x-source-page'] = String(options.sourcePage)
+  if (options.sourceCrop) customHeaders['x-source-crop'] = JSON.stringify(options.sourceCrop)
+
+  let response: Response
+  try {
+    response = await fetch('/api/flashcards/assets/upload', {
+      method: 'POST',
+      credentials: 'same-origin',
+      signal: AbortSignal.timeout(60000),
+      headers: customHeaders,
+      body: fileOrBlob,
+    })
+  } catch {
+    throw new Error('Connexion interrompue lors du téléversement de l’image. Veuillez réessayer.')
+  }
+  const body = await response.json().catch(() => ({}))
+  if (!response.ok) throw new Error(body.error || 'Erreur lors du téléversement de l’image.')
+  return body.asset as FlashcardAsset
+}
+
+export const getFlashcardAssetUrl = (assetId: string) => `/api/flashcards/assets/${encodeURIComponent(assetId)}`
+

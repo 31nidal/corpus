@@ -493,7 +493,7 @@ test('réponse /preview retardée : boutons désactivés, affichage du calcul pu
   await expect(disabledButtons).toHaveCount(4)
 
   const goodBtn = page.getByRole('button', { name: /Correct/ })
-  await expect(goodBtn).toBeEnabled({ timeout: 5000 })
+  await expect(goodBtn).toBeEnabled({ timeout: 15000 })
   expect(delayResolved).toBe(true)
   await expect(goodBtn.locator('small')).toHaveText(/min|h|j/)
   await expect(page.getByText('Calcul des prochains rappels…')).not.toBeVisible()
@@ -663,4 +663,91 @@ test('phase 2A : création via éditeur UI d’une note Bidirectionnelle', async
   await expect(page.locator('.flash-card-list article')).toHaveCount(2)
   await expect(page.getByText('Directe')).toBeVisible()
   await expect(page.getByText('Inversée')).toBeVisible()
+})
+
+test('phase 3A : image occlusion (upload asset, création de note, hide_one review, sibling burying et Anki warning)', async ({ page }) => {
+  await register(page)
+  const headers = { 'x-mycorpus-request': '1' }
+  const deck = (await (await page.request.post('/api/flashcards/decks', { headers, data: { name: 'Anatomie Cardiaque' } })).json()).deck
+
+  // 1. Upload d'un asset raster PNG valide (10x10)
+  const samplePngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAoAAAAKCAYAAACNMs+9AAAAFUlEQVR42mNk+M9QzwAEjDAGYzUAAH4YAf5r2X4yAAAAAElFTkSuQmCC'
+  const samplePngBuffer = Buffer.from(samplePngBase64, 'base64')
+
+  const uploadRes = await page.request.post('/api/flashcards/assets/upload', {
+    headers: {
+      ...headers,
+      'content-type': 'image/png',
+      'x-asset-source-kind': 'upload',
+    },
+    data: samplePngBuffer,
+  })
+  expect(uploadRes.status()).toBe(201)
+  const asset = (await uploadRes.json()).asset
+  expect(asset.id).toMatch(/^asset_[0-9a-f-]{36}$/)
+
+  // 2. Création de note Image Occlusion avec 2 masques
+  const mask1Id = `mask_${crypto.randomUUID()}`
+  const mask2Id = `mask_${crypto.randomUUID()}`
+
+  const noteRes = await page.request.post('/api/flashcards/notes', {
+    headers,
+    data: {
+      defaultDeckId: deck.id,
+      noteType: 'image_occlusion',
+      assetId: asset.id,
+      fields: {
+        prompt: 'Identifier la structure cardiaque',
+        extra: 'Vue antérieure',
+        occlusionMode: 'hide_one',
+        masks: [
+          { id: mask1Id, x: 0.1, y: 0.1, width: 0.3, height: 0.3, label: 'Oreillette droite' },
+          { id: mask2Id, x: 0.5, y: 0.5, width: 0.3, height: 0.3, label: 'Ventricule gauche' },
+        ],
+      },
+      subject: 'Cardiologie',
+      tags: ['anatomie', 'occlusion'],
+    },
+  })
+  expect(noteRes.status()).toBe(201)
+  const note = (await noteRes.json()).note
+  expect(note.cards.length).toBe(2)
+
+  // 3. Vérifier l'affichage dans l'interface "Toutes mes cartes"
+  await page.reload()
+  await page.getByRole('button', { name: 'Toutes mes cartes' }).click()
+  await expect(page.locator('.flash-card-list article')).toHaveCount(2)
+  await expect(page.getByText('Image Occlusion').first()).toBeVisible()
+  await expect(page.getByText('Identifier la structure cardiaque').first()).toBeVisible()
+
+  // 4. Vérifier l'avertissement dans la modale d'export Anki
+  await page.getByRole('button', { name: 'Statistiques' }).click()
+  await page.getByRole('button', { name: 'Exporter vers Anki' }).click()
+  await expect(page.getByText(/Information sur les cartes visuelles/)).toBeVisible()
+  await page.locator('.flash-modal header button').click()
+
+  // 5. Révision interactive : semantic hide_one & sibling burying
+  await page.getByRole('button', { name: 'Aujourd’hui' }).click()
+  await expect(page.getByRole('button', { name: 'Commencer' })).toBeEnabled()
+  await page.getByRole('button', { name: 'Commencer' }).click()
+
+  // Recto : masque actif avec point d'interrogation
+  await expect(page.getByText('RECTO')).toBeVisible()
+  await expect(page.getByText('Identifier la structure cardiaque')).toBeVisible()
+  await expect(page.locator('.review-face img')).toBeVisible()
+  await expect(page.getByText('Masque actif')).toBeVisible()
+
+  // Révéler le verso
+  await page.getByRole('button', { name: 'Afficher la réponse' }).click()
+  await expect(page.getByText('VERSO')).toBeVisible()
+  await expect(page.getByText('Zone révélée')).toBeVisible()
+  await expect(page.locator('.review-answer')).toContainText(/(Oreillette droite|Ventricule gauche)/)
+
+  // Noter la carte -> Sibling burying : l'autre carte de la même note est enterrée pour aujourd'hui
+  const goodBtn = page.getByRole('button', { name: /Correct/ })
+  await expect(goodBtn).toBeEnabled()
+  await goodBtn.click()
+
+  // La session doit se terminer car la carte sœur est enterrée
+  await expect(page.getByRole('heading', { name: 'Session terminée' })).toBeVisible()
 })

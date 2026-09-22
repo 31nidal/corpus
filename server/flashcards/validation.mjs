@@ -74,7 +74,15 @@ export function validateNote(input, partial = false) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return null
 
   const noteType = input.noteType === undefined && partial ? undefined : cleanText(input.noteType, 50, true)
-  if (noteType !== undefined && !['basic', 'reverse', 'bidirectional', 'cloze', 'typed'].includes(noteType)) {
+  if (noteType !== undefined && !['basic', 'reverse', 'bidirectional', 'cloze', 'typed', 'image_occlusion'].includes(noteType)) {
+    return null
+  }
+
+  const assetId = input.assetId === undefined && partial ? undefined : cleanText(input.assetId, 100, true)
+  const assetIdRegex = /^asset_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+  if (noteType === 'image_occlusion' && !partial) {
+    if (!assetId || !assetIdRegex.test(assetId)) return null
+  } else if (assetId !== undefined && assetId !== null && !assetIdRegex.test(assetId)) {
     return null
   }
 
@@ -123,6 +131,55 @@ export function validateNote(input, partial = false) {
       const extra = cleanText(f.extra, 4000)
       if (extra === null) return null
       fields = {front, answer, acceptedAnswers, extra: extra || ''}
+    } else if (noteType === 'image_occlusion') {
+      const prompt = cleanText(f.prompt, 2000)
+      if (prompt === null) return null
+      const extra = cleanText(f.extra, 4000)
+      if (extra === null) return null
+      const occlusionMode = cleanText(f.occlusionMode, 50) || 'hide_one'
+      if (occlusionMode !== 'hide_one') return null
+      if (!Array.isArray(f.masks) || f.masks.length < 1 || f.masks.length > 50) return null
+
+      const maskIdRegex = /^mask_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+      const seenIds = new Set()
+      const validatedMasks = []
+
+      for (const m of f.masks) {
+        if (!m || typeof m !== 'object') return null
+        const maskId = typeof m.id === 'string' ? m.id.trim() : ''
+        if (!maskIdRegex.test(maskId)) return null
+        if (seenIds.has(maskId)) return null
+        seenIds.add(maskId)
+
+        const x = Number(m.x)
+        const y = Number(m.y)
+        const width = Number(m.width)
+        const height = Number(m.height)
+
+        if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(width) || !Number.isFinite(height)) return null
+        if (x < 0 || x >= 1 || y < 0 || y >= 1) return null
+        if (width <= 0 || width > 1 || height <= 0 || height > 1) return null
+        if (x + width > 1.001 || y + height > 1.001) return null
+
+        const label = cleanText(m.label, 300)
+        if (label === null) return null
+
+        validatedMasks.push({
+          id: maskId,
+          x: Math.round(x * 10000) / 10000,
+          y: Math.round(y * 10000) / 10000,
+          width: Math.round(width * 10000) / 10000,
+          height: Math.round(height * 10000) / 10000,
+          label: label || '',
+        })
+      }
+
+      fields = {
+        prompt: prompt || '',
+        extra: extra || '',
+        occlusionMode,
+        masks: validatedMasks,
+      }
     } else if (partial && noteType === undefined) {
       // Partial update without changing noteType; validate generic field strings
       fields = {}
@@ -159,6 +216,45 @@ export function validateNote(input, partial = false) {
         if (cleanedAnswers.some(a => a === null)) return null
         fields.acceptedAnswers = [...new Set(cleanedAnswers)]
       }
+      if (f.prompt !== undefined) {
+        const prompt = cleanText(f.prompt, 2000)
+        if (prompt === null) return null
+        fields.prompt = prompt
+      }
+      if (f.occlusionMode !== undefined) {
+        const mode = cleanText(f.occlusionMode, 50)
+        if (mode !== 'hide_one') return null
+        fields.occlusionMode = mode
+      }
+      if (f.masks !== undefined) {
+        if (!Array.isArray(f.masks) || f.masks.length < 1 || f.masks.length > 50) return null
+        const maskIdRegex = /^mask_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+        const seenIds = new Set()
+        const validatedMasks = []
+        for (const m of f.masks) {
+          if (!m || typeof m !== 'object') return null
+          const maskId = typeof m.id === 'string' ? m.id.trim() : ''
+          if (!maskIdRegex.test(maskId)) return null
+          if (seenIds.has(maskId)) return null
+          seenIds.add(maskId)
+          const x = Number(m.x), y = Number(m.y), width = Number(m.width), height = Number(m.height)
+          if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(width) || !Number.isFinite(height)) return null
+          if (x < 0 || x >= 1 || y < 0 || y >= 1) return null
+          if (width <= 0 || width > 1 || height <= 0 || height > 1) return null
+          if (x + width > 1.001 || y + height > 1.001) return null
+          const label = cleanText(m.label, 300)
+          if (label === null) return null
+          validatedMasks.push({
+            id: maskId,
+            x: Math.round(x * 10000) / 10000,
+            y: Math.round(y * 10000) / 10000,
+            width: Math.round(width * 10000) / 10000,
+            height: Math.round(height * 10000) / 10000,
+            label: label || '',
+          })
+        }
+        fields.masks = validatedMasks
+      }
     } else {
       return null
     }
@@ -193,6 +289,7 @@ export function validateNote(input, partial = false) {
     chapter,
     tags,
     visual,
+    assetId: assetId !== undefined ? assetId : undefined,
     expectedVersion,
     source: sourceType === undefined ? undefined : {type: sourceType, ...sourceFields, locator},
   }

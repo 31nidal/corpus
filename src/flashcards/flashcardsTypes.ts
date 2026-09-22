@@ -18,12 +18,46 @@ export type FlashcardSource = {
   excerpt?: string | null
 }
 
+export type ImageOcclusionMask = {
+  id: string
+  x: number
+  y: number
+  width: number
+  height: number
+  label?: string
+}
+
 export type FlashcardVisual = {
   type: string
   url?: string
   alt?: string
   resourceId?: string
   page?: number
+  assetId?: string
+  targetMaskId?: string
+  targetRect?: {
+    x: number
+    y: number
+    width: number
+    height: number
+  }
+}
+
+export type FlashcardAsset = {
+  id: string
+  userId: string
+  kind: string
+  mimeType: string
+  width: number
+  height: number
+  byteSize: number
+  sha256: string
+  storageKey: string
+  sourceKind: string
+  sourceDocumentId?: string | null
+  sourcePage?: number | null
+  sourceCrop?: {x: number; y: number; width: number; height: number} | null
+  createdAt: number
 }
 
 export type FlashcardReview = {
@@ -56,8 +90,8 @@ export type FlashcardPreview = {
   labels: FlashcardPreviewLabels
 }
 
-export type NoteType = 'basic' | 'reverse' | 'bidirectional' | 'cloze' | 'typed'
-export type CardType = 'basic' | 'cloze' | 'typed'
+export type NoteType = 'basic' | 'reverse' | 'bidirectional' | 'cloze' | 'typed' | 'image_occlusion'
+export type CardType = 'basic' | 'cloze' | 'typed' | 'image_occlusion'
 
 export type FlashcardNoteFields = {
   front?: string
@@ -66,6 +100,9 @@ export type FlashcardNoteFields = {
   answer?: string
   acceptedAnswers?: string[]
   extra?: string
+  prompt?: string
+  occlusionMode?: 'hide_one'
+  masks?: ImageOcclusionMask[]
 }
 
 export type FlashcardNote = {
@@ -79,6 +116,7 @@ export type FlashcardNote = {
   chapter: string
   tags: string[]
   visual?: FlashcardVisual | null
+  assetId?: string | null
   source: FlashcardSource
   schemaVersion: number
   noteVersion: number

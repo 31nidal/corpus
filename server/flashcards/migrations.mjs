@@ -179,6 +179,38 @@ export function migrateFlashcards(db, scheduler = defaultFsrsScheduler) {
       db.prepare('INSERT INTO flashcard_migrations VALUES(3, ?)').run(Date.now())
     }
 
+    if (!db.prepare('SELECT 1 FROM flashcard_migrations WHERE version=4').get()) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS flashcard_assets (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          kind TEXT NOT NULL DEFAULT 'raster_image',
+          mime_type TEXT NOT NULL,
+          width INTEGER NOT NULL,
+          height INTEGER NOT NULL,
+          byte_size INTEGER NOT NULL,
+          sha256 TEXT NOT NULL,
+          storage_key TEXT NOT NULL,
+          source_kind TEXT NOT NULL,
+          source_document_id TEXT REFERENCES study_documents(id) ON DELETE SET NULL,
+          source_page INTEGER,
+          source_crop_json TEXT,
+          created_at INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS flashcard_assets_user ON flashcard_assets(user_id, created_at DESC);
+        CREATE INDEX IF NOT EXISTS flashcard_assets_sha256 ON flashcard_assets(user_id, sha256);
+
+        CREATE TABLE IF NOT EXISTS flashcard_note_assets (
+          note_id TEXT NOT NULL REFERENCES flashcard_notes(id) ON DELETE CASCADE,
+          asset_id TEXT NOT NULL REFERENCES flashcard_assets(id) ON DELETE RESTRICT,
+          role TEXT NOT NULL DEFAULT 'primary',
+          PRIMARY KEY(note_id, role)
+        );
+        CREATE INDEX IF NOT EXISTS flashcard_note_assets_asset ON flashcard_note_assets(asset_id);
+      `)
+      db.prepare('INSERT INTO flashcard_migrations VALUES(4, ?)').run(Date.now())
+    }
+
     db.exec('COMMIT')
   } catch (error) {
     db.exec('ROLLBACK')

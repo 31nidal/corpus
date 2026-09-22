@@ -1,4 +1,6 @@
 import {randomUUID} from 'node:crypto'
+import {existsSync, unlinkSync} from 'node:fs'
+import path from 'node:path'
 import {normalizeName} from './validation.mjs'
 import {defaultFsrsScheduler} from './fsrsScheduler.mjs'
 import {deriveCardsFromNote} from './derivation.mjs'
@@ -111,6 +113,7 @@ export function noteView(row, cards = []) {
     chapter: row.chapter || '',
     tags: parse(row.tags_json) || [],
     visual: parse(row.visual_json),
+    assetId: row.asset_id || null,
     source: {
       type: row.source_type,
       courseId: row.source_course_id,
@@ -212,7 +215,12 @@ export class FlashcardRepository {
   // --- NOTES CRUD ---
 
   note(userId, id) {
-    const row = this.db.prepare('SELECT * FROM flashcard_notes WHERE id=? AND user_id=?').get(id, userId)
+    const row = this.db.prepare(`
+      SELECT n.*, fna.asset_id
+      FROM flashcard_notes n
+      LEFT JOIN flashcard_note_assets fna ON fna.note_id=n.id AND fna.role='primary'
+      WHERE n.id=? AND n.user_id=?
+    `).get(id, userId)
     if (!row) return null
     const cards = this.db.prepare(`
       SELECT ${SELECT_CARD_FIELDS}
@@ -243,8 +251,9 @@ export class FlashcardRepository {
     }
     const limit = Number.isFinite(filters.limit) ? Math.min(100, Math.max(1, Math.floor(filters.limit))) : 50
     const rows = this.db.prepare(`
-      SELECT n.*
+      SELECT n.*, fna.asset_id
       FROM flashcard_notes n
+      LEFT JOIN flashcard_note_assets fna ON fna.note_id=n.id AND fna.role='primary'
       WHERE ${where.join(' AND ')}
       ORDER BY n.updated_at DESC, n.id DESC
       LIMIT ?
@@ -279,7 +288,17 @@ export class FlashcardRepository {
       throw Object.assign(new Error('Document source introuvable.'), {status: 400})
     }
 
-    const derivations = deriveCardsFromNote(value.noteType, value.fields, [])
+    if (value.noteType === 'image_occlusion') {
+      if (!value.assetId) {
+        throw Object.assign(new Error('Un assetId est requis pour une note Image Occlusion.'), {status: 400})
+      }
+      const asset = this.getAsset(userId, value.assetId)
+      if (!asset) {
+        throw Object.assign(new Error('Asset introuvable ou non autorisé.'), {status: 400})
+      }
+    }
+
+    const derivations = deriveCardsFromNote(value.noteType, value.fields, [], {assetId: value.assetId})
     if (!derivations.length) {
       throw Object.assign(new Error('Impossible de générer des cartes depuis cette note.'), {status: 400})
     }
@@ -301,8 +320,16 @@ export class FlashcardRepository {
       1, 0, now, now
     )
 
+    if (value.noteType === 'image_occlusion' && value.assetId) {
+      this.db.prepare(`
+        INSERT INTO flashcard_note_assets(note_id, asset_id, role)
+        VALUES(?, ?, 'primary')
+      `).run(id, value.assetId)
+    }
+
     for (const d of derivations) {
       const cardId = randomUUID()
+      const cardVisual = d.visual ? JSON.stringify(d.visual) : (value.visual ? JSON.stringify(value.visual) : null)
       this.db.prepare(`
         INSERT INTO flashcards(
           id, user_id, deck_id, note_id, derivation_key, card_type,
@@ -315,7 +342,7 @@ export class FlashcardRepository {
         cardId, userId, value.defaultDeckId, id, d.derivationKey, d.cardType,
         d.front, d.back, d.typedTarget || null, d.acceptedAnswers ? JSON.stringify(d.acceptedAnswers) : null,
         value.subject || null, value.chapter || null, JSON.stringify(value.tags || []),
-        value.visual ? JSON.stringify(value.visual) : null,
+        cardVisual,
         source.type, source.courseId || null, source.documentId || null, source.sectionId || null,
         source.locator ? JSON.stringify(source.locator) : null, source.excerpt || null,
         now, now
@@ -421,8 +448,85 @@ export class FlashcardRepository {
     }
   }
 
+  createAsset(userId, asset) {
+    const now = Date.now()
+    this.db.prepare(`
+      INSERT INTO flashcard_assets(
+        id, user_id, kind, mime_type, width, height, byte_size, sha256,
+        storage_key, source_kind, source_document_id, source_page, source_crop_json, created_at
+      ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    `).run(
+      asset.id, userId, asset.kind || 'image', asset.mimeType,
+      asset.width, asset.height, asset.byteSize, asset.sha256,
+      asset.storageKey, asset.sourceKind || 'upload',
+      asset.sourceDocumentId || null, asset.sourcePage ?? null,
+      asset.sourceCrop ? JSON.stringify(asset.sourceCrop) : null,
+      now
+    )
+    return this.getAsset(userId, asset.id)
+  }
+
+  getAsset(userId, id) {
+    const row = this.db.prepare('SELECT * FROM flashcard_assets WHERE id=? AND user_id=?').get(id, userId)
+    if (!row) return null
+    return {
+      id: row.id,
+      userId: row.user_id,
+      kind: row.kind,
+      mimeType: row.mime_type,
+      width: row.width,
+      height: row.height,
+      byteSize: row.byte_size,
+      sha256: row.sha256,
+      storageKey: row.storage_key,
+      sourceKind: row.source_kind,
+      sourceDocumentId: row.source_document_id,
+      sourcePage: row.source_page,
+      sourceCrop: parse(row.source_crop_json),
+      createdAt: row.created_at,
+    }
+  }
+
+  purgeOrphanAssets(storageDir, maxAgeMs = 24 * 3600 * 1000) {
+    const cutoff = Date.now() - maxAgeMs
+    const orphans = this.db.prepare(`
+      SELECT id, storage_key FROM flashcard_assets
+      WHERE created_at < ?
+        AND NOT EXISTS (
+          SELECT 1 FROM flashcard_note_assets WHERE asset_id = flashcard_assets.id
+        )
+    `).all(cutoff)
+
+    let deletedCount = 0
+    for (const orphan of orphans) {
+      try {
+        if (storageDir && orphan.storage_key) {
+          const filePath = path.join(storageDir, orphan.storage_key)
+          if (existsSync(filePath)) {
+            unlinkSync(filePath)
+          }
+        }
+      } catch (e) {
+        console.error('Failed to unlink orphan asset file:', e)
+      }
+      this.db.prepare('DELETE FROM flashcard_assets WHERE id=?').run(orphan.id)
+      deletedCount++
+    }
+    return deletedCount
+  }
+
   syncNoteDerivations(note) {
-    const planned = deriveCardsFromNote(note.note_type, parse(note.fields_json) || {}, parse(note.suppressed_derivations_json) || [])
+    let assetId = null
+    if (note.note_type === 'image_occlusion') {
+      const assetRow = this.db.prepare("SELECT asset_id FROM flashcard_note_assets WHERE note_id=? AND role='primary'").get(note.id)
+      assetId = assetRow?.asset_id || null
+    }
+    const planned = deriveCardsFromNote(
+      note.note_type,
+      parse(note.fields_json) || {},
+      parse(note.suppressed_derivations_json) || [],
+      { assetId }
+    )
     const existingCards = this.db.prepare('SELECT * FROM flashcards WHERE note_id=? AND user_id=?').all(note.id, note.user_id)
     const existingByKey = new Map(existingCards.map(c => [c.derivation_key, c]))
     const plannedKeys = new Set(planned.map(p => p.derivationKey))
@@ -437,14 +541,16 @@ export class FlashcardRepository {
 
     for (const p of planned) {
       const existing = existingByKey.get(p.derivationKey)
+      const visualJson = p.visual ? JSON.stringify(p.visual) : (note.visual_json || null)
       if (existing) {
         this.db.prepare(`
           UPDATE flashcards
-          SET front=?, back=?, card_type=?, typed_target=?, accepted_answers_json=?, updated_at=?
+          SET front=?, back=?, card_type=?, typed_target=?, accepted_answers_json=?, visual_json=?, updated_at=?
           WHERE id=? AND user_id=?
         `).run(
           p.front, p.back, p.cardType, p.typedTarget || null,
           p.acceptedAnswers ? JSON.stringify(p.acceptedAnswers) : null,
+          visualJson,
           now, existing.id, note.user_id
         )
       } else {
@@ -461,7 +567,7 @@ export class FlashcardRepository {
           cardId, note.user_id, note.default_deck_id, note.id, p.derivationKey, p.cardType,
           p.front, p.back, p.typedTarget || null,
           p.acceptedAnswers ? JSON.stringify(p.acceptedAnswers) : null,
-          note.subject, note.chapter, note.tags_json, note.visual_json,
+          note.subject, note.chapter, note.tags_json, visualJson,
           note.source_type, note.source_course_id, note.source_document_id, note.source_section_id,
           note.source_locator_json, note.source_excerpt,
           now, now
@@ -510,11 +616,15 @@ export class FlashcardRepository {
       const isFamilyChange = (
         (['basic', 'reverse', 'bidirectional'].includes(current.note_type) && !['basic', 'reverse', 'bidirectional'].includes(noteType)) ||
         (current.note_type === 'cloze' && noteType !== 'cloze') ||
-        (current.note_type === 'typed' && noteType !== 'typed')
+        (current.note_type === 'typed' && noteType !== 'typed') ||
+        (current.note_type === 'image_occlusion' && noteType !== 'image_occlusion')
       )
 
       const baseFields = isFamilyChange ? {} : currentFields
       const fields = value.fields ? {...baseFields, ...value.fields} : baseFields
+
+      const currentAssetRow = this.db.prepare("SELECT asset_id FROM flashcard_note_assets WHERE note_id=? AND role='primary'").get(id)
+      let assetId = value.assetId !== undefined ? value.assetId : (currentAssetRow?.asset_id || null)
 
       // Strict validation of the complete canonical state for target noteType
       if (['basic', 'reverse', 'bidirectional'].includes(noteType)) {
@@ -534,6 +644,28 @@ export class FlashcardRepository {
         if (!fields.front || typeof fields.front !== 'string' || !fields.front.trim() ||
             !fields.answer || typeof fields.answer !== 'string' || !fields.answer.trim()) {
           throw Object.assign(new Error('Les champs front et answer sont obligatoires pour une note Réponse saisie.'), {status: 400})
+        }
+      } else if (noteType === 'image_occlusion') {
+        if (!assetId) {
+          throw Object.assign(new Error('Un assetId est requis pour une note Image Occlusion.'), {status: 400})
+        }
+        const asset = this.getAsset(userId, assetId)
+        if (!asset) {
+          throw Object.assign(new Error('Asset introuvable ou non autorisé.'), {status: 400})
+        }
+        if (!Array.isArray(fields.masks) || fields.masks.length < 1 || fields.masks.length > 50) {
+          throw Object.assign(new Error('Une note Image Occlusion doit contenir entre 1 et 50 masques.'), {status: 400})
+        }
+        const maskIdRegex = /^mask_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+        const seenIds = new Set()
+        for (const m of fields.masks) {
+          if (!m || !maskIdRegex.test(m.id) || seenIds.has(m.id)) {
+            throw Object.assign(new Error('Masque invalide ou identifiant dupliqué.'), {status: 400})
+          }
+          seenIds.add(m.id)
+          if (m.x < 0 || m.x >= 1 || m.y < 0 || m.y >= 1 || m.width <= 0 || m.width > 1 || m.height <= 0 || m.height > 1 || m.x + m.width > 1.001 || m.y + m.height > 1.001) {
+            throw Object.assign(new Error('Coordonnées de masque hors limites.'), {status: 400})
+          }
         }
       }
       const suppressed = parse(current.suppressed_derivations_json) || []
@@ -556,7 +688,7 @@ export class FlashcardRepository {
       const nextVersion = current.note_version + 1
 
       // Compute new derivations
-      const planned = deriveCardsFromNote(noteType, fields, suppressed)
+      const planned = deriveCardsFromNote(noteType, fields, suppressed, { assetId })
 
       // Check existing cards
       const existingCards = this.db.prepare(`
@@ -590,10 +722,19 @@ export class FlashcardRepository {
         nextVersion, now, id, userId, current.note_version
       )
 
+      if (noteType === 'image_occlusion') {
+        if (currentAssetRow?.asset_id !== assetId) {
+          this.db.prepare("INSERT OR REPLACE INTO flashcard_note_assets(note_id, asset_id, role) VALUES(?, ?, 'primary')").run(id, assetId)
+        }
+      } else if (current.note_type === 'image_occlusion' && noteType !== 'image_occlusion') {
+        this.db.prepare("DELETE FROM flashcard_note_assets WHERE note_id=? AND role='primary'").run(id)
+      }
+
       // Sync derivations
       // 1. Update existing cards or insert new ones
       for (const p of planned) {
         const existing = existingByKey.get(p.derivationKey)
+        const cardVisual = p.visual ? JSON.stringify(p.visual) : (visual ? JSON.stringify(visual) : null)
         if (existing) {
           this.db.prepare(`
             UPDATE flashcards
@@ -605,7 +746,7 @@ export class FlashcardRepository {
           `).run(
             p.front, p.back, p.cardType, p.typedTarget || null,
             p.acceptedAnswers ? JSON.stringify(p.acceptedAnswers) : null,
-            subject, chapter, JSON.stringify(tags), visual ? JSON.stringify(visual) : null,
+            subject, chapter, JSON.stringify(tags), cardVisual,
             source.type, source.courseId || null, source.documentId || null, source.sectionId || null,
             source.locator ? JSON.stringify(source.locator) : null, source.excerpt || null,
             now, existing.id, userId
@@ -624,7 +765,7 @@ export class FlashcardRepository {
             cardId, userId, defaultDeckId, id, p.derivationKey, p.cardType,
             p.front, p.back, p.typedTarget || null,
             p.acceptedAnswers ? JSON.stringify(p.acceptedAnswers) : null,
-            subject, chapter, JSON.stringify(tags), visual ? JSON.stringify(visual) : null,
+            subject, chapter, JSON.stringify(tags), cardVisual,
             source.type, source.courseId || null, source.documentId || null, source.sectionId || null,
             source.locator ? JSON.stringify(source.locator) : null, source.excerpt || null,
             now, now
@@ -900,11 +1041,24 @@ export class FlashcardRepository {
       excerpt: original.source_excerpt,
     }
 
+    let assetId = undefined
+    if (original.note_type === 'image_occlusion') {
+      const assetRow = this.db.prepare("SELECT asset_id FROM flashcard_note_assets WHERE note_id=? AND role='primary'").get(noteId)
+      assetId = assetRow?.asset_id || undefined
+      if (Array.isArray(fields.masks)) {
+        fields.masks = fields.masks.map(m => ({
+          ...m,
+          id: `mask_${randomUUID()}`
+        }))
+      }
+    }
+
     return this.createNote(userId, {
       defaultDeckId,
       noteType: original.note_type,
       title: original.title ? `${original.title} (copie)` : undefined,
       fields,
+      assetId,
       subject: original.subject || '',
       chapter: original.chapter || '',
       tags,

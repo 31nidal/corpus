@@ -40,6 +40,18 @@ export function buildFlashcardAnki(cards, decks, notesMap = new Map(), isFiltere
       }
     }
 
+    if (card.cardType === 'image_occlusion' || note?.noteType === 'image_occlusion') {
+      const prompt = card.front || note?.fields?.prompt || 'Identifier la structure'
+      rows.push([
+        'Basic',
+        `[Image Occlusion : ${html(prompt)}]<br><i>(Consulter l’image dans MyCorpus)</i>`,
+        html(card.back),
+        card.id,
+        tags,
+      ])
+      continue
+    }
+
     rows.push([
       'Basic',
       html(card.front),

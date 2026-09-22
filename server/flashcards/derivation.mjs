@@ -1,9 +1,9 @@
 import {extractClozeKeys, renderClozeCard} from './cloze.mjs'
 
-export const NOTE_TYPES = new Set(['basic', 'reverse', 'bidirectional', 'cloze', 'typed'])
-export const CARD_TYPES = new Set(['basic', 'cloze', 'typed'])
+export const NOTE_TYPES = new Set(['basic', 'reverse', 'bidirectional', 'cloze', 'typed', 'image_occlusion'])
+export const CARD_TYPES = new Set(['basic', 'cloze', 'typed', 'image_occlusion'])
 
-export function deriveCardsFromNote(noteType, fields, suppressedKeys = []) {
+export function deriveCardsFromNote(noteType, fields, suppressedKeys = [], context = {}) {
   const suppressed = new Set(suppressedKeys || [])
   const derivations = []
 
@@ -100,6 +100,42 @@ export function deriveCardsFromNote(noteType, fields, suppressedKeys = []) {
           typedTarget: answer,
           acceptedAnswers: acceptedAnswers.length ? acceptedAnswers : null,
         })
+      }
+      break
+    }
+    case 'image_occlusion': {
+      const assetId = context.assetId
+      if (!assetId) {
+        throw new Error('assetId obligatoire dans le contexte pour dériver une note image_occlusion.')
+      }
+      const prompt = (fields.prompt || '').trim() || 'Identifier la structure'
+      const extra = (fields.extra || '').trim()
+      const masks = Array.isArray(fields.masks) ? fields.masks : []
+      for (const mask of masks) {
+        const key = `occlusion:${mask.id}`
+        if (!suppressed.has(key)) {
+          const label = (mask.label || '').trim()
+          const backContent = label ? (extra ? `${label}\n\n${extra}` : label) : (extra || 'Zone révélée')
+          derivations.push({
+            derivationKey: key,
+            cardType: 'image_occlusion',
+            front: prompt,
+            back: backContent,
+            typedTarget: null,
+            acceptedAnswers: null,
+            visual: {
+              type: 'image_occlusion',
+              assetId,
+              targetMaskId: mask.id,
+              targetRect: {
+                x: mask.x,
+                y: mask.y,
+                width: mask.width,
+                height: mask.height,
+              },
+            },
+          })
+        }
       }
       break
     }

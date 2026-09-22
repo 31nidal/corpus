@@ -1,7 +1,8 @@
 import {DatabaseSync} from 'node:sqlite'
 import {createHash, randomUUID} from 'node:crypto'
-import {mkdirSync} from 'node:fs'
+import {existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync} from 'node:fs'
 import path from 'node:path'
+import {imageSize} from 'image-size'
 import {initFlashcardSchema} from './schema.mjs'
 import {migrateFlashcards} from './migrations.mjs'
 import {FlashcardRepository} from './repository.mjs'
@@ -11,6 +12,24 @@ import {deriveCardsFromNote} from './derivation.mjs'
 import {generateLocalDrafts, generateLocalNoteDrafts, sanitizeGeneratedDrafts, sanitizeGeneratedNoteDrafts, normalize} from './generation.mjs'
 import {buildFlashcardAnki} from './anki.mjs'
 import {initStudySchema, releaseGenerationQuota, reserveGenerationQuota} from '../study.mjs'
+
+function detectImageFormat(buffer) {
+  if (buffer.length >= 8 &&
+      buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47 &&
+      buffer[4] === 0x0d && buffer[5] === 0x0a && buffer[6] === 0x1a && buffer[7] === 0x0a) {
+    return {mimeType: 'image/png', ext: 'png'}
+  }
+  if (buffer.length >= 3 &&
+      buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return {mimeType: 'image/jpeg', ext: 'jpg'}
+  }
+  if (buffer.length >= 12 &&
+      buffer[0] === 0x52 && buffer[1] === 0x49 && buffer[2] === 0x46 && buffer[3] === 0x46 &&
+      buffer[8] === 0x57 && buffer[9] === 0x45 && buffer[10] === 0x42 && buffer[11] === 0x50) {
+    return {mimeType: 'image/webp', ext: 'webp'}
+  }
+  return null
+}
 
 const digest = value => createHash('sha256').update(value).digest('hex')
 const cookieValue = (req, name) => req.headers.cookie?.split(';').map(value => value.trim()).find(value => value.startsWith(`${name}=`))?.slice(name.length + 1) || ''
@@ -25,14 +44,22 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
   let db = dependencies.db
   const provider = dependencies.provider || null
   const scheduler = dependencies.scheduler || defaultFsrsScheduler
+  const getAssetsDir = () => {
+    const directory = config.RAILWAY_VOLUME_MOUNT_PATH || config.ACCOUNT_DATA_DIR || path.resolve('.data')
+    const dir = path.join(directory, 'flashcard_assets')
+    mkdirSync(dir, {recursive: true, mode: 0o700})
+    return dir
+  }
   const getDb = () => {
     if (db) return db
     const directory = config.RAILWAY_VOLUME_MOUNT_PATH || config.ACCOUNT_DATA_DIR || path.resolve('.data')
     mkdirSync(directory, {recursive: true, mode: 0o700})
+    const assetsDir = getAssetsDir()
     db = new DatabaseSync(path.join(directory, 'mycorpus.sqlite'))
     db.exec('PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;')
     initStudySchema(db); initFlashcardSchema(db); migrateFlashcards(db, scheduler)
     new FlashcardRepository(db).purgeExpiredGenerationReceipts()
+    new FlashcardRepository(db).purgeOrphanAssets(assetsDir)
     return db
   }
   return async (req, res) => {
@@ -44,6 +71,115 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
       const origin = (config.APP_ORIGIN || `${config.RAILWAY_ENVIRONMENT_ID ? 'https' : 'http'}://${req.headers.host || 'localhost:5173'}`).replace(/\/$/, '')
       if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) && (req.headers['x-mycorpus-request'] !== '1' || (req.headers.origin && req.headers.origin !== origin))) return send(403, {error: 'Origine de la requête refusée.'})
       const url = new URL(req.url, 'http://localhost'), subpath = url.pathname.replace('/api/flashcards/', '').replace(/\/$/, ''), repo = new FlashcardRepository(d)
+      const assetsDir = getAssetsDir()
+
+      // Assets routes
+      if (req.method === 'POST' && subpath === 'assets/upload') {
+        const chunks = []
+        let totalLen = 0
+        for await (const chunk of req) {
+          totalLen += chunk.length
+          if (totalLen > 10 * 1024 * 1024) {
+            return send(413, {error: 'Image trop volumineuse. La taille maximale autorisée est de 10 Mo.'})
+          }
+          chunks.push(chunk)
+        }
+        const buffer = Buffer.concat(chunks)
+        if (!buffer.length) {
+          return send(400, {error: 'Aucun fichier image fourni.'})
+        }
+
+        const format = detectImageFormat(buffer)
+        if (!format) {
+          const headText = buffer.subarray(0, 100).toString('utf8').toLowerCase()
+          if (headText.includes('<svg') || headText.includes('<?xml')) {
+            return send(415, {error: 'Format SVG interdit. Formats acceptés : PNG, JPEG, WebP.'})
+          }
+          return send(415, {error: 'Format d’image non supporté. Formats acceptés : PNG, JPEG, WebP.'})
+        }
+
+        let dimensions
+        try {
+          dimensions = imageSize(buffer)
+        } catch {
+          return send(400, {error: 'Image corrompue ou illisible.'})
+        }
+        const width = dimensions?.width || 0
+        const height = dimensions?.height || 0
+        if (width <= 0 || height <= 0 || width > 4096 || height > 4096 || (width * height) > 16777216) {
+          return send(400, {error: 'Dimensions d’image non autorisées (maximum 4096×4096 px et 16 mégapixels).'})
+        }
+
+        const sourceKind = req.headers['x-source-kind'] || 'upload'
+        let sourceDocumentId = null
+        let sourcePage = null
+        let sourceCrop = null
+
+        if (sourceKind === 'study_document') {
+          const docId = cleanText(req.headers['x-source-document-id'], 100, true)
+          if (!docId || !d.prepare('SELECT 1 FROM study_documents WHERE id=? AND user_id=?').get(docId, user.id)) {
+            return send(400, {error: 'Document source Study introuvable ou non autorisé.'})
+          }
+          sourceDocumentId = docId
+          if (req.headers['x-source-page']) {
+            const p = parseInt(req.headers['x-source-page'], 10)
+            if (Number.isInteger(p) && p >= 1) sourcePage = p
+          }
+          if (req.headers['x-source-crop']) {
+            try {
+              const parsed = JSON.parse(req.headers['x-source-crop'])
+              if (parsed && typeof parsed === 'object') {
+                const {x, y, width: w, height: h} = parsed
+                if ([x, y, w, h].every(n => Number.isFinite(n) && n >= 0 && n <= 1)) {
+                  sourceCrop = {x, y, width: w, height: h}
+                }
+              }
+            } catch {}
+          }
+        }
+
+        const assetId = `asset_${randomUUID()}`
+        const storageKey = `${assetId}.${format.ext}`
+        const tmpPath = path.join(assetsDir, `${storageKey}.tmp`)
+        const finalPath = path.join(assetsDir, storageKey)
+        writeFileSync(tmpPath, buffer)
+        renameSync(tmpPath, finalPath)
+
+        const sha256 = digest(buffer)
+        const asset = repo.createAsset(user.id, {
+          id: assetId,
+          kind: 'image',
+          mimeType: format.mimeType,
+          width,
+          height,
+          byteSize: buffer.length,
+          sha256,
+          storageKey,
+          sourceKind,
+          sourceDocumentId,
+          sourcePage,
+          sourceCrop,
+        })
+        repo.purgeOrphanAssets(assetsDir)
+        return send(201, {asset})
+      }
+
+      const assetMatch = subpath.match(/^assets\/([^/]+)$/)
+      if (assetMatch && req.method === 'GET') {
+        const assetId = assetMatch[1]
+        const asset = repo.getAsset(user.id, assetId)
+        if (!asset) return send(404, {error: 'Asset introuvable.'})
+        const filePath = path.join(assetsDir, asset.storageKey)
+        if (!existsSync(filePath)) return send(404, {error: 'Fichier introuvable sur le disque.'})
+        const data = readFileSync(filePath)
+        res.writeHead(200, {
+          'Content-Type': asset.mimeType,
+          'Content-Length': data.length,
+          'X-Content-Type-Options': 'nosniff',
+          'Cache-Control': 'private, max-age=86400, immutable',
+        })
+        return res.end(data)
+      }
 
       if (req.method === 'GET' && subpath === 'decks') return send(200, {decks: repo.listDecks(user.id)})
       if (req.method === 'POST' && subpath === 'decks') {
@@ -241,7 +377,13 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
             valid.source = {...valid.source, type: 'free_text', excerpt: null}
           }
 
-          const derived = deriveCardsFromNote(valid.noteType, valid.fields, [])
+          if (valid.noteType === 'image_occlusion') {
+            if (!valid.assetId) return send(400, {error: 'Un assetId est requis pour une note Image Occlusion.'})
+            const asset = repo.getAsset(user.id, valid.assetId)
+            if (!asset) return send(400, {error: 'Asset introuvable ou non autorisé.'})
+          }
+
+          const derived = deriveCardsFromNote(valid.noteType, valid.fields, [], {assetId: valid.assetId})
           totalDerivedCards += derived.length
           validNotes.push(valid)
         }

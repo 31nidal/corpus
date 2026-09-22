@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import {
-  FileText, Upload, Trash2, ArrowRight, ArrowLeft, BookOpen,
+  Crop, FileText, Upload, Trash2, ArrowRight, ArrowLeft, BookOpen,
   CheckCircle2, Sparkles, Download, AlertCircle, RefreshCw,
   FileCheck, Clock3, Layers, Quote, X, Check
 } from 'lucide-react'
@@ -16,7 +16,10 @@ import { nextReview, validReview, type ReviewRecord } from './reviewSchedule'
 import { buildDocumentAnkiCsv, downloadAnkiCsv, documentAnkiFilename } from './ankiExport'
 import './myCourses.css'
 import GenerationDialog from '../flashcards/GenerationDialog'
-import type{GenerationSource}from'../flashcards/flashcardsTypes'
+import type {FlashcardDeck, GenerationSource} from '../flashcards/flashcardsTypes'
+import {listDecks} from '../flashcards/flashcardsApi'
+import {PdfCropSelector} from '../flashcards/PdfCropSelector'
+import {ImageOcclusionEditor} from '../flashcards/ImageOcclusionEditor'
 
 type Records = Record<string, ReviewRecord>
 
@@ -54,6 +57,24 @@ export default function MyCoursesWorkspace(props: {
   const [generatingQcm, setGeneratingQcm] = useState(false)
   const [targetPassage, setTargetPassage] = useState<{ title: string; pages: string; text: string } | null>(null)
   const [flashGeneration,setFlashGeneration]=useState<GenerationSource|null>(null)
+  const [visualCropDoc, setVisualCropDoc] = useState<StudyDocument | null>(null)
+  const [cropResult, setCropResult] = useState<{
+    blob: Blob
+    pageNumber: number
+    crop: {x: number; y: number; width: number; height: number} | null
+  } | null>(null)
+  const [studyDecks, setStudyDecks] = useState<FlashcardDeck[]>([])
+
+  const openVisualCrop = async (doc: StudyDocument) => {
+    try {
+      const d = await listDecks()
+      setStudyDecks(d)
+    } catch {
+      // best effort
+    }
+    setVisualCropDoc(doc)
+  }
+
   const [toast, setToast] = useState('')
   useEffect(() => {
     if (!toast) return
@@ -287,6 +308,7 @@ export default function MyCoursesWorkspace(props: {
 
           <div className="mycourses-action-bar">
             <button className="mycourses-action-btn mycourses-action-primary" onClick={()=>setFlashGeneration({kind:'study',title:currentDoc.title,documentId:currentDoc.id,pageCount:currentDoc.pageCount,chapter:currentDoc.title,sections:(currentDoc.sections||[]).map(section=>({id:section.id,title:section.title,startPage:section.startPage,endPage:section.endPage}))})}><Sparkles size={16}/>Générer des flashcards</button>
+            <button className="mycourses-action-btn mycourses-action-secondary" onClick={()=>void openVisualCrop(currentDoc)} title="Créer une flashcard d’occlusion d’image à partir d’une page de ce PDF"><Crop size={16}/>Flashcard visuelle</button>
             {!currentDoc.summary ? (
               <button
                 className="mycourses-action-btn mycourses-action-primary"
@@ -684,6 +706,38 @@ export default function MyCoursesWorkspace(props: {
               </p>
             </div>
           </div>
+        )}
+        {visualCropDoc && (
+          <PdfCropSelector
+            documentId={visualCropDoc.id}
+            documentTitle={visualCropDoc.title}
+            onSelectCrop={({ blob, pageNumber, crop }) => {
+              setVisualCropDoc(null)
+              setCropResult({ blob, pageNumber, crop })
+            }}
+            onCancel={() => setVisualCropDoc(null)}
+          />
+        )}
+        {cropResult && currentDoc && (
+          <ImageOcclusionEditor
+            imageSrc={URL.createObjectURL(cropResult.blob)}
+            imageBlob={cropResult.blob}
+            defaultDeckId={studyDecks[0]?.id || ''}
+            decks={studyDecks}
+            sourceMetadata={{
+              sourceKind: 'study_document',
+              sourceDocumentId: currentDoc.id,
+              sourcePage: cropResult.pageNumber,
+              sourceCrop: cropResult.crop || undefined,
+            }}
+            initialSubject={currentDoc.title}
+            initialChapter={currentDoc.title}
+            onCreated={note => {
+              setCropResult(null)
+              setToast(`Note d'occlusion créée avec succès (${note.cards?.length || 1} carte(s))`)
+            }}
+            onCancel={() => setCropResult(null)}
+          />
         )}
         {flashGeneration&&<GenerationDialog source={flashGeneration} onClose={()=>setFlashGeneration(null)} onSaved={info=>info&&setToast(`${info.count} carte${info.count>1?'s':''} enregistrée${info.count>1?'s':''} dans le deck « ${info.deckName} »`)}/>}
         {toast&&<div className="flash-toast" role="status"><Check size={16}/><span>{toast}</span></div>}
