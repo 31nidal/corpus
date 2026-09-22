@@ -80,12 +80,15 @@ export const ImageOcclusionEditor: React.FC<ImageOcclusionEditorProps> = ({
   const [isDragging, setIsDragging] = useState(false)
   const [dragOffset, setDragOffset] = useState<{x: number; y: number} | null>(null)
 
+  const [isResizing, setIsResizing] = useState<string | null>(null)
+  const [resizeStart, setResizeStart] = useState<{mask: ImageOcclusionMask; handle: string; startCoords: {x: number; y: number}} | null>(null)
+
   const imageContainerRef = useRef<HTMLDivElement | null>(null)
   const imageElementRef = useRef<HTMLImageElement | null>(null)
 
   const clamp = (val: number, min = 0, max = 1) => Math.max(min, Math.min(max, val))
 
-  const getNormalizedCoords = (e: React.MouseEvent) => {
+  const getNormalizedCoords = (e: {clientX: number; clientY: number}) => {
     if (!imageElementRef.current) return {x: 0, y: 0}
     const rect = imageElementRef.current.getBoundingClientRect()
     return {
@@ -94,10 +97,23 @@ export const ImageOcclusionEditor: React.FC<ImageOcclusionEditorProps> = ({
     }
   }
 
+  // --- RESIZE HANDLER ---
+  const handleResizeStart = (e: React.MouseEvent | React.PointerEvent, handle: string, mask: ImageOcclusionMask) => {
+    e.stopPropagation()
+    if ('button' in e && e.button !== 0) return
+    const coords = getNormalizedCoords(e)
+    setSelectedMaskId(mask.id)
+    setIsResizing(handle)
+    setResizeStart({mask: {...mask}, handle, startCoords: coords})
+  }
+
   // --- MOUSE HANDLERS ---
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return
     const target = e.target as HTMLElement
+
+    // If clicked on resize handle or delete button, ignore here
+    if (target.closest('[data-resize-handle]') || target.closest('[data-delete-btn]')) return
 
     // If clicked on an existing mask, select it or start dragging
     const maskEl = target.closest('[data-mask-id]') as HTMLElement | null
@@ -128,8 +144,56 @@ export const ImageOcclusionEditor: React.FC<ImageOcclusionEditorProps> = ({
     setCurrentDraw(null)
   }
 
-  const handleMouseMove = (e: React.MouseEvent) => {
+  const handleMouseMove = (e: React.MouseEvent | React.PointerEvent) => {
     const coords = getNormalizedCoords(e)
+
+    if (isResizing && resizeStart) {
+      const {mask: orig, handle, startCoords} = resizeStart
+      const deltaX = coords.x - startCoords.x
+      const deltaY = coords.y - startCoords.y
+      let newX = orig.x
+      let newY = orig.y
+      let newW = orig.width
+      let newH = orig.height
+
+      if (handle === 'se') {
+        newW = clamp(orig.width + deltaX, 0.01, 1 - orig.x)
+        newH = clamp(orig.height + deltaY, 0.01, 1 - orig.y)
+      } else if (handle === 'ne') {
+        const right = clamp(orig.x + orig.width + deltaX, orig.x + 0.01, 1)
+        newW = right - orig.x
+        const top = clamp(orig.y + deltaY, 0, (orig.y + orig.height) - 0.01)
+        newY = top
+        newH = (orig.y + orig.height) - top
+      } else if (handle === 'sw') {
+        const left = clamp(orig.x + deltaX, 0, (orig.x + orig.width) - 0.01)
+        newX = left
+        newW = (orig.x + orig.width) - left
+        const bottom = clamp(orig.y + orig.height + deltaY, orig.y + 0.01, 1)
+        newH = bottom - orig.y
+      } else if (handle === 'nw') {
+        const left = clamp(orig.x + deltaX, 0, (orig.x + orig.width) - 0.01)
+        newX = left
+        newW = (orig.x + orig.width) - left
+        const top = clamp(orig.y + deltaY, 0, (orig.y + orig.height) - 0.01)
+        newY = top
+        newH = (orig.y + orig.height) - top
+      }
+
+      setMasks(prev =>
+        prev.map(m => {
+          if (m.id !== orig.id) return m
+          return {
+            ...m,
+            x: Math.round(newX * 10000) / 10000,
+            y: Math.round(newY * 10000) / 10000,
+            width: Math.round(newW * 10000) / 10000,
+            height: Math.round(newH * 10000) / 10000,
+          }
+        })
+      )
+      return
+    }
 
     if (isDragging && selectedMaskId && dragOffset) {
       setMasks(prev =>
@@ -178,6 +242,8 @@ export const ImageOcclusionEditor: React.FC<ImageOcclusionEditorProps> = ({
     setCurrentDraw(null)
     setIsDragging(false)
     setDragOffset(null)
+    setIsResizing(null)
+    setResizeStart(null)
   }
 
   const handleDeleteMask = (id: string) => {
@@ -350,6 +416,8 @@ export const ImageOcclusionEditor: React.FC<ImageOcclusionEditorProps> = ({
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
+          onPointerMove={handleMouseMove}
+          onPointerUp={handleMouseUp}
         >
           <div className="relative inline-block border border-slate-700/80 rounded-lg shadow-2xl overflow-hidden bg-black/40 cursor-crosshair">
             <img
@@ -387,17 +455,50 @@ export const ImageOcclusionEditor: React.FC<ImageOcclusionEditorProps> = ({
                   </div>
 
                   {isSelected && (
-                    <button
-                      type="button"
-                      onClick={e => {
-                        e.stopPropagation()
-                        handleDeleteMask(mask.id)
-                      }}
-                      className="absolute -top-3 -right-3 p-1 bg-red-600 hover:bg-red-500 text-white rounded-full shadow"
-                      title="Supprimer ce masque"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        data-delete-btn="true"
+                        onClick={e => {
+                          e.stopPropagation()
+                          handleDeleteMask(mask.id)
+                        }}
+                        className="absolute -top-3 -right-3 p-1 bg-red-600 hover:bg-red-500 text-white rounded-full shadow z-20"
+                        title="Supprimer ce masque"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+
+                      {/* 4 Corner Resize Handles */}
+                      <div
+                        data-resize-handle="nw"
+                        onMouseDown={e => handleResizeStart(e, 'nw', mask)}
+                        onPointerDown={e => handleResizeStart(e, 'nw', mask)}
+                        className="absolute -top-1.5 -left-1.5 w-3 h-3 bg-white border-2 border-indigo-600 rounded-sm cursor-nwse-resize z-10"
+                        title="Redimensionner coin haut-gauche"
+                      />
+                      <div
+                        data-resize-handle="ne"
+                        onMouseDown={e => handleResizeStart(e, 'ne', mask)}
+                        onPointerDown={e => handleResizeStart(e, 'ne', mask)}
+                        className="absolute -top-1.5 -right-1.5 w-3 h-3 bg-white border-2 border-indigo-600 rounded-sm cursor-nesw-resize z-10"
+                        title="Redimensionner coin haut-droite"
+                      />
+                      <div
+                        data-resize-handle="sw"
+                        onMouseDown={e => handleResizeStart(e, 'sw', mask)}
+                        onPointerDown={e => handleResizeStart(e, 'sw', mask)}
+                        className="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-white border-2 border-indigo-600 rounded-sm cursor-nesw-resize z-10"
+                        title="Redimensionner coin bas-gauche"
+                      />
+                      <div
+                        data-resize-handle="se"
+                        onMouseDown={e => handleResizeStart(e, 'se', mask)}
+                        onPointerDown={e => handleResizeStart(e, 'se', mask)}
+                        className="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-white border-2 border-indigo-600 rounded-sm cursor-nwse-resize z-10"
+                        title="Redimensionner coin bas-droite"
+                      />
+                    </>
                   )}
                 </div>
               )

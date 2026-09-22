@@ -151,7 +151,14 @@ const SELECT_CARD_FIELDS = `
 `
 
 export class FlashcardRepository {
-  constructor(db) { this.db = db }
+  constructor(db, assetsDir = null) {
+    this.db = db
+    this.assetsDir = assetsDir
+  }
+
+  setAssetsDir(dir) {
+    this.assetsDir = dir
+  }
 
   deck(userId, id) {
     return this.db.prepare('SELECT * FROM flashcard_decks WHERE id=? AND user_id=?').get(id, userId)
@@ -449,6 +456,14 @@ export class FlashcardRepository {
   }
 
   createAsset(userId, asset) {
+    const MAX_USER_ASSETS_BYTES = 50 * 1024 * 1024 // 50 MiB
+    const currentBytesRow = this.db.prepare('SELECT COALESCE(SUM(byte_size), 0) as totalBytes FROM flashcard_assets WHERE user_id=?').get(userId)
+    const currentBytes = Number(currentBytesRow?.totalBytes || 0)
+    const newBytes = Number(asset.byteSize || 0)
+    if (currentBytes + newBytes > MAX_USER_ASSETS_BYTES) {
+      throw Object.assign(new Error('Quota de stockage d’images dépassé (limite de 50 Mo par utilisateur).'), {status: 413})
+    }
+
     const now = Date.now()
     this.db.prepare(`
       INSERT INTO flashcard_assets(
@@ -487,6 +502,30 @@ export class FlashcardRepository {
     }
   }
 
+  deleteAssetIfOrphan(assetId, storageDir = this.assetsDir) {
+    if (!assetId) return false
+    const ref = this.db.prepare('SELECT 1 FROM flashcard_note_assets WHERE asset_id=? LIMIT 1').get(assetId)
+    if (ref) return false
+
+    const asset = this.db.prepare('SELECT id, storage_key FROM flashcard_assets WHERE id=?').get(assetId)
+    if (!asset) return false
+
+    try {
+      const dir = storageDir || this.assetsDir
+      if (dir && asset.storage_key) {
+        const filePath = path.join(dir, asset.storage_key)
+        if (existsSync(filePath)) {
+          unlinkSync(filePath)
+        }
+      }
+    } catch (e) {
+      console.error('Failed to unlink orphan asset file on cleanup:', e)
+    }
+
+    this.db.prepare('DELETE FROM flashcard_assets WHERE id=?').run(assetId)
+    return true
+  }
+
   purgeOrphanAssets(storageDir, maxAgeMs = 24 * 3600 * 1000) {
     const cutoff = Date.now() - maxAgeMs
     const orphans = this.db.prepare(`
@@ -500,8 +539,9 @@ export class FlashcardRepository {
     let deletedCount = 0
     for (const orphan of orphans) {
       try {
-        if (storageDir && orphan.storage_key) {
-          const filePath = path.join(storageDir, orphan.storage_key)
+        const dir = storageDir || this.assetsDir
+        if (dir && orphan.storage_key) {
+          const filePath = path.join(dir, orphan.storage_key)
           if (existsSync(filePath)) {
             unlinkSync(filePath)
           }
@@ -624,6 +664,7 @@ export class FlashcardRepository {
       const fields = value.fields ? {...baseFields, ...value.fields} : baseFields
 
       const currentAssetRow = this.db.prepare("SELECT asset_id FROM flashcard_note_assets WHERE note_id=? AND role='primary'").get(id)
+      const oldAssetId = currentAssetRow?.asset_id || null
       let assetId = value.assetId !== undefined ? value.assetId : (currentAssetRow?.asset_id || null)
 
       // Strict validation of the complete canonical state for target noteType
@@ -788,6 +829,9 @@ export class FlashcardRepository {
       }
 
       this.db.exec('COMMIT')
+      if (oldAssetId && (noteType !== 'image_occlusion' || oldAssetId !== assetId)) {
+        this.deleteAssetIfOrphan(oldAssetId)
+      }
       return this.note(userId, id)
     } catch (err) {
       try { this.db.exec('ROLLBACK') } catch {}
@@ -809,8 +853,15 @@ export class FlashcardRepository {
       if (note.note_version !== expectedVersion) {
         throw Object.assign(new Error('Conflit de version sur la note.'), {status: 409})
       }
+      const assetRow = this.db.prepare("SELECT asset_id FROM flashcard_note_assets WHERE note_id=? AND role='primary'").get(id)
+      const assetId = assetRow?.asset_id || null
+
       this.db.prepare('DELETE FROM flashcard_notes WHERE id=? AND user_id=?').run(id, userId)
       this.db.exec('COMMIT')
+
+      if (assetId) {
+        this.deleteAssetIfOrphan(assetId)
+      }
       return true
     } catch (err) {
       try { this.db.exec('ROLLBACK') } catch {}

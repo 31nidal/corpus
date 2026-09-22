@@ -480,3 +480,421 @@ test('API HTTP flashcards/assets : upload binaire, vérifications sécurité, he
     try { rmSync(dir, {recursive: true, force: true}) } catch {}
   }
 })
+
+test('Study asset provenance et validation stricte (page 0, page > max, crop invalide, sourceKind arbitraire)', async () => {
+  const {createAccountHandler} = await import('../server/accounts.mjs')
+  const {Readable} = await import('node:stream')
+  const dir = path.resolve(`.data/test_provenance_${randomUUID()}`)
+  mkdirSync(dir, {recursive: true})
+
+  const config = {ACCOUNT_DATA_DIR: dir, APP_ORIGIN: 'https://mycorpus.test'}
+  const account = createAccountHandler(config)
+  const flashcards = createFlashcardHandler(config)
+
+  const call = async (route, method = 'GET', body = undefined, cookie = '', headers = {}) => {
+    let req
+    const isBuffer = Buffer.isBuffer(body)
+    if (isBuffer) {
+      req = Readable.from([body])
+    } else {
+      const raw = body === undefined ? '' : JSON.stringify(body)
+      req = Readable.from(raw ? [Buffer.from(raw)] : [])
+    }
+    req.url = route
+    req.method = method
+    req.headers = {
+      cookie,
+      ...(isBuffer
+        ? {'x-mycorpus-request': '1'}
+        : body === undefined ? {} : {'content-type': 'application/json', 'x-mycorpus-request': '1'}),
+      ...headers,
+    }
+    req.socket = {remoteAddress: '127.0.0.1'}
+
+    let status = 200, output = '', responseHeaders = {}
+    const res = {
+      writeHead(code, values = {}) {
+        status = code
+        responseHeaders = {...responseHeaders, ...values}
+      },
+      setHeader(name, value) { responseHeaders[name] = value },
+      write(chunk) { output += chunk },
+      end(value = '') { output += value },
+    }
+
+    await (route.startsWith('/api/account/') ? account : flashcards)(req, res)
+    const cookies = responseHeaders['Set-Cookie'] || responseHeaders['set-cookie'] || []
+    const list = Array.isArray(cookies) ? cookies : [cookies]
+    let parsedData = null
+    try {
+      parsedData = JSON.parse(output)
+    } catch {
+      parsedData = output
+    }
+    return {
+      status,
+      data: parsedData,
+      headers: responseHeaders,
+      cookie: list.map(v => v.split(';')[0]).find(v => v.startsWith('mycorpus_session=')),
+    }
+  }
+
+  try {
+    const userRes = await call('/api/account/register', 'POST', {
+      email: 'prov@example.test',
+      name: 'Prov Tester',
+      password: 'valid-password-2026',
+    })
+    const cookie = userRes.cookie
+
+    // Insérer un document Study en DB avec page_count = 5
+    const {initStudySchema} = await import('../server/study.mjs')
+    const db = new DatabaseSync(path.join(dir, 'mycorpus.sqlite'))
+    initStudySchema(db)
+    const userRow = db.prepare('SELECT id FROM users WHERE email=?').get('prov@example.test')
+    const docId = 'doc_prov_123'
+    db.prepare(`
+      INSERT INTO study_documents(id, user_id, title, filename, file_size, page_count, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(docId, userRow.id, 'Anatomie', 'anat.pdf', 2048, 5, 'now', 'now')
+
+    // 1. sourceKind arbitraire -> 400
+    const invalidKindRes = await call('/api/flashcards/assets/upload', 'POST', PNG_1X1_BUFFER, cookie, {
+      'content-type': 'image/png',
+      'x-source-kind': 'malicious_kind',
+    })
+    assert.equal(invalidKindRes.status, 400)
+    assert.match(invalidKindRes.data.error, /sourceKind invalide/)
+
+    // 2. study_document sans sourcePage -> 400
+    const missingPageRes = await call('/api/flashcards/assets/upload', 'POST', PNG_1X1_BUFFER, cookie, {
+      'content-type': 'image/png',
+      'x-source-kind': 'study_document',
+      'x-source-document-id': docId,
+    })
+    assert.equal(missingPageRes.status, 400)
+    assert.match(missingPageRes.data.error, /sourcePage.*obligatoire/)
+
+    // 3. sourcePage = 0 -> 400
+    const zeroPageRes = await call('/api/flashcards/assets/upload', 'POST', PNG_1X1_BUFFER, cookie, {
+      'content-type': 'image/png',
+      'x-source-kind': 'study_document',
+      'x-source-document-id': docId,
+      'x-source-page': '0',
+    })
+    assert.equal(zeroPageRes.status, 400)
+    assert.match(zeroPageRes.data.error, /sourcePage invalide/)
+
+    // 4. sourcePage > page_count (6 > 5) -> 400
+    const exceedPageRes = await call('/api/flashcards/assets/upload', 'POST', PNG_1X1_BUFFER, cookie, {
+      'content-type': 'image/png',
+      'x-source-kind': 'study_document',
+      'x-source-document-id': docId,
+      'x-source-page': '6',
+    })
+    assert.equal(exceedPageRes.status, 400)
+    assert.match(exceedPageRes.data.error, /sourcePage invalide/)
+
+    // 5. crop x + width > 1.001 -> 400
+    const invalidCropRes = await call('/api/flashcards/assets/upload', 'POST', PNG_1X1_BUFFER, cookie, {
+      'content-type': 'image/png',
+      'x-source-kind': 'study_document',
+      'x-source-document-id': docId,
+      'x-source-page': '2',
+      'x-source-crop': JSON.stringify({x: 0.6, y: 0.1, width: 0.5, height: 0.2}),
+    })
+    assert.equal(invalidCropRes.status, 400)
+    assert.match(invalidCropRes.data.error, /Coordonnées x-source-crop hors limites/)
+
+    // 6. Succès : page valide et crop valide
+    const validRes = await call('/api/flashcards/assets/upload', 'POST', PNG_1X1_BUFFER, cookie, {
+      'content-type': 'image/png',
+      'x-source-kind': 'study_document',
+      'x-source-document-id': docId,
+      'x-source-page': '2',
+      'x-source-crop': JSON.stringify({x: 0.1, y: 0.1, width: 0.5, height: 0.5}),
+    })
+    assert.equal(validRes.status, 201)
+    assert.equal(validRes.data.asset.sourceKind, 'study_document')
+    assert.equal(validRes.data.asset.sourceDocumentId, docId)
+    assert.equal(validRes.data.asset.sourcePage, 2)
+    assert.deepEqual(validRes.data.asset.sourceCrop, {x: 0.1, y: 0.1, width: 0.5, height: 0.5})
+  } finally {
+    try { rmSync(dir, {recursive: true, force: true}) } catch {}
+  }
+})
+
+test('Atomicité upload fichier / DB : échec INSERT DB simulé => suppression du fichier final sur disque', async () => {
+  const {createAccountHandler} = await import('../server/accounts.mjs')
+  const {Readable} = await import('node:stream')
+  const dir = path.resolve(`.data/test_atomic_${randomUUID()}`)
+  mkdirSync(dir, {recursive: true})
+
+  const config = {ACCOUNT_DATA_DIR: dir, APP_ORIGIN: 'https://mycorpus.test'}
+  const account = createAccountHandler(config)
+  const flashcards = createFlashcardHandler(config)
+
+  const call = async (route, method = 'GET', body = undefined, cookie = '', headers = {}) => {
+    let req
+    const isBuffer = Buffer.isBuffer(body)
+    req = isBuffer ? Readable.from([body]) : Readable.from(body ? [Buffer.from(JSON.stringify(body))] : [])
+    req.url = route
+    req.method = method
+    req.headers = {
+      cookie,
+      'x-mycorpus-request': '1',
+      ...(isBuffer ? {'content-type': 'image/png'} : {'content-type': 'application/json'}),
+      ...headers,
+    }
+    req.socket = {remoteAddress: '127.0.0.1'}
+
+    let status = 200, output = '', responseHeaders = {}
+    const res = {
+      writeHead(code, values = {}) { status = code; responseHeaders = {...responseHeaders, ...values} },
+      setHeader(name, value) { responseHeaders[name] = value },
+      write(chunk) { output += chunk },
+      end(value = '') { output += value },
+    }
+    await (route.startsWith('/api/account/') ? account : flashcards)(req, res)
+    const cookies = responseHeaders['Set-Cookie'] || responseHeaders['set-cookie'] || []
+    const list = Array.isArray(cookies) ? cookies : [cookies]
+    let parsedData = null
+    try { parsedData = JSON.parse(output) } catch { parsedData = output }
+    return { status, data: parsedData, cookie: list.map(v => v.split(';')[0]).find(v => v.startsWith('mycorpus_session=')) }
+  }
+
+  try {
+    const userRes = await call('/api/account/register', 'POST', {
+      email: 'atomic@example.test',
+      name: 'Atomic Tester',
+      password: 'valid-password-2026',
+    })
+
+    // Simuler un échec DB lors de l'INSERT en surchargeant FlashcardRepository.prototype.createAsset
+    const origCreateAsset = FlashcardRepository.prototype.createAsset
+    let attemptedStorageKey = null
+    FlashcardRepository.prototype.createAsset = function(userId, asset) {
+      attemptedStorageKey = asset.storageKey
+      throw new Error('Simulated DB failure during asset insert')
+    }
+
+    try {
+      const uploadRes = await call('/api/flashcards/assets/upload', 'POST', PNG_1X1_BUFFER, userRes.cookie)
+      assert.equal(uploadRes.status, 500)
+    } finally {
+      FlashcardRepository.prototype.createAsset = origCreateAsset
+    }
+
+    assert(attemptedStorageKey !== null)
+    const assetsDir = path.join(dir, 'flashcard_assets')
+    const finalPath = path.join(assetsDir, attemptedStorageKey)
+    assert.equal(existsSync(finalPath), false, 'Le fichier final doit être supprimé du disque si l’INSERT échoue')
+  } finally {
+    try { rmSync(dir, {recursive: true, force: true}) } catch {}
+  }
+})
+
+test('Quota assets 50 Mo par utilisateur : rejet 413 lors du dépassement', () => {
+  const {db, dir, createUser, cleanup} = createTestContext()
+  try {
+    const userId = 'user_quota_1'
+    createUser(userId)
+    const repo = new FlashcardRepository(db)
+
+    // Insérer un asset atteignant presque 50 Mo
+    const almostFull = 50 * 1024 * 1024 - 100
+    repo.createAsset(userId, {
+      id: `asset_${randomUUID()}`,
+      mimeType: 'image/png',
+      width: 1,
+      height: 1,
+      byteSize: almostFull,
+      sha256: 'h_large',
+      storageKey: 'large.png',
+      sourceKind: 'upload',
+    })
+
+    // Tenter de créer un asset de 200 octets -> dépasse 50 Mo -> rejet 413
+    assert.throws(
+      () => {
+        repo.createAsset(userId, {
+          id: `asset_${randomUUID()}`,
+          mimeType: 'image/png',
+          width: 1,
+          height: 1,
+          byteSize: 200,
+          sha256: 'h_exceed',
+          storageKey: 'exceed.png',
+          sourceKind: 'upload',
+        })
+      },
+      err => {
+        assert.equal(err.status, 413)
+        assert.match(err.message, /Quota de stockage d’images dépassé/)
+        return true
+      }
+    )
+  } finally {
+    cleanup()
+  }
+})
+
+test('Cleanup immédiat d’asset après mise à jour et suppression de Note', () => {
+  const {db, dir, createUser, cleanup} = createTestContext()
+  const assetsDir = path.join(dir, 'test_assets')
+  mkdirSync(assetsDir, {recursive: true})
+
+  try {
+    const userId = 'user_clean_1'
+    createUser(userId)
+    const repo = new FlashcardRepository(db, assetsDir)
+    const deck = repo.createDeck(userId, {name: 'Deck Clean'})
+
+    // 1. Créer asset 1 avec fichier physique
+    const asset1Id = `asset_${randomUUID()}`
+    const file1 = `${asset1Id}.png`
+    const path1 = path.join(assetsDir, file1)
+    writeFileSync(path1, PNG_1X1_BUFFER)
+    repo.createAsset(userId, {
+      id: asset1Id,
+      mimeType: 'image/png',
+      width: 1,
+      height: 1,
+      byteSize: PNG_1X1_BUFFER.length,
+      sha256: 'h1',
+      storageKey: file1,
+      sourceKind: 'upload',
+    })
+
+    // Créer la Note liée à asset 1
+    const note = repo.createNote(userId, {
+      defaultDeckId: deck.id,
+      noteType: 'image_occlusion',
+      assetId: asset1Id,
+      fields: {
+        prompt: 'P1',
+        occlusionMode: 'hide_one',
+        masks: [{id: `mask_${randomUUID()}`, x: 0.1, y: 0.1, width: 0.2, height: 0.2, label: 'L1'}],
+      },
+    })
+    assert.equal(existsSync(path1), true)
+
+    // 2. Créer asset 2 avec fichier physique
+    const asset2Id = `asset_${randomUUID()}`
+    const file2 = `${asset2Id}.png`
+    const path2 = path.join(assetsDir, file2)
+    writeFileSync(path2, PNG_1X1_BUFFER)
+    repo.createAsset(userId, {
+      id: asset2Id,
+      mimeType: 'image/png',
+      width: 1,
+      height: 1,
+      byteSize: PNG_1X1_BUFFER.length,
+      sha256: 'h2',
+      storageKey: file2,
+      sourceKind: 'upload',
+    })
+
+    // 3. Mettre à jour la note pour utiliser asset 2 -> asset 1 devient orphelin et doit être nettoyé immédiatement
+    const updated = repo.updateNote(userId, note.id, {
+      assetId: asset2Id,
+      fields: {
+        prompt: 'P2',
+        occlusionMode: 'hide_one',
+        masks: [{id: `mask_${randomUUID()}`, x: 0.1, y: 0.1, width: 0.2, height: 0.2, label: 'L2'}],
+      },
+    }, note.noteVersion)
+
+    // Vérifications : asset 1 supprimé (DB + fichier), asset 2 conservé
+    assert.equal(existsSync(path1), false, 'Le fichier physique de l’ancien asset doit être supprimé')
+    assert.equal(repo.getAsset(userId, asset1Id), null, 'La ligne de l’ancien asset doit être supprimée')
+    assert.equal(existsSync(path2), true, 'Le fichier du nouvel asset doit exister')
+    assert.notEqual(repo.getAsset(userId, asset2Id), null)
+
+    // 4. Supprimer la note -> asset 2 devient orphelin et doit être nettoyé immédiatement
+    const deleted = repo.deleteNote(userId, note.id, updated.noteVersion)
+    assert.equal(deleted, true)
+
+    assert.equal(existsSync(path2), false, 'Le fichier physique du dernier asset doit être supprimé')
+    assert.equal(repo.getAsset(userId, asset2Id), null, 'La ligne du dernier asset doit être supprimée')
+  } finally {
+    cleanup()
+  }
+})
+
+test('Redimensionnement de masque (resize) : préservation stricte du cardId et de l’historique FSRS', () => {
+  const {db, dir, createUser, cleanup} = createTestContext()
+  try {
+    const userId = 'user_resize_1'
+    createUser(userId)
+    const repo = new FlashcardRepository(db)
+    const deck = repo.createDeck(userId, {name: 'Deck Resize'})
+
+    const assetId = `asset_${randomUUID()}`
+    repo.createAsset(userId, {
+      id: assetId,
+      mimeType: 'image/png',
+      width: 100,
+      height: 100,
+      byteSize: 100,
+      sha256: 'h_resize',
+      storageKey: 'resize.png',
+      sourceKind: 'upload',
+    })
+
+    const mask1Id = `mask_${randomUUID()}`
+    const note = repo.createNote(userId, {
+      defaultDeckId: deck.id,
+      noteType: 'image_occlusion',
+      assetId,
+      fields: {
+        prompt: 'Identifier la valve',
+        occlusionMode: 'hide_one',
+        masks: [
+          {id: mask1Id, x: 0.1, y: 0.1, width: 0.2, height: 0.2, label: 'Valve tricuspide'},
+        ],
+      },
+    })
+
+    assert.equal(note.cards.length, 1)
+    const originalCardId = note.cards[0].id
+    const originalDerivationKey = note.cards[0].derivationKey
+
+    // Simuler un historique FSRS existant pour cette carte
+    db.prepare(`
+      UPDATE flashcard_reviews
+      SET review_version = 2, repetitions = 3, fsrs_stability = 4.25, last_rating = 'good'
+      WHERE card_id = ?
+    `).run(originalCardId)
+
+    const noteBefore = repo.note(userId, note.id)
+    assert.equal(noteBefore.cards[0].review.reviewVersion, 2)
+    assert.equal(noteBefore.cards[0].review.repetitions, 3)
+    assert.equal(noteBefore.cards[0].review.stability, 4.25)
+    const stabilityBefore = noteBefore.cards[0].review.stability
+
+    // Simuler le resize UI : nouvelles coordonnées x, y, width, height avec le MÊME mask.id
+    const updatedNote = repo.updateNote(userId, note.id, {
+      fields: {
+        prompt: 'Identifier la valve',
+        occlusionMode: 'hide_one',
+        masks: [
+          {id: mask1Id, x: 0.15, y: 0.25, width: 0.4, height: 0.35, label: 'Valve tricuspide'},
+        ],
+      },
+    }, note.noteVersion)
+
+    // Vérifications :
+    assert.equal(updatedNote.cards.length, 1)
+    const updatedCard = updatedNote.cards[0]
+    assert.equal(updatedCard.id, originalCardId, 'Le cardId doit être strictement identique')
+    assert.equal(updatedCard.derivationKey, originalDerivationKey)
+    assert.deepEqual(updatedCard.visual.targetRect, {x: 0.15, y: 0.25, width: 0.4, height: 0.35})
+    // Vérifier que l'état FSRS a été préservé
+    assert.equal(updatedCard.review.reviewVersion, 2)
+    assert.equal(updatedCard.review.repetitions, 3)
+    assert.equal(updatedCard.review.stability, stabilityBefore)
+  } finally {
+    cleanup()
+  }
+})

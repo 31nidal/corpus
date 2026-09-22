@@ -1,6 +1,6 @@
 import {DatabaseSync} from 'node:sqlite'
 import {createHash, randomUUID} from 'node:crypto'
-import {existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync} from 'node:fs'
+import {existsSync, mkdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync} from 'node:fs'
 import path from 'node:path'
 import {imageSize} from 'image-size'
 import {initFlashcardSchema} from './schema.mjs'
@@ -70,8 +70,8 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
       if (!user) return send(401, {error: 'Connexion requise pour utiliser les flashcards.'})
       const origin = (config.APP_ORIGIN || `${config.RAILWAY_ENVIRONMENT_ID ? 'https' : 'http'}://${req.headers.host || 'localhost:5173'}`).replace(/\/$/, '')
       if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) && (req.headers['x-mycorpus-request'] !== '1' || (req.headers.origin && req.headers.origin !== origin))) return send(403, {error: 'Origine de la requête refusée.'})
-      const url = new URL(req.url, 'http://localhost'), subpath = url.pathname.replace('/api/flashcards/', '').replace(/\/$/, ''), repo = new FlashcardRepository(d)
       const assetsDir = getAssetsDir()
+      const url = new URL(req.url, 'http://localhost'), subpath = url.pathname.replace('/api/flashcards/', '').replace(/\/$/, ''), repo = new FlashcardRepository(d, assetsDir)
 
       // Assets routes
       if (req.method === 'POST' && subpath === 'assets/upload') {
@@ -87,6 +87,13 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
         const buffer = Buffer.concat(chunks)
         if (!buffer.length) {
           return send(400, {error: 'Aucun fichier image fourni.'})
+        }
+
+        const MAX_USER_ASSETS_BYTES = 50 * 1024 * 1024 // 50 MiB
+        const currentBytesRow = d.prepare('SELECT COALESCE(SUM(byte_size), 0) as totalBytes FROM flashcard_assets WHERE user_id=?').get(user.id)
+        const currentBytes = Number(currentBytesRow?.totalBytes || 0)
+        if (currentBytes + buffer.length > MAX_USER_ASSETS_BYTES) {
+          return send(413, {error: 'Quota de stockage d’images dépassé (limite de 50 Mo par utilisateur).'})
         }
 
         const format = detectImageFormat(buffer)
@@ -110,31 +117,61 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
           return send(400, {error: 'Dimensions d’image non autorisées (maximum 4096×4096 px et 16 mégapixels).'})
         }
 
-        const sourceKind = req.headers['x-source-kind'] || 'upload'
+        const rawSourceKind = req.headers['x-source-kind'] || 'upload'
+        if (rawSourceKind !== 'upload' && rawSourceKind !== 'study_document') {
+          return send(400, {error: 'sourceKind invalide. Valeurs autorisées : upload, study_document.'})
+        }
+        const sourceKind = rawSourceKind
         let sourceDocumentId = null
         let sourcePage = null
         let sourceCrop = null
 
         if (sourceKind === 'study_document') {
           const docId = cleanText(req.headers['x-source-document-id'], 100, true)
-          if (!docId || !d.prepare('SELECT 1 FROM study_documents WHERE id=? AND user_id=?').get(docId, user.id)) {
+          if (!docId) {
+            return send(400, {error: 'Identifiant de document Study (x-source-document-id) obligatoire.'})
+          }
+          const studyDoc = d.prepare('SELECT id, page_count FROM study_documents WHERE id=? AND user_id=?').get(docId, user.id)
+          if (!studyDoc) {
             return send(400, {error: 'Document source Study introuvable ou non autorisé.'})
           }
           sourceDocumentId = docId
-          if (req.headers['x-source-page']) {
-            const p = parseInt(req.headers['x-source-page'], 10)
-            if (Number.isInteger(p) && p >= 1) sourcePage = p
+
+          const rawPage = req.headers['x-source-page']
+          if (rawPage === undefined || rawPage === null || rawPage === '') {
+            return send(400, {error: 'sourcePage (x-source-page) est obligatoire pour un document Study.'})
           }
-          if (req.headers['x-source-crop']) {
+          const p = Number(rawPage)
+          const pageCount = Number(studyDoc.page_count) || 1
+          if (!Number.isInteger(p) || p < 1 || p > pageCount) {
+            return send(400, {error: `sourcePage invalide (${rawPage}). Doit être un entier entre 1 et ${pageCount}.`})
+          }
+          sourcePage = p
+
+          const rawCrop = req.headers['x-source-crop']
+          if (rawCrop !== undefined && rawCrop !== null && rawCrop !== '') {
+            let parsed
             try {
-              const parsed = JSON.parse(req.headers['x-source-crop'])
-              if (parsed && typeof parsed === 'object') {
-                const {x, y, width: w, height: h} = parsed
-                if ([x, y, w, h].every(n => Number.isFinite(n) && n >= 0 && n <= 1)) {
-                  sourceCrop = {x, y, width: w, height: h}
-                }
-              }
-            } catch {}
+              parsed = typeof rawCrop === 'string' ? JSON.parse(rawCrop) : rawCrop
+            } catch {
+              return send(400, {error: 'Format x-source-crop JSON invalide.'})
+            }
+            if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+              return send(400, {error: 'x-source-crop invalide.'})
+            }
+            const {x, y, width: w, height: h} = parsed
+            if (![x, y, w, h].every(n => typeof n === 'number' && Number.isFinite(n))) {
+              return send(400, {error: 'Coordonnées x-source-crop invalides.'})
+            }
+            if (x < 0 || y < 0 || w <= 0 || h <= 0 || (x + w) > 1.001 || (y + h) > 1.001) {
+              return send(400, {error: 'Coordonnées x-source-crop hors limites (x>=0, y>=0, width>0, height>0, x+width<=1.001, y+height<=1.001).'})
+            }
+            sourceCrop = {
+              x: Math.round(x * 10000) / 10000,
+              y: Math.round(y * 10000) / 10000,
+              width: Math.round(w * 10000) / 10000,
+              height: Math.round(h * 10000) / 10000,
+            }
           }
         }
 
@@ -142,24 +179,38 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
         const storageKey = `${assetId}.${format.ext}`
         const tmpPath = path.join(assetsDir, `${storageKey}.tmp`)
         const finalPath = path.join(assetsDir, storageKey)
-        writeFileSync(tmpPath, buffer)
-        renameSync(tmpPath, finalPath)
+
+        try {
+          writeFileSync(tmpPath, buffer)
+          renameSync(tmpPath, finalPath)
+        } catch (writeErr) {
+          try { if (existsSync(tmpPath)) unlinkSync(tmpPath) } catch {}
+          throw writeErr
+        }
 
         const sha256 = digest(buffer)
-        const asset = repo.createAsset(user.id, {
-          id: assetId,
-          kind: 'image',
-          mimeType: format.mimeType,
-          width,
-          height,
-          byteSize: buffer.length,
-          sha256,
-          storageKey,
-          sourceKind,
-          sourceDocumentId,
-          sourcePage,
-          sourceCrop,
-        })
+        let asset
+        try {
+          asset = repo.createAsset(user.id, {
+            id: assetId,
+            kind: 'image',
+            mimeType: format.mimeType,
+            width,
+            height,
+            byteSize: buffer.length,
+            sha256,
+            storageKey,
+            sourceKind,
+            sourceDocumentId,
+            sourcePage,
+            sourceCrop,
+          })
+        } catch (insertErr) {
+          try {
+            if (existsSync(finalPath)) unlinkSync(finalPath)
+          } catch {}
+          throw insertErr
+        }
         repo.purgeOrphanAssets(assetsDir)
         return send(201, {asset})
       }
