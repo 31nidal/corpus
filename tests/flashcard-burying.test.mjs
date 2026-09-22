@@ -34,7 +34,7 @@ test('sibling burying contrôlé : c1 révisée avec Again, c2 buried, c1 réapp
   assert.equal(c2.noteId, note.id)
   assert.notEqual(c1.id, c2.id)
 
-  const fixedNow = new Date('2026-09-22T10:00:00.000Z').getTime()
+  const fixedNow = Date.now()
 
   // 1. Initialement, les deux cartes sont dues à Date.now()
   // Mais reviewQueue partitionne par note_id : une seule doit être éligible (rn = 1)

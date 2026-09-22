@@ -135,5 +135,16 @@ export function initFlashcardSchema(db) {
     );
     CREATE INDEX IF NOT EXISTS flashcard_previews_card_user ON flashcard_review_previews(card_id, user_id);
     CREATE INDEX IF NOT EXISTS flashcard_previews_expires ON flashcard_review_previews(expires_at);
+
+    CREATE TABLE IF NOT EXISTS flashcard_generation_receipts (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      kind TEXT NOT NULL,
+      source_json TEXT NOT NULL,
+      source_text TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      expires_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS flashcard_generation_receipts_user ON flashcard_generation_receipts(user_id, expires_at);
   `)
 }

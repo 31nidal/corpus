@@ -7,7 +7,8 @@ import {migrateFlashcards} from './migrations.mjs'
 import {FlashcardRepository} from './repository.mjs'
 import {cleanText, ratings, validateCard, validateDeck, validateNote} from './validation.mjs'
 import {defaultFsrsScheduler} from './fsrsScheduler.mjs'
-import {generateLocalDrafts, sanitizeGeneratedDrafts} from './generation.mjs'
+import {deriveCardsFromNote} from './derivation.mjs'
+import {generateLocalDrafts, generateLocalNoteDrafts, sanitizeGeneratedDrafts, sanitizeGeneratedNoteDrafts, normalize} from './generation.mjs'
 import {buildFlashcardAnki} from './anki.mjs'
 import {initStudySchema, releaseGenerationQuota, reserveGenerationQuota} from '../study.mjs'
 
@@ -114,6 +115,113 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
         }
         const note = repo.restoreDerivation(user.id, restoreMatch[1], restoreMatch[2], body.expectedVersion)
         return note ? send(200, {note}) : send(404, {error: 'Note introuvable.'})
+      }
+
+      if (req.method === 'POST' && subpath === 'notes/bulk') {
+        const body = await readJson(req, 2000000)
+        if (!Array.isArray(body.notes) || !body.notes.length || body.notes.length > 100) {
+          return send(400, {error: 'Entre 1 et 100 notes sont attendues.'})
+        }
+        const requestId = cleanText(body.requestId, 100, true)
+        if (!requestId) {
+          return send(422, {error: 'Identifiant d’enregistrement (requestId) obligatoire.'})
+        }
+
+        let receipt = null
+        if (body.generationId) {
+          const genId = cleanText(body.generationId, 100, true)
+          receipt = genId ? repo.getGenerationReceipt(user.id, genId) : null
+          if (!receipt) {
+            return send(400, {error: 'Reçu de génération invalide ou expiré.'})
+          }
+        }
+
+        const validNotes = []
+        let totalDerivedCards = 0
+
+        for (const rawNote of body.notes) {
+          const valid = validateNote(rawNote)
+          if (!valid) {
+            return send(400, {error: 'Une note du lot est invalide.'})
+          }
+          if (!repo.deck(user.id, valid.defaultDeckId)) {
+            return send(400, {error: 'Deck par défaut introuvable.'})
+          }
+
+          // Check study document provenance
+          if (valid.source?.type === 'study_document' && valid.source.documentId) {
+            const doc = d.prepare('SELECT 1 FROM study_documents WHERE id=? AND user_id=?').get(valid.source.documentId, user.id)
+            if (!doc) return send(400, {error: 'Document source invalide ou non autorisé.'})
+            if (valid.source.sectionId) {
+              const sec = d.prepare('SELECT content FROM study_sections WHERE id=? AND document_id=? AND user_id=?').get(valid.source.sectionId, valid.source.documentId, user.id)
+              if (!sec) return send(400, {error: 'Section source invalide.'})
+              if (valid.source.excerpt && !normalize(sec.content).includes(normalize(valid.source.excerpt))) {
+                return send(400, {error: 'Citation source non trouvée dans la section indiquée.'})
+              }
+            }
+          }
+
+          // Check generation receipt alignment and re-verify medical assertions
+          if (receipt && valid.source?.type !== 'manual') {
+            if (valid.source?.courseId && receipt.source?.courseId && valid.source.courseId !== receipt.source.courseId) {
+              return send(400, {error: 'Incohérence de provenance avec le reçu de génération.'})
+            }
+            if (valid.source?.documentId && receipt.source?.documentId && valid.source.documentId !== receipt.source.documentId) {
+              return send(400, {error: 'Incohérence de provenance avec le reçu de génération.'})
+            }
+
+            const normSource = normalize(receipt.sourceText)
+            switch (valid.noteType) {
+              case 'basic':
+              case 'reverse': {
+                if (!normSource.includes(normalize(valid.fields.back))) {
+                  return send(400, {error: 'La réponse de la note n’est pas attestée dans la source d’origine.'})
+                }
+                break
+              }
+              case 'typed': {
+                if (!normSource.includes(normalize(valid.fields.answer))) {
+                  return send(400, {error: 'La réponse à saisir n’est pas attestée dans la source d’origine.'})
+                }
+                break
+              }
+              case 'cloze': {
+                const stripped = (valid.fields.text || '').replace(/\{\{c\d+::(.*?)\}\}/g, '$1')
+                if (!normSource.includes(normalize(stripped))) {
+                  return send(400, {error: 'Le texte à trous n’est pas conforme à la source d’origine.'})
+                }
+                const spans = [...(valid.fields.text || '').matchAll(/\{\{c\d+::(.*?)\}\}/g)].map(m => normalize(m[1]))
+                if (spans.some(s => !s || !normSource.includes(s))) {
+                  return send(400, {error: 'Un trou masqué n’est pas attesté dans la source d’origine.'})
+                }
+                break
+              }
+              case 'bidirectional': {
+                if (!normSource.includes(normalize(valid.fields.front)) || !normSource.includes(normalize(valid.fields.back))) {
+                  return send(400, {error: 'Les termes bidirectionnels ne sont pas attestés dans la source d’origine.'})
+                }
+                break
+              }
+            }
+          }
+
+          // If free_text: excerpt MUST NOT be persisted
+          if (valid.source?.type === 'free_text' || (receipt && receipt.kind === 'free_text')) {
+            valid.source = {...valid.source, type: 'free_text', excerpt: null}
+          }
+
+          const derived = deriveCardsFromNote(valid.noteType, valid.fields, [])
+          totalDerivedCards += derived.length
+          validNotes.push(valid)
+        }
+
+        if (totalDerivedCards > 300) {
+          return send(400, {error: 'Le lot dépasse la limite maximale de 300 cartes dérivées.'})
+        }
+
+        const payloadHash = digest(JSON.stringify(body.notes))
+        const result = repo.createNotesBulk(user.id, validNotes, requestId, payloadHash)
+        return send(201, result)
       }
 
       if (req.method === 'GET' && subpath === 'cards') {
@@ -332,15 +440,46 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
       if (req.method === 'POST' && subpath.startsWith('generate/')) {
         const kind = subpath.slice(9), body = await readJson(req, 1000000), level = ['essential', 'standard', 'complete'].includes(body.level) ? body.level : 'standard', requestedCount = Math.min(80, Math.max(1, Number(body.count) || 12))
         if (!['text', 'catalog', 'study', 'qcm-error'].includes(kind)) return send(404, {error: 'Source de génération inconnue.'})
+        const generationId = 'gen_' + randomUUID()
+
         if (kind === 'qcm-error' && body.qcm !== undefined) {
           const front = cleanText(body.qcm?.front, 2000, true), back = cleanText(body.qcm?.back, 8000, true)
           if (!front || !back) return send(400, {error: 'Question ou correction QCM invalide.'})
-          const draft = {temporaryId: randomUUID(), front, back, selected: true, subject: cleanText(body.subject, 150) || '', chapter: cleanText(body.chapter, 200) || '', tags: [], source: {type: 'qcm_error', courseId: cleanText(body.courseId, 150) || null, excerpt: back.slice(0, 1500)}}
-          return send(200, {drafts: [draft], generation: {mode: 'local', produced: 1, persisted: false}})
+          const qcmText = `${front}\n\n${back}`
+          const qcmSource = {type: 'qcm_error', courseId: cleanText(body.courseId, 150) || null, excerpt: back.slice(0, 1500)}
+          repo.saveGenerationReceipt(user.id, generationId, 'qcm_error', qcmSource, qcmText)
+
+          let noteType = 'basic'
+          let fields = {front, back}
+          let rationale = 'Correction d’erreur QCM'
+
+          const valMatch = back.match(/(?:vaut|est égal(?:e)? à|seuil de|valeur de|taux de|concentration de)\s+(\d+(?:[.,]\d+)?\s*(?:[a-zA-Z/%µ]+(?:\/[a-zA-Z0-9]+)?)?)/i)
+          if (valMatch && valMatch[1].trim().length <= 40) {
+            noteType = 'typed'
+            fields = {front: `Quelle est la valeur clé : ${front} ?`, answer: valMatch[1].trim(), acceptedAnswers: []}
+            rationale = 'Valeur médicale chiffrée issue de la correction'
+          }
+
+          const draft = {
+            temporaryId: randomUUID(),
+            noteType,
+            front: fields.front,
+            back: fields.back || fields.answer,
+            fields,
+            selected: true,
+            subject: cleanText(body.subject, 150) || '',
+            chapter: cleanText(body.chapter, 200) || '',
+            tags: [],
+            source: qcmSource,
+            rationale,
+          }
+          return send(200, {drafts: [draft], generationId, generation: {mode: 'local', produced: 1, persisted: false}})
         }
-        if (body.count !== undefined && (!Number.isInteger(body.count) || body.count < 1 || body.count > 80)) return send(400, {error: 'Choisissez entre 1 et 80 cartes.'})
+
+        if (body.count !== undefined && (!Number.isInteger(body.count) || body.count < 1 || body.count > 80)) return send(400, {error: 'Choisissez entre 1 et 80 notions.'})
         let text = '', sourceSegments = [], source = {type: kind === 'text' ? 'free_text' : kind === 'qcm-error' ? 'qcm_error' : kind === 'study' ? 'study_document' : 'catalog_course'}
         let subject = cleanText(body.subject, 150) || '', chapter = cleanText(body.chapter, 200) || '', tags = Array.isArray(body.tags) ? body.tags.slice(0, 20).map(value => String(value).slice(0, 50)) : []
+
         if (kind === 'study') {
           const documentId = cleanText(body.documentId, 100, true); if (!documentId) return send(400, {error: 'Document requis.'})
           const document = d.prepare('SELECT id,title,page_count FROM study_documents WHERE id=? AND user_id=?').get(documentId, user.id); if (!document) return send(404, {error: 'Document introuvable.'})
@@ -350,23 +489,47 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
           if (sectionIds.length) sections = sections.filter(section => sectionIds.includes(section.id))
           if (Number.isSafeInteger(body.startPage) || Number.isSafeInteger(body.endPage)) { const start = Math.max(1, body.startPage || 1), end = Math.min(document.page_count, body.endPage || document.page_count); sections = sections.filter(section => section.end_page >= start && section.start_page <= end) }
           sourceSegments = sections.map(section => ({id: section.id, title: section.title, text: section.content, startPage: section.start_page, endPage: section.end_page}))
-          text = sections.map(section => `${section.title}. ${section.content}`).join('\n'); chapter ||= document.title; source = {...source, documentId, sectionId: sections.length === 1 ? sections[0].id : null, locator: {pages: sections.length ? [Math.min(...sections.map(s => s.start_page)), Math.max(...sections.map(s => s.end_page))] : []}}
+          text = sections.map(section => `${section.title}. ${section.content}`).join('\n'); chapter ||= document.title
+          const pagesRange = sections.length ? [Math.min(...sections.map(s => s.start_page)), Math.max(...sections.map(s => s.end_page))] : []
+          source = {...source, documentId, sectionId: sections.length === 1 ? sections[0].id : null, locator: {pages: pagesRange}}
         } else {
           text = cleanText(body.text, 300000, true) || ''
           if (kind === 'catalog' && Array.isArray(body.segments)) sourceSegments = body.segments.slice(0, 200).flatMap(segment => { const id = cleanText(segment?.id, 180, true), segmentText = cleanText(segment?.text, 50000, true), title = cleanText(segment?.title, 200); return id && segmentText ? [{id, text: segmentText, title: title || '', startPage: null, endPage: null}] : [] })
         }
         if (text.length < 20) return send(400, {error: 'Le contenu sélectionné est trop court pour générer des cartes utiles.'})
         source = {...source, courseId: cleanText(body.courseId, 150) || null, sectionId: source.sectionId || cleanText(body.sectionId, 180) || null, locator: source.locator || (body.locator && typeof body.locator === 'object' ? body.locator : null)}
+
+        repo.saveGenerationReceipt(user.id, generationId, kind, source, text)
+
         const fallback = {text, level, requestedCount, source, subject, chapter, tags}; let drafts = [], usedProvider = false, reserved = false
         if (provider?.generateFlashcards) {
           reserveGenerationQuota(user.id, d); reserved = true
-          try { drafts = sanitizeGeneratedDrafts(await provider.generateFlashcards({text, level, requestedCount, source, subject, chapter, instructions: 'Créer des questions précises en français. Pour chaque carte, fournir front, back et sourceExcerpt. sourceExcerpt doit être une citation exacte du contenu fourni. sourceExcerpt doit correspondre à une phrase entière. back doit être strictement identique à cette citation, sans reformulation, sans ajout ni suppression de négation. Ne pas créer de questions avec un pronom sans antécédent.'}), fallback); usedProvider = Boolean(drafts.length) } catch (error) { console.warn('Provider flashcard generation failed, falling back to local generator:', error.message) }
+          try {
+            const providerResult = await provider.generateFlashcards({
+              text, level, requestedCount, source, subject, chapter,
+              instructions: `Créer des flashcards structurées sous forme de Notes pédagogiques en français.
+Chaque élément doit comporter :
+- noteType : l'un de 'basic', 'cloze', 'typed', 'bidirectional'.
+  * 'typed' : pour les valeurs chiffrées précises avec unités, les formules ou scores cliniques. Le champ fields doit être { front, answer }. answer doit être une citation exacte de la valeur dans le texte.
+  * 'cloze' : pour les phrases anatomiques ou contextuelles clés où 1 à 3 termes précis sont masqués sous la forme {{c1::terme}}, {{c2::terme}}. Le texte complet sans les balises doit être strictement identique au passage source.
+  * 'bidirectional' : uniquement en cas d'équivalence explicite (synonyme officiel, éponyme vs nomenclature, abréviation explicitement définie). Les deux termes doivent être dans le texte.
+  * 'basic' : par défaut pour les définitions, mécanismes et rôles physiologiques. { front, back } où back est une citation exacte du texte.
+- fields : les champs correspondant au noteType.
+- sourceExcerpt : citation exacte et intégrale d'une phrase du contenu fourni attestant la notion.
+- rationale : justification courte du choix du type.
+Ne jamais utiliser de pronom sans antécédent (il, elle, ce...).`
+            })
+            drafts = sanitizeGeneratedNoteDrafts(providerResult, fallback, text)
+            usedProvider = Boolean(drafts.length)
+          } catch (error) {
+            console.warn('Provider flashcard generation failed, falling back to local generator:', error.message)
+          }
           if (!usedProvider && reserved) { releaseGenerationQuota(user.id, d); reserved = false }
         }
-        if (!drafts.length) drafts = generateLocalDrafts(fallback)
+        if (!drafts.length) drafts = generateLocalNoteDrafts(fallback)
         if (sourceSegments.length) drafts = drafts.map(draft => { const excerpt = String(draft.source?.excerpt || '').toLocaleLowerCase('fr'), segment = sourceSegments.find(item => excerpt && item.text.toLocaleLowerCase('fr').includes(excerpt)) || (sourceSegments.length === 1 ? sourceSegments[0] : null); return segment ? {...draft, source: {...draft.source, sectionId: segment.id, locator: kind === 'study' ? {pages: [segment.startPage, segment.endPage]} : {route: `#tab=cours&cours=${source.courseId}&section=${segment.id}`}}} : draft })
         if (kind === 'text') drafts = drafts.map(draft => ({...draft, source: {...draft.source, excerpt: null}}))
-        return send(200, {drafts, generation: {mode: usedProvider ? 'provider' : 'local', level, requestedCount, produced: drafts.length, persisted: false}})
+        return send(200, {drafts, generationId, generation: {mode: usedProvider ? 'provider' : 'local', level, requestedCount, produced: drafts.length, persisted: false}})
       }
       if (req.method === 'POST' && subpath === 'export') {
         const body = await readJson(req)

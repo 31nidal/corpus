@@ -269,7 +269,7 @@ export class FlashcardRepository {
     }
   }
 
-  createNote(userId, value) {
+  createNoteRows(userId, value) {
     if (!this.deck(userId, value.defaultDeckId)) {
       throw Object.assign(new Error('Deck par défaut introuvable.'), {status: 400})
     }
@@ -284,61 +284,137 @@ export class FlashcardRepository {
       throw Object.assign(new Error('Impossible de générer des cartes depuis cette note.'), {status: 400})
     }
 
-    this.db.exec('BEGIN IMMEDIATE')
-    try {
+    this.db.prepare(`
+      INSERT INTO flashcard_notes(
+        id, user_id, default_deck_id, note_type, title, fields_json,
+        suppressed_derivations_json, subject, chapter, tags_json, visual_json,
+        source_type, source_course_id, source_document_id, source_section_id,
+        source_locator_json, source_excerpt, schema_version, note_version,
+        created_at, updated_at
+      ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    `).run(
+      id, userId, value.defaultDeckId, value.noteType, value.title || null,
+      JSON.stringify(value.fields), '[]', value.subject || null, value.chapter || null,
+      JSON.stringify(value.tags || []), value.visual ? JSON.stringify(value.visual) : null,
+      source.type, source.courseId || null, source.documentId || null, source.sectionId || null,
+      source.locator ? JSON.stringify(source.locator) : null, source.excerpt || null,
+      1, 0, now, now
+    )
+
+    for (const d of derivations) {
+      const cardId = randomUUID()
       this.db.prepare(`
-        INSERT INTO flashcard_notes(
-          id, user_id, default_deck_id, note_type, title, fields_json,
-          suppressed_derivations_json, subject, chapter, tags_json, visual_json,
+        INSERT INTO flashcards(
+          id, user_id, deck_id, note_id, derivation_key, card_type,
+          front, back, typed_target, accepted_answers_json,
+          subject, chapter, tags_json, visual_json,
           source_type, source_course_id, source_document_id, source_section_id,
-          source_locator_json, source_excerpt, schema_version, note_version,
-          created_at, updated_at
-        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+          source_locator_json, source_excerpt, created_at, updated_at
+        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
       `).run(
-        id, userId, value.defaultDeckId, value.noteType, value.title || null,
-        JSON.stringify(value.fields), '[]', value.subject || null, value.chapter || null,
-        JSON.stringify(value.tags || []), value.visual ? JSON.stringify(value.visual) : null,
+        cardId, userId, value.defaultDeckId, id, d.derivationKey, d.cardType,
+        d.front, d.back, d.typedTarget || null, d.acceptedAnswers ? JSON.stringify(d.acceptedAnswers) : null,
+        value.subject || null, value.chapter || null, JSON.stringify(value.tags || []),
+        value.visual ? JSON.stringify(value.visual) : null,
         source.type, source.courseId || null, source.documentId || null, source.sectionId || null,
         source.locator ? JSON.stringify(source.locator) : null, source.excerpt || null,
-        1, 0, now, now
+        now, now
       )
 
-      for (const d of derivations) {
-        const cardId = randomUUID()
-        this.db.prepare(`
-          INSERT INTO flashcards(
-            id, user_id, deck_id, note_id, derivation_key, card_type,
-            front, back, typed_target, accepted_answers_json,
-            subject, chapter, tags_json, visual_json,
-            source_type, source_course_id, source_document_id, source_section_id,
-            source_locator_json, source_excerpt, created_at, updated_at
-          ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-        `).run(
-          cardId, userId, value.defaultDeckId, id, d.derivationKey, d.cardType,
-          d.front, d.back, d.typedTarget || null, d.acceptedAnswers ? JSON.stringify(d.acceptedAnswers) : null,
-          value.subject || null, value.chapter || null, JSON.stringify(value.tags || []),
-          value.visual ? JSON.stringify(value.visual) : null,
-          source.type, source.courseId || null, source.documentId || null, source.sectionId || null,
-          source.locator ? JSON.stringify(source.locator) : null, source.excerpt || null,
-          now, now
-        )
+      this.db.prepare(`
+        INSERT INTO flashcard_reviews(
+          card_id, user_id, state, due_at, interval_days, ease_factor, repetitions, lapses,
+          fsrs_stability, fsrs_difficulty, fsrs_reps, fsrs_learning_steps, fsrs_scheduled_days,
+          review_version, fsrs_origin
+        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      `).run(cardId, userId, 'new', Date.now(), 0, 2.5, 0, 0, 0, 0, 0, 0, 0, 0, 'new')
+    }
 
-        this.db.prepare(`
-          INSERT INTO flashcard_reviews(
-            card_id, user_id, state, due_at, interval_days, ease_factor, repetitions, lapses,
-            fsrs_stability, fsrs_difficulty, fsrs_reps, fsrs_learning_steps, fsrs_scheduled_days,
-            review_version, fsrs_origin
-          ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-        `).run(cardId, userId, 'new', Date.now(), 0, 2.5, 0, 0, 0, 0, 0, 0, 0, 0, 'new')
-      }
+    return this.note(userId, id)
+  }
 
+  createNote(userId, value) {
+    this.db.exec('BEGIN IMMEDIATE')
+    try {
+      const note = this.createNoteRows(userId, value)
       this.db.exec('COMMIT')
+      return note
     } catch (err) {
       this.db.exec('ROLLBACK')
       throw err
     }
+  }
 
-    return this.note(userId, id)
+  createNotesBulk(userId, notes, requestId, payloadHash) {
+    this.db.exec('BEGIN IMMEDIATE')
+    try {
+      if (requestId) {
+        const key = `notes:${requestId}`
+        const previous = this.db.prepare('SELECT payload_hash, response_json FROM flashcard_save_requests WHERE user_id=? AND request_id=?').get(userId, key)
+        if (previous) {
+          if (previous.payload_hash === payloadHash) {
+            this.db.exec('COMMIT')
+            return JSON.parse(previous.response_json)
+          } else {
+            throw Object.assign(new Error('Cette demande d’enregistrement a déjà été utilisée pour un autre contenu.'), {status: 409})
+          }
+        }
+      }
+
+      const createdNotes = []
+      let totalCards = 0
+      for (const noteValue of notes) {
+        const note = this.createNoteRows(userId, noteValue)
+        createdNotes.push(note)
+        totalCards += (note.cards || []).length
+      }
+
+      const result = {
+        notes: createdNotes,
+        totalNotes: createdNotes.length,
+        totalCards,
+      }
+
+      if (requestId) {
+        const key = `notes:${requestId}`
+        this.db.prepare('INSERT INTO flashcard_save_requests VALUES(?,?,?,?,?)').run(
+          userId, key, payloadHash, JSON.stringify(result), Date.now()
+        )
+        this.db.prepare('DELETE FROM flashcard_save_requests WHERE created_at<?').run(Date.now() - 7 * 86400000)
+      }
+
+      this.db.exec('COMMIT')
+      return result
+    } catch (err) {
+      this.db.exec('ROLLBACK')
+      throw err
+    }
+  }
+
+  saveGenerationReceipt(userId, id, kind, source, sourceText, ttlMs = 2 * 3600 * 1000) {
+    const now = Date.now()
+    const expiresAt = now + ttlMs
+    this.db.prepare(`
+      INSERT OR REPLACE INTO flashcard_generation_receipts(id, user_id, kind, source_json, source_text, created_at, expires_at)
+      VALUES(?, ?, ?, ?, ?, ?, ?)
+    `).run(id, userId, kind, JSON.stringify(source || {}), sourceText || '', now, expiresAt)
+    this.db.prepare('DELETE FROM flashcard_generation_receipts WHERE expires_at<?').run(now)
+  }
+
+  getGenerationReceipt(userId, id) {
+    const now = Date.now()
+    this.db.prepare('DELETE FROM flashcard_generation_receipts WHERE expires_at<?').run(now)
+    const row = this.db.prepare('SELECT * FROM flashcard_generation_receipts WHERE id=? AND user_id=?').get(id, userId)
+    if (!row) return null
+    return {
+      id: row.id,
+      userId: row.user_id,
+      kind: row.kind,
+      source: parse(row.source_json) || {},
+      sourceText: row.source_text,
+      createdAt: row.created_at,
+      expiresAt: row.expires_at,
+    }
   }
 
   syncNoteDerivations(note) {

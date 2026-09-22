@@ -163,6 +163,22 @@ export function migrateFlashcards(db, scheduler = defaultFsrsScheduler) {
       db.prepare('INSERT INTO flashcard_migrations VALUES(2, ?)').run(Date.now())
     }
 
+    if (!db.prepare('SELECT 1 FROM flashcard_migrations WHERE version=3').get()) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS flashcard_generation_receipts (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          kind TEXT NOT NULL,
+          source_json TEXT NOT NULL,
+          source_text TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          expires_at INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS flashcard_generation_receipts_user ON flashcard_generation_receipts(user_id, expires_at);
+      `)
+      db.prepare('INSERT INTO flashcard_migrations VALUES(3, ?)').run(Date.now())
+    }
+
     db.exec('COMMIT')
   } catch (error) {
     db.exec('ROLLBACK')

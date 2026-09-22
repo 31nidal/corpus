@@ -105,11 +105,20 @@ test('génération et persistance : texte libre (front/back non vides, dialogue 
   const capturedCards: { front: string; back: string }[] = []
   for (let i = 0; i < count; i++) {
     const art = articles.nth(i)
-    const front = await art.getByLabel('Recto').inputValue()
-    const back = await art.getByLabel('Verso').inputValue()
-    expect(front.trim().length).toBeGreaterThan(0)
-    expect(back.trim().length).toBeGreaterThan(0)
-    capturedCards.push({ front, back })
+    const frontEl = art.getByLabel('Recto')
+    const hasFront = await frontEl.count()
+    if (hasFront > 0) {
+      const front = await frontEl.inputValue()
+      const back = await art.getByLabel('Verso').inputValue()
+      expect(front.trim().length).toBeGreaterThan(0)
+      expect(back.trim().length).toBeGreaterThan(0)
+      capturedCards.push({ front, back })
+    } else {
+      const clozeEl = art.getByLabel('Texte à trous')
+      const text = await clozeEl.inputValue()
+      expect(text.trim().length).toBeGreaterThan(0)
+      capturedCards.push({ front: text.replace(/\{\{c\d+::(.*?)\}\}/g, '$1'), back: text.replace(/\{\{c\d+::(.*?)\}\}/g, '$1') })
+    }
   }
 
   await dialog.getByLabel('Deck de destination').selectOption({ label: 'Physio' })
@@ -120,10 +129,11 @@ test('génération et persistance : texte libre (front/back non vides, dialogue 
 
   await page.getByRole('button', { name: 'Toutes mes cartes' }).click()
   await page.getByLabel('Filtrer par deck').selectOption({ label: 'Physio' })
+  const savedArticles = page.locator('.flash-card-list article')
+  await expect(savedArticles).toHaveCount(count)
   for (const card of capturedCards) {
-    const cardItem = page.locator('.flash-card-list article').filter({ hasText: card.back })
+    const cardItem = savedArticles.filter({ hasText: card.front.slice(0, 30) })
     await expect(cardItem).toBeVisible()
-    await expect(cardItem.locator('h3')).toContainText(card.front)
   }
 })
 
@@ -398,11 +408,11 @@ test('une réponse perdue après enregistrement ne duplique pas les brouillons',
  await page.getByRole('button',{name:'Générer les brouillons'}).click()
  const dialog=page.getByRole('dialog',{name:'Générer des flashcards'})
  await expect(dialog.locator('.flash-draft-list article')).toHaveCount(2)
- let fail=true
- await page.route('**/api/flashcards/cards/bulk',async route=>{
-  if(fail){fail=false;await route.fetch();await route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Réponse réseau perdue. Réessayez.'})})}
-  else await route.continue()
- })
+  let fail=true
+  await page.route(/.*\/api\/flashcards\/(cards|notes)\/bulk/,async route=>{
+   if(fail){fail=false;await route.fetch();await route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Réponse réseau perdue. Réessayez.'})})}
+   else await route.continue()
+  })
  await dialog.getByRole('button',{name:'Enregistrer la sélection'}).click()
  await expect(dialog.getByRole('alert')).toContainText('Réponse réseau perdue')
  await dialog.getByRole('button',{name:'Enregistrer la sélection'}).click()

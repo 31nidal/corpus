@@ -1,4 +1,4 @@
-import type {Flashcard, FlashcardDeck, FlashcardDraft, FlashcardPreview, FlashcardStats, FlashcardReview, GenerationSource, FlashcardNote} from './flashcardsTypes'
+import type {Flashcard, FlashcardDeck, FlashcardNoteDraft, FlashcardNoteFields, FlashcardSource, NoteType, FlashcardPreview, FlashcardStats, FlashcardReview, GenerationSource, FlashcardNote} from './flashcardsTypes'
 
 const headers = {'Content-Type': 'application/json', 'x-mycorpus-request': '1'}
 const clientTimezone = () => {
@@ -126,6 +126,25 @@ export const fetchStats = async () =>
     headers: {'x-timezone': clientTimezone()},
   })).stats
 
+export const createNotesBulk = async (
+  notes: Array<{
+    noteType: NoteType
+    defaultDeckId: string
+    title?: string
+    fields: FlashcardNoteFields
+    subject?: string
+    chapter?: string
+    tags?: string[]
+    source?: FlashcardSource
+  }>,
+  requestId: string,
+  generationId?: string
+) =>
+  request<{notes: FlashcardNote[]; totalNotes: number; totalCards: number}>('notes/bulk', {
+    method: 'POST',
+    body: JSON.stringify({notes, requestId, generationId}),
+  })
+
 export async function generateDrafts(
   source: GenerationSource,
   level: 'essential' | 'standard' | 'complete',
@@ -156,10 +175,11 @@ export async function generateDrafts(
     locator: source.locator,
     ...pages,
   }
-  return request<{drafts: FlashcardDraft[]; generation: {mode: string; produced: number; persisted: boolean}}>(
-    `generate/${source.kind}`,
-    {method: 'POST', body: JSON.stringify(payload)}
-  )
+  return request<{
+    drafts: FlashcardNoteDraft[]
+    generationId?: string
+    generation: {mode: string; produced: number; persisted: boolean}
+  }>(`generate/${source.kind}`, {method: 'POST', body: JSON.stringify(payload)})
 }
 
 export async function exportAnki(filters: Record<string, unknown> = {}) {

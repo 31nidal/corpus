@@ -120,6 +120,19 @@ export type FlashcardDraft = {
   source: FlashcardSource
 }
 
+export type FlashcardNoteDraft = {
+  temporaryId: string
+  noteType: NoteType
+  title?: string
+  fields: FlashcardNoteFields
+  subject?: string
+  chapter?: string
+  tags: string[]
+  selected: boolean
+  source: FlashcardSource
+  rationale?: string
+}
+
 export type FlashcardStats = {
   total: number
   newCards: number
