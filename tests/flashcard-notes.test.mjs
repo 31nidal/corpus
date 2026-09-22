@@ -263,7 +263,7 @@ test('derived card PATCH rejeté mais moveCard autorisé', async () => {
     assert.match(patchRes.data.error, /dérivée d’une Note/)
 
     // Vérifier que la carte est intacte
-    const cardCheck = (await call(`/api/flashcards/cards?deck=${deck1.id}`, 'GET', undefined, user.cookie)).data.cards[0]
+    const cardCheck = (await call(`/api/flashcards/cards?deck=${deck1.id}`, 'GET', undefined, user.cookie)).data.cards.find(c => c.id === forwardCard.id)
     assert.equal(cardCheck.front, 'Cranium')
 
     // Déplacement de la carte dérivée vers deck2 -> autorisé (200)
