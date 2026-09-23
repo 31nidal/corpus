@@ -4,6 +4,7 @@ import path from 'node:path'
 import {normalizeName} from './validation.mjs'
 import {defaultFsrsScheduler} from './fsrsScheduler.mjs'
 import {deriveCardsFromNote} from './derivation.mjs'
+import {expandCourseIdsForProvenance} from './provenance.mjs'
 
 const parse = value => { try { return value ? JSON.parse(value) : null } catch { return null } }
 
@@ -246,7 +247,16 @@ export class FlashcardRepository {
     if (filters.noteType) { where.push('n.note_type=?'); args.push(filters.noteType) }
     if (filters.subject) { where.push('n.subject=?'); args.push(filters.subject) }
     if (filters.chapter) { where.push('n.chapter=?'); args.push(filters.chapter) }
-    if (filters.courseId) { where.push('n.source_course_id=?'); args.push(filters.courseId) }
+    if (filters.courseId) {
+      const courseIds = expandCourseIdsForProvenance(filters.courseId)
+      if (courseIds.length === 1) {
+        where.push('n.source_course_id=?')
+        args.push(courseIds[0])
+      } else if (courseIds.length > 1) {
+        where.push(`n.source_course_id IN (${courseIds.map(() => '?').join(',')})`)
+        args.push(...courseIds)
+      }
+    }
     if (filters.query) {
       where.push('(LOWER(n.title) LIKE ? OR LOWER(n.fields_json) LIKE ? OR LOWER(n.subject) LIKE ? OR LOWER(n.chapter) LIKE ?)')
       const q = `%${filters.query.toLowerCase()}%`
@@ -948,7 +958,16 @@ export class FlashcardRepository {
     if (filters.subject) { where.push('c.subject=?'); args.push(filters.subject) }
     if (filters.chapter) { where.push('c.chapter=?'); args.push(filters.chapter) }
     if (filters.tag) { where.push('EXISTS (SELECT 1 FROM json_each(c.tags_json) WHERE LOWER(value)=LOWER(?))'); args.push(filters.tag) }
-    if (filters.courseId) { where.push('c.source_course_id=?'); args.push(filters.courseId) }
+    if (filters.courseId) {
+      const courseIds = expandCourseIdsForProvenance(filters.courseId)
+      if (courseIds.length === 1) {
+        where.push('c.source_course_id=?')
+        args.push(courseIds[0])
+      } else if (courseIds.length > 1) {
+        where.push(`c.source_course_id IN (${courseIds.map(() => '?').join(',')})`)
+        args.push(...courseIds)
+      }
+    }
     if (filters.due) { where.push('r.due_at<=?'); args.push(Date.now()) }
     if (filters.query) {
       where.push('(LOWER(c.front) LIKE ? OR LOWER(c.back) LIKE ? OR LOWER(c.subject) LIKE ? OR LOWER(c.chapter) LIKE ? OR LOWER(c.tags_json) LIKE ? OR LOWER(COALESCE(c.typed_target, \'\')) LIKE ?)')

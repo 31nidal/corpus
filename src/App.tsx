@@ -9,6 +9,7 @@ import PracticeWorkspace from './study/PracticeWorkspace'
 const MyCoursesWorkspace = lazy(() => import('./study/MyCoursesWorkspace'))
 const FlashcardsWorkspace = lazy(() => import('./flashcards/FlashcardsWorkspace'))
 import {courses} from './study/curriculum'
+import {isValidCourseOrHubId, getCourseOrHubTitle} from './study/taxonomy'
 import {lessonFor,profileFor,type LearningLevel} from './learning'
 import {systems} from './systems'
 import {animationRegistry,type AnimationState} from './animations'
@@ -71,7 +72,7 @@ export default function App() {
   const [level]=useState<LearningLevel>('student')
   const [chatOpen,setChatOpen]=useState(false)
   const [profileOpen,setProfileOpen]=useState(profileRequested)
-  const [completed,setCompleted]=useState<string[]>(()=>{try{const v=JSON.parse(accountStorage.getItem('corpus-completed')||'[]');return Array.isArray(v)?v.filter(x=>courses.some(l=>l.id===x)):[]}catch{return []}})
+  const [completed,setCompleted]=useState<string[]>(()=>{try{const v=JSON.parse(accountStorage.getItem('corpus-completed')||'[]');return Array.isArray(v)?v.filter(x=>courses.some(l=>l.id===x)||isValidCourseOrHubId(x)):[]}catch{return []}})
   const [layerTab,setLayerTab]=useState<'layers'|'systems'>('layers')
   const [activeSystems,setActiveSystems]=useState<string[]>([])
   const [animation,setAnimation]=useState<AnimationState>(null)
@@ -339,7 +340,7 @@ export default function App() {
   }
   const detailedProfile=selected?profileFor(selected):null
   useEffect(()=>{if(selectedId&&description)accountStorage.event('exploration',{id:selectedId,name:description.name,body,url:location.hash})},[selectedId,body])
-  useEffect(()=>{if(learningOpen&&courseToOpen)accountStorage.event('course',{id:courseToOpen,title:courses.find(c=>c.id===courseToOpen)?.title||courseToOpen,url:location.hash})},[learningOpen,courseToOpen])
+  useEffect(()=>{if(learningOpen&&courseToOpen)accountStorage.event('course',{id:courseToOpen,title:courses.find(c=>c.id===courseToOpen)?.title||getCourseOrHubTitle(courseToOpen)||courseToOpen,url:location.hash})},[learningOpen,courseToOpen])
   useEffect(()=>{if(quiz?.done)accountStorage.event('quiz',{title:'Identification anatomique 3D',score:quiz.score,total:quizQuestions.length,results:quiz.results})},[quiz?.done])
   const selectedAnimation=animationRegistry.find(a=>a.targets.some(id=>id===selectedId))
   return <main className="experience" data-body={body} data-workspace={learningOpen?'courses':practiceOpen?'practice':myCoursesOpen?'my-courses':flashcardsOpen?'flashcards':'atlas'} data-chat={chatOpen} data-selected={selectedId ?? ''} data-loaded={isLoaded}>
