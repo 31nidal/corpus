@@ -1,5 +1,6 @@
 import type {Course} from './curriculum'
 import type {Question} from './questions'
+import {authoredQuestionCourseIds} from './content'
 
 const prerequisites:Record<string,string[]>={
  Anatomie:['Position anatomique et plans de coupe','Vocabulaire de localisation','Organisation générale du corps'],
@@ -32,8 +33,9 @@ const rotate=<T,>(items:T[],from:number,count=3)=>Array.from({length:Math.min(co
 export function completeQuestionBank(catalog:Course[],existing:Question[],minimum=15):Question[]{
  const result=[...existing]
  for(const course of catalog){
+  const courseMinimum=authoredQuestionCourseIds.has(course.id)?5:minimum
   const own=result.filter(q=>q.course===course.id)
-  if(own.length>=minimum)continue
+  if(own.length>=courseMinimum)continue
   const candidates:Question[]=[]
   const sections=course.sections.map(section=>({title:section.title,summary:concise(section.text)}))
   sections.forEach((section,index)=>{
@@ -57,10 +59,10 @@ export function completeQuestionBank(catalog:Course[],existing:Question[],minimu
   candidates.push({id:`quality-${course.id}-recall`,course:course.id,topic:course.category,difficulty:'application',format:'single',prompt:course.recall,
    options:[concise(course.answer,300),...sections.slice(-2).map(s=>s.summary)],correct:[0],why:['Cette réponse reprend le raisonnement attendu du cours.',...sections.slice(-2).map(s=>`Cette proposition relève de « ${s.title} », mais ne répond pas directement à la question.`)]})
   for(const candidate of candidates){
-   if(result.filter(q=>q.course===course.id).length>=minimum)break
+   if(result.filter(q=>q.course===course.id).length>=courseMinimum)break
    if(candidate.options.length>=2&&!result.some(q=>q.id===candidate.id||q.prompt===candidate.prompt))result.push(candidate)
   }
-  if(result.filter(q=>q.course===course.id).length<minimum)throw new Error(`Banque incomplète pour ${course.id}`)
+  if(result.filter(q=>q.course===course.id).length<courseMinimum)throw new Error(`Banque incomplète pour ${course.id}`)
  }
  return result
 }

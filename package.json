@@ -14,6 +14,8 @@
     "test:study": "node --test tests/study.test.mjs",
     "test:security": "node --test tests/security.test.mjs",
     "test:taxonomy": "node --test tests/taxonomy.test.mjs",
+    "test:catalog-content": "node --experimental-strip-types --experimental-loader=./scripts/ts-loader.mjs --test tests/canonical-content.test.mjs",
+    "audit:catalog": "node --experimental-strip-types --experimental-loader=./scripts/ts-loader.mjs scripts/audit-canonical-catalog.mjs",
     "test:flashcards": "node --test tests/flashcards.test.mjs tests/flashcard-fsrs.test.mjs tests/flashcard-migration.test.mjs tests/flashcard-scheduler.test.mjs tests/flashcard-generation.test.mjs tests/flashcard-cloze.test.mjs tests/flashcard-derivation.test.mjs tests/flashcard-notes.test.mjs tests/flashcard-burying.test.mjs tests/flashcard-generation-notes.test.mjs tests/flashcard-image-occlusion.test.mjs tests/flashcard-atlas-3d.test.mjs"
   },
   "dependencies": {
