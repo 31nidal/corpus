@@ -37,8 +37,8 @@ test('les filtres utilisent les erreurs et difficultés enregistrées',()=>{
 })
 
 test('export complet, erreurs et absence d’erreur depuis un cours',async({page})=>{
- const course=courses.find(item=>item.id==='organelles')!,courseQuestions=questions.filter(question=>question.course===course.id)
- await page.goto('/#tab=cours&cours=organelles')
+ const course=courses.find(item=>item.id==='phys-renal')!,courseQuestions=questions.filter(question=>question.course===course.id)
+ await page.goto('/#tab=cours&cours=phys-renal')
  await page.getByRole('button',{name:'Exporter vers Anki'}).click()
  const fullDownload=page.waitForEvent('download');await page.getByRole('button',{name:'Tout le cours'}).click();const full=await fullDownload
  expect(full.suggestedFilename()).toBe(ankiFilename(course,'course'))
@@ -52,7 +52,7 @@ test('export complet, erreurs et absence d’erreur depuis un cours',async({page
 })
 
 test('le choix Anki reste utilisable sur mobile',async({page})=>{
- await page.setViewportSize({width:393,height:852});await page.goto('/#tab=cours&cours=organelles');await page.getByRole('button',{name:'Exporter vers Anki'}).click()
+ await page.setViewportSize({width:393,height:852});await page.goto('/#tab=cours&cours=phys-renal');await page.getByRole('button',{name:'Exporter vers Anki'}).click()
  const menu=page.locator('.anki-export-menu');await expect(menu).toBeVisible();expect(await menu.evaluate(element=>element.getBoundingClientRect().right)).toBeLessThanOrEqual(393)
  await expect(page.getByRole('button',{name:'Tout le cours'})).toBeVisible()
 })
