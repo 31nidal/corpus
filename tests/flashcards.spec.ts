@@ -800,6 +800,7 @@ test('phase 3B : atlas 3D (création note 3D, badges, révision recto/verso, vue
   await expect(page.locator('.flash-card-list article')).toHaveCount(2)
   await expect(page.getByText('Atlas 3D').first()).toBeVisible()
   await expect(page.getByText('Identifier l’organe ciblé').first()).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Ouvrir l’Atlas' }).first()).toBeVisible()
 
   // 3. Révision interactive : Recto 3D avec OrbitControls et cible masquée
   await page.getByRole('button', { name: 'Aujourd’hui' }).click()
@@ -809,11 +810,12 @@ test('phase 3B : atlas 3D (création note 3D, badges, révision recto/verso, vue
   // RECTO
   await expect(page.getByText('RECTO')).toBeVisible()
   await expect(page.getByText('Identifier l’organe ciblé')).toBeVisible()
-  await expect(page.getByText('Atlas 3D', { exact: true })).toBeVisible()
+  await expect(page.locator('.study-eyebrow').getByText('Atlas 3D', { exact: true })).toBeVisible()
   await expect(page.getByText('Structure masquée')).toBeVisible()
   await expect(page.getByRole('button', { name: /Vue d['’]origine/ })).toBeVisible()
 
   // Révéler le verso
+  await expect(page.getByRole('button', { name: 'Afficher la réponse' })).toBeEnabled({ timeout: 15000 })
   await page.getByRole('button', { name: 'Afficher la réponse' }).click()
 
   // VERSO
@@ -832,4 +834,91 @@ test('phase 3B : atlas 3D (création note 3D, badges, révision recto/verso, vue
 
   // La session se termine immédiatement car la carte sœur est enterrée
   await expect(page.getByRole('heading', { name: 'Session terminée' })).toBeVisible()
+})
+
+test('phase 3B hardening : blocage de reveal et de rating tant que la scène 3D n’est pas prête', async ({ page }) => {
+  await register(page)
+  const headers = { 'x-mycorpus-request': '1' }
+  const deck = (await (await page.request.post('/api/flashcards/decks', { headers, data: { name: 'Atlas 3D Loading' } })).json()).deck
+
+  const targetId = `target_${crypto.randomUUID()}`
+  const noteRes = await page.request.post('/api/flashcards/notes', {
+    headers,
+    data: {
+      defaultDeckId: deck.id,
+      noteType: 'atlas_3d',
+      fields: {
+        modelKey: 'bp3d_overview',
+        atlasRevision: 'bp3d-overview-v1',
+        prompt: 'Structure à identifier',
+        extra: 'Organe',
+        targets: [
+          { id: targetId, structureId: 'FMA50801' },
+        ],
+        scene: {
+          modelKey: 'bp3d_overview',
+          atlasRevision: 'bp3d-overview-v1',
+          camera: { position: [0, 0, 6], target: [0, 0, 0] },
+          visibility: { skin: true, skeleton: true, organs: true },
+          opacity: { skin: 0.12, skeleton: 1, organs: 1 },
+          cut: { enabled: false, axis: 'z', position: 0, flipped: false, guide: false },
+          isolationStructureId: null,
+          hiddenStructureIds: [],
+        },
+      },
+      subject: 'Anatomie',
+      tags: ['3D'],
+    },
+  })
+  expect(noteRes.status()).toBe(201)
+
+  // 1. Intercepter le manifest pour retarder son chargement
+  let previewRequested = false
+  page.on('request', req => {
+    if (req.url().includes('/preview') && req.method() === 'POST') {
+      previewRequested = true
+    }
+  })
+
+  let resolveModelLoad: () => void = () => {}
+  const modelHoldPromise = new Promise<void>(resolve => {
+    resolveModelLoad = resolve
+  })
+
+  await page.route('**/models/overview.json', async route => {
+    await modelHoldPromise
+    await route.continue()
+  })
+
+  // 2. Démarrer la révision
+  await page.reload()
+  await page.getByRole('button', { name: 'Commencer' }).click()
+
+  // 3. Vérifier que tant que la 3D charge, "Afficher la réponse" est grisé et disabled
+  const revealBtn = page.getByRole('button', { name: 'Afficher la réponse' })
+  await expect(revealBtn).toBeVisible()
+  await expect(revealBtn).toBeDisabled()
+  expect(previewRequested).toBe(false)
+
+  // Un clic forcé ou direct ne doit déclencher aucun POST /preview
+  await revealBtn.click({ force: true }).catch(() => {})
+  expect(previewRequested).toBe(false)
+
+  // 4. Débloquer le chargement du modèle
+  resolveModelLoad()
+
+  // 5. Attendre que la 3D soit prête
+  await expect(revealBtn).toBeEnabled({ timeout: 15000 })
+  expect(previewRequested).toBe(false)
+
+  // 6. Clic légitime : déclenche preview et affiche verso
+  const [previewResponse] = await Promise.all([
+    page.waitForResponse(res => res.url().includes('/preview') && res.request().method() === 'POST' && res.ok()),
+    revealBtn.click(),
+  ])
+  expect(previewResponse.ok()).toBe(true)
+
+  // Verso affiché et boutons de notation actifs
+  await expect(page.getByText('VERSO')).toBeVisible()
+  await expect(page.getByRole('button', { name: /Correct/ })).toBeEnabled()
 })

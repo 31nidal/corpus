@@ -297,7 +297,7 @@ export function validateNote(input, partial = false) {
 
       // Targets
       if (!Array.isArray(f.targets) || f.targets.length < 1 || f.targets.length > 20) return null
-      const targetIdRegex = /^target_[A-Za-z0-9_-]{1,64}$/
+      const targetIdRegex = /^target_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
       const seenTargetIds = new Set()
       const seenStructureIds = new Set()
       const validatedTargets = []

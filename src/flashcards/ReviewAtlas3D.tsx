@@ -9,19 +9,42 @@ interface ReviewAtlas3DProps {
   card: Flashcard
   isFlipped: boolean
   onError?: (err: string) => void
+  onReadyChange?: (ready: boolean) => void
 }
 
-const manifestCache = new Map<string, Manifest>()
-const noteCache = new Map<string, FlashcardNote>()
+export const manifestCache = new Map<string, Manifest>()
+export const noteCache = new Map<string, FlashcardNote>()
 
-export const ReviewAtlas3D: React.FC<ReviewAtlas3DProps> = ({ card, isFlipped, onError }) => {
+export function clearAtlasReviewCache() {
+  manifestCache.clear()
+  noteCache.clear()
+}
+
+export const ReviewAtlas3D: React.FC<ReviewAtlas3DProps> = ({ card, isFlipped, onError, onReadyChange }) => {
   const visual = card.visual
-  const [note, setNote] = useState<FlashcardNote | null>(() => (card.noteId ? noteCache.get(card.noteId) ?? null : null))
+  const noteCacheKey = card.noteId
+    ? typeof card.noteVersion === 'number'
+      ? `${card.noteId}:${card.noteVersion}`
+      : card.noteId
+    : ''
+  const [note, setNote] = useState<FlashcardNote | null>(() => (noteCacheKey ? noteCache.get(noteCacheKey) ?? null : null))
   const [manifest, setManifest] = useState<Manifest | null>(() => (visual?.modelKey ? manifestCache.get(visual.modelKey) ?? null : null))
   const [loading, setLoading] = useState(!note || !manifest)
   const [error, setError] = useState<string | null>(null)
   const [resetKey, setResetKey] = useState(0)
+  const [viewerLoadState, setViewerLoadState] = useState<{
+    progress: number
+    ready: string[]
+    error: string | null
+    complete: boolean
+  } | null>(null)
   const apiRef = useRef<ViewerApi | null>(null)
+
+  // Réinitialiser immédiatement l'état ready à chaque changement de carte
+  useEffect(() => {
+    onReadyChange?.(false)
+    setViewerLoadState(null)
+  }, [card.id])
 
   useEffect(() => {
     let cancelled = false
@@ -32,15 +55,18 @@ export const ReviewAtlas3D: React.FC<ReviewAtlas3DProps> = ({ card, isFlipped, o
         setError(msg)
         onError?.(msg)
         setLoading(false)
+        onReadyChange?.(false)
         return
       }
 
       setError(null)
       try {
-        // 1. Charger la note parent contenant la scène 3D canonique
-        let loadedNote = noteCache.get(card.noteId)
-        if (!loadedNote) {
+        // 1. Charger la note parent contenant la scène 3D canonique (cache versionné noteId:noteVersion)
+        const key = typeof card.noteVersion === 'number' ? `${card.noteId}:${card.noteVersion}` : card.noteId
+        let loadedNote = noteCache.get(key)
+        if (!loadedNote || (typeof card.noteVersion === 'number' && loadedNote.noteVersion !== card.noteVersion)) {
           loadedNote = await fetchNote(card.noteId)
+          noteCache.set(key, loadedNote)
           noteCache.set(card.noteId, loadedNote)
         }
         if (cancelled) return
@@ -72,6 +98,7 @@ export const ReviewAtlas3D: React.FC<ReviewAtlas3DProps> = ({ card, isFlipped, o
         const msg = err instanceof Error ? err.message : 'Erreur de chargement 3D'
         setError(msg)
         onError?.(msg)
+        onReadyChange?.(false)
         setLoading(false)
       }
     }
@@ -80,7 +107,38 @@ export const ReviewAtlas3D: React.FC<ReviewAtlas3DProps> = ({ card, isFlipped, o
     return () => {
       cancelled = true
     }
-  }, [card.id, card.noteId, visual?.modelKey])
+  }, [card.id, card.noteId, card.noteVersion, visual?.modelKey])
+
+  const scene = note?.fields?.scene
+  const structureId = visual?.structureId || ''
+
+  // Groupes requis par la configuration de scène de la note
+  const neededGroups = React.useMemo(() => {
+    if (!manifest || !scene) return []
+    const sceneVis = (scene.visibility || {}) as Record<string, boolean>
+    const sceneOp = (scene.opacity || {}) as Record<string, number>
+    return manifest.groups
+      .map((g) => g.id)
+      .filter((gid) => sceneVis[gid] && (sceneOp[gid] ?? 1) > 0)
+  }, [manifest, scene])
+
+  // Prêt si non en cours de chargement, aucune erreur, note et manifest présents,
+  // et AnatomyViewer a terminé le chargement de tous les groupes requis
+  const isReady = Boolean(
+    !loading &&
+    !error &&
+    note &&
+    manifest &&
+    scene &&
+    viewerLoadState &&
+    !viewerLoadState.error &&
+    viewerLoadState.complete &&
+    (neededGroups.length === 0 || neededGroups.every((gid) => viewerLoadState.ready.includes(gid)))
+  )
+
+  useEffect(() => {
+    onReadyChange?.(isReady)
+  }, [isReady, onReadyChange])
 
   if (error) {
     return (
@@ -102,7 +160,7 @@ export const ReviewAtlas3D: React.FC<ReviewAtlas3DProps> = ({ card, isFlipped, o
     )
   }
 
-  if (loading || !note || !manifest || !note.fields.scene) {
+  if (loading || !note || !manifest || !scene) {
     return (
       <div
         className="review-atlas-loading"
@@ -126,9 +184,6 @@ export const ReviewAtlas3D: React.FC<ReviewAtlas3DProps> = ({ card, isFlipped, o
       </div>
     )
   }
-
-  const scene = note.fields.scene
-  const structureId = visual?.structureId || ''
 
   const defaultVisibility: Visibility = { skin: true, skeleton: true, organs: true, muscles: false, arteries: false, veins: false, nerves: false, joints: false }
   const defaultOpacity: Opacities = { skin: 0.12, skeleton: 1, organs: 1, muscles: 1, arteries: 1, veins: 1, nerves: 1, joints: 1 }
@@ -157,9 +212,11 @@ export const ReviewAtlas3D: React.FC<ReviewAtlas3DProps> = ({ card, isFlipped, o
         onSelect={() => {}}
         onHover={() => {}}
         onLoad={(state) => {
+          setViewerLoadState(state)
           if (state.error) {
             setError(state.error)
             onError?.(state.error)
+            onReadyChange?.(false)
           }
         }}
         apiRef={apiRef}

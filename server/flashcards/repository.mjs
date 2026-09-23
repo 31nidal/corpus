@@ -708,6 +708,21 @@ export class FlashcardRepository {
             throw Object.assign(new Error('Coordonnées de masque hors limites.'), {status: 400})
           }
         }
+      } else if (noteType === 'atlas_3d') {
+        const oldTargets = currentFields.targets || []
+        const oldTargetMap = new Map(oldTargets.map(t => [t.id, t.structureId]))
+        const newTargets = fields.targets || []
+        for (const nt of newTargets) {
+          if (oldTargetMap.has(nt.id)) {
+            const oldStructureId = oldTargetMap.get(nt.id)
+            if (oldStructureId !== nt.structureId) {
+              throw Object.assign(
+                new Error("Le structureId d'une cible Atlas existante ne peut pas être modifié. Supprimez cette cible et créez-en une nouvelle."),
+                { status: 400 }
+              )
+            }
+          }
+        }
       }
       const suppressed = parse(current.suppressed_derivations_json) || []
 

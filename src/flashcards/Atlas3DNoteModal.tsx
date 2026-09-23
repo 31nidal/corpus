@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import type { Atlas3DScene, Atlas3DTarget, FlashcardDeck, FlashcardNote } from './flashcardsTypes'
-import type { Manifest } from '../types'
+import type { GroupId, Manifest } from '../types'
 import { createNote, listDecks } from './flashcardsApi'
 import { describeStructure } from '../data/anatomy'
 import { AlertCircle, Box, Check, Plus, Trash2, X } from 'lucide-react'
@@ -28,14 +28,20 @@ export const Atlas3DNoteModal: React.FC<Atlas3DNoteModalProps> = ({
 }) => {
   const [decks, setDecks] = useState<FlashcardDeck[]>([])
   const [deckId, setDeckId] = useState<string>('')
-  const [targets, setTargets] = useState<Atlas3DTarget[]>([
-    { id: 'target_1', structureId: initialStructure.id },
+  const [targets, setTargets] = useState<Atlas3DTarget[]>(() => [
+    { id: `target_${crypto.randomUUID()}`, structureId: initialStructure.id },
   ])
   const [prompt, setPrompt] = useState('Identifier la structure anatomique')
   const [extra, setExtra] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [addStructureId, setAddStructureId] = useState('')
+
+  useEffect(() => {
+    if (isOpen) {
+      setTargets([{ id: `target_${crypto.randomUUID()}`, structureId: initialStructure.id }])
+    }
+  }, [isOpen, initialStructure.id])
 
   // Charger la liste des decks utilisateur
   useEffect(() => {
@@ -74,15 +80,30 @@ export const Atlas3DNoteModal: React.FC<Atlas3DNoteModalProps> = ({
       ? new Set(structuresMap.get(scene.isolationStructureId)?.meshNames || [])
       : null
 
+    // Mapping canonique meshName -> realGroup depuis les structures non-agrégées
+    const meshToRealGroup = new Map<string, GroupId>()
+    for (const struct of manifest.structures) {
+      if (!struct.aggregate && struct.group && Array.isArray(struct.meshNames)) {
+        for (const m of struct.meshNames) {
+          if (!meshToRealGroup.has(m)) meshToRealGroup.set(m, struct.group)
+        }
+      }
+    }
+    for (const struct of manifest.structures) {
+      if (struct.group && Array.isArray(struct.meshNames)) {
+        for (const m of struct.meshNames) {
+          if (!meshToRealGroup.has(m)) meshToRealGroup.set(m, struct.group)
+        }
+      }
+    }
+
     // Tous les maillages visibles de la scène
     const effectiveMeshes = new Set<string>()
-    for (const struct of manifest.structures) {
-      if (!activeGroups.has(struct.group)) continue
-      for (const m of struct.meshNames) {
-        if (hiddenMeshes.has(m)) continue
-        if (isolationMeshes && !isolationMeshes.has(m)) continue
-        effectiveMeshes.add(m)
-      }
+    for (const [meshName, realGroup] of meshToRealGroup.entries()) {
+      if (!activeGroups.has(realGroup)) continue
+      if (hiddenMeshes.has(meshName)) continue
+      if (isolationMeshes && !isolationMeshes.has(meshName)) continue
+      effectiveMeshes.add(meshName)
     }
 
     for (const t of targets) {
@@ -107,7 +128,7 @@ export const Atlas3DNoteModal: React.FC<Atlas3DNoteModalProps> = ({
   const handleAddTarget = () => {
     if (!addStructureId) return
     if (targets.some((t) => t.structureId === addStructureId)) return
-    setTargets([...targets, { id: `target_${Date.now()}`, structureId: addStructureId }])
+    setTargets([...targets, { id: `target_${crypto.randomUUID()}`, structureId: addStructureId }])
     setAddStructureId('')
   }
 

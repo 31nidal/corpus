@@ -12,11 +12,13 @@ import {createFlashcardHandler} from '../server/flashcards/handler.mjs'
 import {createAccountHandler} from '../server/accounts.mjs'
 import {buildFlashcardAnki} from '../server/flashcards/anki.mjs'
 import {deriveCardsFromNote} from '../server/flashcards/derivation.mjs'
+import {validateNote} from '../server/flashcards/validation.mjs'
 import {
   calculateEffectiveVisibleMeshes,
   checkAtlasCardCompatibility,
   getAtlasModel,
   getCanonicalStructureName,
+  getMeshToRealGroupMap,
   resolveAtlasStructure,
 } from '../server/flashcards/atlasRegistry.mjs'
 
@@ -98,21 +100,23 @@ test('Atlas 3D : résolution canonique des noms français depuis les dictionnair
 })
 
 test('Atlas 3D : dérivation de 1..N cartes avec clés canoniques et projection visuelle', () => {
+  const targetId1 = `target_${randomUUID()}`
+  const targetId2 = `target_${randomUUID()}`
   const fields = {
     modelKey: 'bp3d_overview',
     atlasRevision: 'bp3d-overview-v1',
     prompt: 'Identifier la structure anatomique',
     extra: 'Organe vital',
     targets: [
-      {id: 'target_1', structureId: 'FMA50801'}, // Brain
-      {id: 'target_2', structureId: 'FMA7088'},  // Heart
+      {id: targetId1, structureId: 'FMA50801'}, // Brain
+      {id: targetId2, structureId: 'FMA7088'},  // Heart
     ],
     scene: {
       modelKey: 'bp3d_overview',
       atlasRevision: 'bp3d-overview-v1',
       camera: {position: [0, 0, 6], target: [0, 0, 0]},
-      visibility: {skin: true, skeleton: true, organs: true, muscles: false, arteries: false, veins: false, nerves: false, joints: false},
-      opacity: {skin: 0.12, skeleton: 1, organs: 1, muscles: 1, arteries: 1, veins: 1, nerves: 1, joints: 1},
+      visibility: {skin: true, skeleton: true, organs: true},
+      opacity: {skin: 0.12, skeleton: 1, organs: 1},
       cut: {enabled: false, axis: 'z', position: 0, flipped: false, guide: false},
       isolationStructureId: null,
       hiddenStructureIds: [],
@@ -123,7 +127,7 @@ test('Atlas 3D : dérivation de 1..N cartes avec clés canoniques et projection 
   assert.equal(cards.length, 2)
 
   // Carte 1
-  assert.equal(cards[0].derivationKey, 'atlas:target_1')
+  assert.equal(cards[0].derivationKey, `atlas:${targetId1}`)
   assert.equal(cards[0].cardType, 'atlas_3d')
   assert.equal(cards[0].front, 'Identifier la structure anatomique')
   assert.equal(cards[0].back, 'Encéphale\n\nOrgane vital')
@@ -131,12 +135,12 @@ test('Atlas 3D : dérivation de 1..N cartes avec clés canoniques et projection 
     type: 'atlas_3d',
     modelKey: 'bp3d_overview',
     atlasRevision: 'bp3d-overview-v1',
-    targetId: 'target_1',
+    targetId: targetId1,
     structureId: 'FMA50801',
   })
 
   // Carte 2
-  assert.equal(cards[1].derivationKey, 'atlas:target_2')
+  assert.equal(cards[1].derivationKey, `atlas:${targetId2}`)
   assert.equal(cards[1].cardType, 'atlas_3d')
   assert.equal(cards[1].back, 'Coeur\n\nOrgane vital')
   assert.equal(cards[1].visual.structureId, 'FMA7088')
@@ -148,8 +152,8 @@ test('Atlas 3D : calcul déterministe des maillages visibles et garde anti-recto
     modelKey: 'bp3d_overview',
     atlasRevision: 'bp3d-overview-v1',
     camera: {position: [0, 0, 6], target: [0, 0, 0]},
-    visibility: {skin: false, skeleton: false, organs: true, muscles: false, arteries: false, veins: false, nerves: false, joints: false},
-    opacity: {skin: 0, skeleton: 0, organs: 1, muscles: 0, arteries: 0, veins: 0, nerves: 0, joints: 0},
+    visibility: {skin: false, skeleton: false, organs: true},
+    opacity: {skin: 0, skeleton: 0, organs: 1},
     cut: {enabled: false, axis: 'z', position: 0, flipped: false, guide: false},
     isolationStructureId: 'FMA50801',
     hiddenStructureIds: [],
@@ -169,15 +173,16 @@ test('Atlas 3D : calcul déterministe des maillages visibles et garde anti-recto
 })
 
 test('Atlas 3D : compatibilité des révisions et statuts EXACT, COMPATIBLE, STALE_UNKNOWN, UNAVAILABLE', () => {
+  const targetId = `target_${randomUUID()}`
   const scene = {
     camera: {position: [0, 0, 6], target: [0, 0, 0]},
-    visibility: {skin: true, skeleton: true, organs: true, muscles: false, arteries: false, veins: false, nerves: false, joints: false},
-    opacity: {skin: 0.12, skeleton: 1, organs: 1, muscles: 1, arteries: 1, veins: 1, nerves: 1, joints: 1},
+    visibility: {skin: true, skeleton: true, organs: true},
+    opacity: {skin: 0.12, skeleton: 1, organs: 1},
     cut: {enabled: false, axis: 'z', position: 0, flipped: false, guide: false},
     isolationStructureId: null,
     hiddenStructureIds: [],
   }
-  const targets = [{id: 'target_1', structureId: 'FMA50801'}]
+  const targets = [{id: targetId, structureId: 'FMA50801'}]
 
   // EXACT
   const exact = checkAtlasCardCompatibility('bp3d_overview', 'bp3d-overview-v1', scene, targets)
@@ -191,10 +196,31 @@ test('Atlas 3D : compatibilité des révisions et statuts EXACT, COMPATIBLE, STA
   assert.equal(stale.code, 'ERR_ATLAS_CARD_NOT_REVIEWABLE')
 
   // UNAVAILABLE (structure cible inexistante)
-  const unavail = checkAtlasCardCompatibility('bp3d_overview', 'bp3d-overview-v1', scene, [{id: 't1', structureId: 'UNKNOWN_9999'}])
+  const unavail = checkAtlasCardCompatibility('bp3d_overview', 'bp3d-overview-v1', scene, [{id: targetId, structureId: 'UNKNOWN_9999'}])
   assert.equal(unavail.status, 'UNAVAILABLE')
   assert.equal(unavail.reviewable, false)
   assert.equal(unavail.code, 'ERR_ATLAS_CARD_NOT_REVIEWABLE')
+
+  // UNAVAILABLE (groupe non autorisé dans visibility)
+  const unavailGroup = checkAtlasCardCompatibility('bp3d_overview', 'bp3d-overview-v1', {
+    ...scene,
+    visibility: {...scene.visibility, muscles: true},
+  }, targets)
+  assert.equal(unavailGroup.status, 'UNAVAILABLE')
+  assert.equal(unavailGroup.reviewable, false)
+  assert.equal(unavailGroup.code, 'ERR_ATLAS_CARD_NOT_REVIEWABLE')
+
+  // UNAVAILABLE (recto vide - tous les maillages appartiennent à la cible)
+  const emptyScene = {
+    ...scene,
+    visibility: {skin: false, skeleton: false, organs: true},
+    opacity: {skin: 0, skeleton: 0, organs: 1},
+    isolationStructureId: 'FMA50801',
+  }
+  const unavailEmpty = checkAtlasCardCompatibility('bp3d_overview', 'bp3d-overview-v1', emptyScene, targets)
+  assert.equal(unavailEmpty.status, 'UNAVAILABLE')
+  assert.equal(unavailEmpty.reviewable, false)
+  assert.equal(unavailEmpty.code, 'ERR_ATLAS_CARD_NOT_REVIEWABLE')
 })
 
 test('Atlas 3D : CRUD repository, préservation FSRS lors d’un changement de caméra, et duplication', () => {
@@ -205,6 +231,9 @@ test('Atlas 3D : CRUD repository, préservation FSRS lors d’un changement de c
     const repo = new FlashcardRepository(ctx.db)
     const deck = repo.createDeck(userId, {name: 'Anatomie 3D'})
 
+    const targetId1 = `target_${randomUUID()}`
+    const targetId2 = `target_${randomUUID()}`
+
     // 1. Création d'une note Atlas 3D avec 2 cibles
     const noteFields = {
       modelKey: 'bp3d_overview',
@@ -212,15 +241,15 @@ test('Atlas 3D : CRUD repository, préservation FSRS lors d’un changement de c
       prompt: 'Repérer l’organe',
       extra: 'Notes',
       targets: [
-        {id: 'target_1', structureId: 'FMA50801'}, // Cerveau
-        {id: 'target_2', structureId: 'FMA7088'},  // Cœur
+        {id: targetId1, structureId: 'FMA50801'}, // Cerveau
+        {id: targetId2, structureId: 'FMA7088'},  // Cœur
       ],
       scene: {
         modelKey: 'bp3d_overview',
         atlasRevision: 'bp3d-overview-v1',
         camera: {position: [0, 0, 6], target: [0, 0, 0]},
-        visibility: {skin: true, skeleton: true, organs: true, muscles: false, arteries: false, veins: false, nerves: false, joints: false},
-        opacity: {skin: 0.12, skeleton: 1, organs: 1, muscles: 1, arteries: 1, veins: 1, nerves: 1, joints: 1},
+        visibility: {skin: true, skeleton: true, organs: true},
+        opacity: {skin: 0.12, skeleton: 1, organs: 1},
         cut: {enabled: false, axis: 'z', position: 0, flipped: false, guide: false},
         isolationStructureId: null,
         hiddenStructureIds: [],
@@ -268,13 +297,32 @@ test('Atlas 3D : CRUD repository, préservation FSRS lors d’un changement de c
     assert.equal(card1AfterUpdate.review.intervalDays, 12)
     assert.equal(card1AfterUpdate.review.reviewVersion, 1)
 
-    // 3. Duplication de la Note
+    // 3. Rejet 400 en cas de tentative de modifier le structureId sous le même targetId
+    assert.throws(
+      () => repo.updateNote(userId, createdNote.id, {
+        fields: {
+          ...noteFields,
+          targets: [
+            {id: targetId1, structureId: 'FMA7088'}, // Changement interdit de FMA50801 vers FMA7088
+            {id: targetId2, structureId: 'FMA7088'},
+          ],
+        },
+      }, updatedNote.noteVersion),
+      (err) => {
+        assert.equal(err.status, 400)
+        assert.match(err.message, /Le structureId d'une cible Atlas existante ne peut pas être modifié/)
+        return true
+      }
+    )
+
+    // 4. Duplication de la Note
     const duplicated = repo.duplicateNote(userId, createdNote.id, deck.id)
     assert.ok(duplicated)
     assert.notEqual(duplicated.id, createdNote.id)
     assert.equal(duplicated.cards.length, 2)
-    // Les cibles doivent avoir de nouveaux IDs
-    assert.notEqual(duplicated.fields.targets[0].id, 'target_1')
+    // Les cibles doivent avoir de nouveaux IDs conformes au format UUID
+    assert.notEqual(duplicated.fields.targets[0].id, targetId1)
+    assert.match(duplicated.fields.targets[0].id, /^target_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
     assert.notEqual(duplicated.cards[0].id, card1.id)
     assert.equal(duplicated.cards[0].review.reviewVersion, 0) // FSRS initialisé
   } finally {
@@ -334,6 +382,8 @@ test('Atlas 3D : rejet 409 ERR_ATLAS_CARD_NOT_REVIEWABLE sur preview et review e
     assert.equal(deckRes.status, 201)
     const deckId = deckRes.body.deck.id
 
+    const targetId = `target_${randomUUID()}`
+
     // 3. Créer une note Atlas 3D
     const noteRes = await call('/api/flashcards/notes', 'POST', {
       defaultDeckId: deckId,
@@ -343,13 +393,13 @@ test('Atlas 3D : rejet 409 ERR_ATLAS_CARD_NOT_REVIEWABLE sur preview et review e
         modelKey: 'bp3d_overview',
         atlasRevision: 'bp3d-overview-v1',
         prompt: 'Identifier la structure',
-        targets: [{id: 'target_1', structureId: 'FMA50801'}],
+        targets: [{id: targetId, structureId: 'FMA50801'}],
         scene: {
           modelKey: 'bp3d_overview',
           atlasRevision: 'bp3d-overview-v1',
           camera: {position: [0, 0, 6], target: [0, 0, 0]},
-          visibility: {skin: true, skeleton: true, organs: true, muscles: false, arteries: false, veins: false, nerves: false, joints: false},
-          opacity: {skin: 0.12, skeleton: 1, organs: 1, muscles: 1, arteries: 1, veins: 1, nerves: 1, joints: 1},
+          visibility: {skin: true, skeleton: true, organs: true},
+          opacity: {skin: 0.12, skeleton: 1, organs: 1},
           cut: {enabled: false, axis: 'z', position: 0, flipped: false, guide: false},
           isolationStructureId: null,
           hiddenStructureIds: [],
@@ -425,4 +475,95 @@ test('Atlas 3D : export Anki avec fallback textuel standard', () => {
   assert.ok(ankiTsv.includes('[Atlas 3D : Identifier la structure encéphalique]'))
   assert.ok(ankiTsv.includes('(Consulter la scène 3D dans MyCorpus)'))
   assert.ok(ankiTsv.includes('Encéphale (cerveau)'))
+})
+
+test('Atlas 3D : validation stricte targetId au format UUID regex', () => {
+  const validUUID = randomUUID()
+  const validTarget = {id: `target_${validUUID}`, structureId: 'FMA50801'}
+  const invalidTarget1 = {id: 'target_1', structureId: 'FMA50801'}
+  const invalidTarget2 = {id: `target_${Date.now()}`, structureId: 'FMA50801'}
+  const invalidTarget3 = {id: 'target_not-a-uuid', structureId: 'FMA50801'}
+
+  const baseNote = {
+    noteType: 'atlas_3d',
+    title: 'Test targets',
+    fields: {
+      modelKey: 'bp3d_overview',
+      atlasRevision: 'bp3d-overview-v1',
+      prompt: 'Test',
+      scene: {
+        modelKey: 'bp3d_overview',
+        atlasRevision: 'bp3d-overview-v1',
+        camera: {position: [0, 0, 6], target: [0, 0, 0]},
+        visibility: {skin: true, skeleton: true, organs: true},
+        opacity: {skin: 0.12, skeleton: 1, organs: 1},
+        cut: {enabled: false, axis: 'z', position: 0, flipped: false, guide: false},
+        isolationStructureId: null,
+        hiddenStructureIds: [],
+      },
+    },
+  }
+
+  // Valide
+  const validRes = validateNote({...baseNote, fields: {...baseNote.fields, targets: [validTarget]}})
+  assert.ok(validRes, 'Cible avec UUID valide doit être acceptée')
+  assert.equal(validRes.fields.targets[0].id, `target_${validUUID}`)
+
+  // Invalides
+  assert.equal(validateNote({...baseNote, fields: {...baseNote.fields, targets: [invalidTarget1]}}), null)
+  assert.equal(validateNote({...baseNote, fields: {...baseNote.fields, targets: [invalidTarget2]}}), null)
+  assert.equal(validateNote({...baseNote, fields: {...baseNote.fields, targets: [invalidTarget3]}}), null)
+})
+
+test('Atlas 3D : multi-group aggregate fix - le maillage physique d’un groupe masqué n’est pas réactivé par un aggregate visible', () => {
+  // Dans bp3d_detail, trouvons une structure non-agrégée du groupe 'arteries' dont le maillage est aussi dans un aggregate multi-groupes
+  const detailManifest = JSON.parse(readFileSync('public/models/manifest.json', 'utf8'))
+  const aggregateWithArteries = detailManifest.structures.find(s => s.aggregate && Array.isArray(s.groups) && s.groups.includes('arteries') && s.meshNames?.length)
+  assert.ok(aggregateWithArteries, 'Aggregate multi-groupes avec arteries trouvé')
+
+  // Trouver un maillage de cet aggregate qui appartient physiquement à une structure de 'arteries'
+  const meshToReal = getMeshToRealGroupMap('bp3d_detail')
+  const arteryMesh = aggregateWithArteries.meshNames.find(m => meshToReal.get(m) === 'arteries')
+  assert.ok(arteryMesh, 'Un maillage physique arteries est référencé par l’aggregate')
+
+  // Scène avec arteries=false (opacité 0), mais les autres groupes de l’aggregate visibles
+  const scene = {
+    camera: {position: [0, 0, 6], target: [0, 0, 0]},
+    visibility: {skin: false, skeleton: false, organs: true, muscles: false, arteries: false, veins: true, nerves: false, joints: false},
+    opacity: {skin: 0, skeleton: 0, organs: 1, muscles: 0, arteries: 0, veins: 1, nerves: 0, joints: 0},
+    cut: {enabled: false, axis: 'z', position: 0, flipped: false, guide: false},
+    isolationStructureId: null,
+    hiddenStructureIds: [],
+  }
+
+  const res = calculateEffectiveVisibleMeshes('bp3d_detail', scene)
+  assert.equal(res.effectiveVisibleMeshes.has(arteryMesh), false, 'Le maillage arteryMesh ne doit PAS être visible car son groupe physique réel arteries est inactif')
+})
+
+test('Atlas 3D : cache de note versionné noteId:noteVersion (v1 -> v2 recharge v2)', () => {
+  const noteId = `note_${randomUUID()}`
+  const noteV1 = {id: noteId, noteVersion: 1, fields: {prompt: 'Prompt V1'}}
+  const noteV2 = {id: noteId, noteVersion: 2, fields: {prompt: 'Prompt V2'}}
+
+  const cache = new Map()
+  // Enregistrer v1
+  const key1 = `${noteId}:${noteV1.noteVersion}`
+  cache.set(key1, noteV1)
+  cache.set(noteId, noteV1)
+
+  // Carte pointant sur v1
+  const cardV1 = {id: 'c1', noteId, noteVersion: 1}
+  const keyCard1 = typeof cardV1.noteVersion === 'number' ? `${cardV1.noteId}:${cardV1.noteVersion}` : cardV1.noteId
+  assert.equal(cache.get(keyCard1)?.fields.prompt, 'Prompt V1')
+
+  // Carte bumpée sur v2
+  const cardV2 = {id: 'c1', noteId, noteVersion: 2}
+  const keyCard2 = typeof cardV2.noteVersion === 'number' ? `${cardV2.noteId}:${cardV2.noteVersion}` : cardV2.noteId
+  assert.equal(cache.get(keyCard2), undefined, 'La clé versionnée v2 est un cache miss et déclenche un rechargement')
+
+  // Après fetch et mise en cache de v2
+  cache.set(keyCard2, noteV2)
+  cache.set(noteId, noteV2)
+  assert.equal(cache.get(keyCard2)?.fields.prompt, 'Prompt V2')
+  assert.notEqual(cache.get(keyCard1), cache.get(keyCard2))
 })
