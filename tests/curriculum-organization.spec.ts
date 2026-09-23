@@ -4,6 +4,7 @@ import {questions} from '../src/study/questions'
 import {diagrams} from '../src/study/diagrams'
 import {subjects,groupCourses} from '../src/study/subjects'
 import {firstYearCourses} from '../src/study/firstYearExpansion'
+import {isLegacyHubId} from '../src/study/taxonomy'
 import fs from 'node:fs'
 
 test('couverture organisée : cours, exercices, schémas et repères 3D valides',()=>{
@@ -63,7 +64,8 @@ test('mobile : matières séparées et quiz filtré, sans chargement 3D',async({
  await page.getByRole('button',{name:'Activer le thème sombre'}).click()
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(393)
  await page.screenshot({path:'tests/artifacts/catalog-mobile-chemistry.png'})
- await page.locator('.course-tile').first().click()
+ const chemistryCourse=courses.find(c=>c.category==='Chimie'&&!isLegacyHubId(c.id))!
+ await page.locator('.course-tile').filter({hasText:chemistryCourse.title}).click()
  await page.getByRole('button',{name:'M’entraîner sur ce cours'}).click()
  await page.getByLabel('Matière du quiz').selectOption('Histologie')
  await expect(page.getByLabel('Chapitre du quiz')).toHaveValue('all')

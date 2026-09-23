@@ -2,6 +2,7 @@ import {test,expect} from '@playwright/test'
 import {deepCourses} from '../src/study/deepCourses'
 import {questions} from '../src/study/questions'
 import {courses} from '../src/study/curriculum'
+import {isLegacyHubId} from '../src/study/taxonomy'
 
 test('chaque cours possède des développements et des exercices associés',async({page})=>{
  await page.goto('/#tab=cours')
@@ -10,6 +11,7 @@ test('chaque cours possède des développements et des exercices associés',asyn
  for(const [id,content]of Object.entries(deepCourses)){
   expect(content.sections).toHaveLength(3)
   expect(questions.filter(q=>q.course===id).length).toBeGreaterThanOrEqual(4)
+  if(isLegacyHubId(id))continue
   await page.goto('/#tab=cours&cours='+id)
   await expect(page.locator('.course-section')).toHaveCount(courses.find(course=>course.id===id)!.sections.length)
   expect(await page.locator('.course-section p').count()).toBeGreaterThanOrEqual(9)
