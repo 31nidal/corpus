@@ -36,6 +36,6 @@ test('schémas mobiles : clavier et branches lisibles en thème sombre',async({p
  await expect(page.locator('.diagram-explanation h3')).toHaveText('Endocrine')
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(393)
  await page.screenshot({path:'tests/artifacts/diagram-mobile-pancreas.png'})
- expect(diagrams['cell-cycle'].links).toHaveLength(5)
+ expect(diagrams['fluid-balance'].links).toHaveLength(4)
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(393)
 })
