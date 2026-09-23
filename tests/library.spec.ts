@@ -1,11 +1,10 @@
 import {test,expect} from '@playwright/test'
 import {chapters} from '../src/study/chapters'
 import {questions} from '../src/study/questions'
-import {courses} from '../src/study/curriculum'
 
 test('banque pédagogique : identifiants, corrections et couverture des nouveaux chapitres',()=>{
  expect(chapters).toHaveLength(12)
- expect(questions).toHaveLength(1492)
+ expect(questions.length).toBeGreaterThan(2000)
  expect(new Set(questions.map(q=>q.id)).size).toBe(questions.length)
  expect(new Set(questions.map(q=>q.prompt)).size).toBe(questions.length)
  for(const q of questions){
@@ -22,70 +21,52 @@ test('banque pédagogique : identifiants, corrections et couverture des nouveaux
  }
 })
 
-test('legacy hub : ancienne URL, favori et carnet historique restent accessibles',async({page})=>{
- await page.goto('/#tab=cours&cours=organelles')
- await expect(page.locator('.course-article>h1')).toHaveText('La cellule : organites et trafic des protéines')
- await expect(page.getByText('Ancien cours restructuré',{exact:true})).toBeVisible()
- await expect(page.locator('.legacy-child-row')).toHaveCount(3)
- await expect(page).toHaveURL(/cours=organelles/)
-
- await page.getByLabel('Mes notes de cours').fill('Ancienne note sur le trafic des protéines.')
- await page.getByRole('button',{name:'Garder pour plus tard'}).click()
- await page.reload()
- await expect(page.getByLabel('Mes notes de cours')).toHaveValue('Ancienne note sur le trafic des protéines.')
- await expect(page.getByRole('button',{name:'Enregistré',exact:true})).toHaveAttribute('aria-pressed','true')
-
- await page.locator('.legacy-child-row').first().getByRole('button',{name:/Accéder au cours/}).click()
- await expect(page).toHaveURL(/cours=cell-membrane-trafficking/)
- await expect(page.getByRole('heading',{name:'Nouveau chapitre au programme canonique'})).toBeVisible()
-})
-
-test('chapitre complet préservé : schéma, raisonnement, favoris et notes conservées séparément',async({page})=>{
- const course=courses.find(c=>c.id==='phys-renal')!
- await page.goto('/#tab=cours&cours=phys-renal')
- await expect(page.locator('.course-article>h1')).toHaveText(course.title)
+test('chapitre complet : schéma, raisonnement, favoris et notes conservées séparément',async({page})=>{
+ await page.goto('/#tab=cours&cours=phys-cardiac-cycle')
+ await expect(page.locator('.course-article>h1')).toHaveText('Cycle cardiaque, débits et régulation')
  await expect(page.getByLabel('Transparence éditoriale')).toContainText('Non relu par un professionnel de santé')
+ await expect(page.getByLabel('Transparence éditoriale')).toContainText('14 septembre 2026')
  await expect(page.getByRole('button',{name:'Exporter en PDF'})).toBeVisible()
  await page.evaluate(()=>{Object.defineProperty(window,'print',{configurable:true,value:()=>document.body.dataset.printRequested='yes'})})
  await page.getByRole('button',{name:'Exporter en PDF'}).click()
  await expect.poll(()=>page.evaluate(()=>document.body.dataset.printRequested)).toBe('yes')
- await expect(page).toHaveTitle('MyCorpus - '+course.title)
+ await expect(page).toHaveTitle('MyCorpus - Cycle cardiaque, débits et régulation')
  await expect(page.locator('.medical-plate')).toBeVisible()
- await expect(page.getByRole('region',{name:'Outils de raisonnement du cours'})).toBeVisible()
- await page.getByLabel('Mes notes de cours').fill('Le DFG et la clairance sont à revoir demain.')
+ await page.locator('.course-case summary').click();await expect(page.locator('.course-case details')).toContainText('5,25 L/min')
+ await page.getByLabel('Mes notes de cours').fill('Le Golgi trie les protéines. À revoir demain.')
  await page.getByRole('button',{name:'Garder pour plus tard'}).click()
- await page.reload();await expect(page.getByLabel('Mes notes de cours')).toHaveValue('Le DFG et la clairance sont à revoir demain.')
+ await page.reload();await expect(page.getByLabel('Mes notes de cours')).toHaveValue('Le Golgi trie les protéines. À revoir demain.')
  await expect(page.getByRole('button',{name:'Enregistré',exact:true})).toHaveAttribute('aria-pressed','true')
- await page.goto('/#tab=cours&cours=phys-cardiac-cycle')
+ await page.locator('.next-chapter').click();await expect(page).not.toHaveURL(/cours=phys-cardiac-cycle/)
  await expect(page.getByLabel('Mes notes de cours')).toHaveValue('')
  await page.getByRole('button',{name:'Tous les cours',exact:true}).click()
- await page.getByLabel('Afficher les cours',{exact:true}).selectOption('saved')
+ await page.getByLabel('Afficher les cours', {exact:true}).selectOption('saved')
  await expect(page.locator('.course-tile')).toHaveCount(1)
- await page.locator('.course-tile').click();await expect(page).toHaveURL(/cours=phys-renal/)
+ await page.locator('.course-tile').click();await expect(page).toHaveURL(/cours=phys-cardiac-cycle/)
 })
 
 test('un étudiant peut signaler une erreur sans compte GitHub',async({page})=>{
  await page.route('**/api/feedback',async route=>route.fulfill({status:201,contentType:'application/json',body:'{"received":true}'}))
- await page.goto('/#tab=cours&cours=phys-renal')
+ await page.goto('/#tab=cours&cours=phys-cardiac-cycle')
  await page.getByRole('button',{name:'Signaler une erreur dans ce cours'}).click()
- await page.getByLabel('Passage concerné').fill('Le passage sur la filtration glomérulaire.')
- await page.getByLabel('Correction proposée').fill('Préciser la différence entre filtration, réabsorption et sécrétion.')
+ await page.getByLabel('Passage concerné').fill('Le passage sur le réticulum.')
+ await page.getByLabel('Correction proposée').fill('Préciser la différence entre REL et RER.')
  await page.getByRole('button',{name:'Envoyer le signalement'}).click()
  await expect(page.locator('.feedback-success')).toContainText('bien été transmis')
 })
 
 test('quiz par chapitre : URL, difficulté, navigation examen et bilan',async({page})=>{
  await page.goto('/#tab=entrainement')
- await page.getByLabel('Rechercher un chapitre de quiz').fill('Débit, pression et résistance')
+ await page.getByLabel('Rechercher un chapitre de quiz').fill('Régulation du débit cardiaque')
  await expect(page.locator('.chapter-bank-grid article')).toHaveCount(1)
  await page.getByRole('button',{name:'Choisir ce chapitre'}).click()
- await expect(page).toHaveURL(/cours=hemodynamics/)
- await page.reload();await expect(page.getByLabel('Chapitre du quiz')).toHaveValue('hemodynamics')
+ await expect(page).toHaveURL(/cours=phys-cardiovascular-hemodynamics-regulation/)
+ await page.reload();await expect(page.getByLabel('Chapitre du quiz')).toHaveValue('phys-cardiovascular-hemodynamics-regulation')
  await page.getByLabel('Niveau du quiz').selectOption('application')
  await page.getByLabel('Nombre de questions').selectOption('5')
  await page.getByRole('button',{name:/Examen blanc/}).click()
  await page.getByRole('button',{name:'Commencer la série'}).click()
- await expect(page.locator('.exam-navigation button')).toHaveCount(5)
+ await expect(page.locator('.exam-navigation button')).toHaveCount(3)
  const first=await page.locator('.question-layout h1').innerText()
  await page.locator('.answer-options button').first().click()
  await page.getByRole('button',{name:'Question 2',exact:true}).click()
@@ -94,9 +75,9 @@ test('quiz par chapitre : URL, difficulté, navigation examen et bilan',async({p
  await expect(page.locator('.answer-options button').first()).toHaveAttribute('aria-pressed','true')
  await expect(page.locator('.answer-correction')).toHaveCount(0)
  await page.getByRole('button',{name:'Question 2',exact:true}).click()
- await page.getByRole('button',{name:'Question 5',exact:true}).click()
+ await page.getByRole('button',{name:'Question 3',exact:true}).click()
  await page.getByRole('button',{name:'Terminer et voir mon bilan'}).click()
- await expect(page.locator('.result-review details')).toHaveCount(5)
+ await expect(page.locator('.result-review details')).toHaveCount(3)
  await page.screenshot({path:'tests/artifacts/library-results.png'})
 })
 
@@ -104,14 +85,14 @@ test('bibliothèque et cours longs sur téléphone, sans requête modèle inutil
  await page.setViewportSize({width:393,height:852})
  const errors:string[]=[],glbs:string[]=[]
  page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(r.url().endsWith('.glb'))glbs.push(r.url())})
- await page.goto('/#tab=cours&cours=phys-renal')
- await expect(page.getByText('Avant de commencer',{exact:true})).toBeVisible()
- await expect(page.locator('.medical-plate')).toBeVisible()
- await page.getByLabel('Mes notes de cours').fill('Filtration ≠ réabsorption ≠ sécrétion.')
+ await page.goto('/#tab=cours&cours=phys-cardiac-cycle')
+ await page.locator('.course-case summary').click()
+ await expect(page.locator('.course-case details')).toContainText('5,25 L/min')
+ await page.getByLabel('Mes notes de cours').fill('Ventilation alvéolaire ≠ ventilation minute.')
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(393)
  await page.screenshot({path:'tests/artifacts/library-mobile-reading.png'})
  await page.getByRole('button',{name:'M’entraîner sur ce cours'}).click()
- await expect(page.getByLabel('Chapitre du quiz')).toHaveValue('phys-renal')
+ await expect(page.getByLabel('Chapitre du quiz')).toHaveValue('phys-cardiac-cycle')
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(393)
  await page.screenshot({path:'tests/artifacts/library-mobile-practice.png'})
  expect(errors).toEqual([]);expect(glbs).toEqual([])

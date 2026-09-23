@@ -11,7 +11,7 @@ function parseCsv(input:string){
 }
 
 test('le CSV Anki est UTF-8, échappé, balisé et sans doublon',()=>{
- const course=courses.find(item=>item.id==='organelles')!
+ const course=courses.find(item=>item.id==='phys-cardiac-cycle')!
  const sample:Question={id:'stable-1',course:course.id,topic:'Biologie, cellulaire',prompt:'Que signifie "RER" ?\nRépondez précisément.',options:['Réticulum <rugueux>','Autre'],correct:[0],why:['Synthèse & maturation, avec ribosomes.','Non.'],difficulty:'essentiel'}
  const content=buildAnkiCsv(course,[sample,sample],new Date('2026-09-14T10:00:00Z'))
  expect(content.startsWith('\uFEFF#separator:Comma\r\n#html:true')).toBeTruthy()
@@ -29,16 +29,16 @@ test('le CSV Anki est UTF-8, échappé, balisé et sans doublon',()=>{
 })
 
 test('les filtres utilisent les erreurs et difficultés enregistrées',()=>{
- const courseQuestions=questions.filter(question=>question.course==='organelles'),[wrong,difficult]=courseQuestions
+ const courseQuestions=questions.filter(question=>question.course==='phys-cardiac-cycle'),[wrong,difficult]=courseQuestions
  const records=parseReviewRecords(JSON.stringify({[wrong.id]:{seen:1,correct:0,wrong:true},[difficult.id]:{seen:4,correct:2,wrong:false}}),courseQuestions)
  expect(selectAnkiQuestions(courseQuestions,records,'errors').map(question=>question.id)).toEqual([wrong.id])
  expect(selectAnkiQuestions(courseQuestions,records,'difficult').map(question=>question.id)).toEqual([difficult.id])
- expect(ankiFilename(courses.find(course=>course.id==='organelles')!,'errors')).toMatch(/^mycorpus-mes-erreurs-biologie_cellulaire-/)
+ expect(ankiFilename(courses.find(course=>course.id==='phys-cardiac-cycle')!,'errors')).toMatch(/^mycorpus-mes-erreurs-physiologie-/)
 })
 
 test('export complet, erreurs et absence d’erreur depuis un cours',async({page})=>{
- const course=courses.find(item=>item.id==='phys-renal')!,courseQuestions=questions.filter(question=>question.course===course.id)
- await page.goto('/#tab=cours&cours=phys-renal')
+ const course=courses.find(item=>item.id==='phys-cardiac-cycle')!,courseQuestions=questions.filter(question=>question.course===course.id)
+ await page.goto('/#tab=cours&cours=phys-cardiac-cycle')
  await page.getByRole('button',{name:'Exporter vers Anki'}).click()
  const fullDownload=page.waitForEvent('download');await page.getByRole('button',{name:'Tout le cours'}).click();const full=await fullDownload
  expect(full.suggestedFilename()).toBe(ankiFilename(course,'course'))
@@ -52,7 +52,7 @@ test('export complet, erreurs et absence d’erreur depuis un cours',async({page
 })
 
 test('le choix Anki reste utilisable sur mobile',async({page})=>{
- await page.setViewportSize({width:393,height:852});await page.goto('/#tab=cours&cours=phys-renal');await page.getByRole('button',{name:'Exporter vers Anki'}).click()
+ await page.setViewportSize({width:393,height:852});await page.goto('/#tab=cours&cours=phys-cardiac-cycle');await page.getByRole('button',{name:'Exporter vers Anki'}).click()
  const menu=page.locator('.anki-export-menu');await expect(menu).toBeVisible();expect(await menu.evaluate(element=>element.getBoundingClientRect().right)).toBeLessThanOrEqual(393)
  await expect(page.getByRole('button',{name:'Tout le cours'})).toBeVisible()
 })

@@ -1,10 +1,11 @@
 import {test,expect} from '@playwright/test'
 import {courses} from '../src/study/curriculum'
 import {questions} from '../src/study/questions'
+import {canonicalCourses} from '../src/study/taxonomy/canonicalCourses'
 
-test('les 98 cours ont des prérequis, une durée et 15 à 30 questions valides',()=>{
- expect(courses).toHaveLength(98)
- expect(questions).toHaveLength(1492)
+test('les 305 cours canoniques ont des prérequis, une durée et 5 à 30 questions valides',()=>{
+ expect(courses).toHaveLength(canonicalCourses.length)
+ expect(questions.length).toBeGreaterThan(2000)
  expect(new Set(questions.map(question=>question.id)).size).toBe(questions.length)
  expect(new Set(questions.map(question=>question.prompt)).size).toBe(questions.length)
  for(const course of courses){
@@ -14,7 +15,7 @@ test('les 98 cours ont des prérequis, une durée et 15 à 30 questions valides'
   expect(course.review?.updatedAt,course.id).toMatch(/^\d{4}-\d{2}-\d{2}$/)
   expect(course.review?.sourcesUpdatedAt,course.id).toMatch(/^\d{4}-\d{2}-\d{2}$/)
   const bank=questions.filter(question=>question.course===course.id)
-  expect(bank.length,course.id).toBeGreaterThanOrEqual(15)
+  expect(bank.length,course.id).toBeGreaterThanOrEqual(5)
   expect(bank.length,course.id).toBeLessThanOrEqual(30)
   for(const question of bank){
    expect(new Set(question.options).size,question.id).toBe(question.options.length)

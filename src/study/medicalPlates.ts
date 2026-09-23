@@ -12,7 +12,7 @@ export const medicalPlates:Record<string,Plate>={
  {name:'Branche descendante',x:285,y:270,detail:'Elle est perméable à l’eau. Le gradient médullaire peut faire sortir de l’eau du tubule ; le filtrat se concentre le long du trajet.'},
  {name:'Branche ascendante',x:365,y:270,detail:'La portion épaisse récupère des sels mais est très peu perméable à l’eau. Elle contribue au gradient médullaire et dilue le liquide tubulaire.'},
  {name:'Tube collecteur',x:520,y:270,detail:'L’ADH augmente la perméabilité à l’eau de ce segment. La récupération dépend aussi du gradient médullaire disponible.'}]},
- ventilation:{title:'Alvéole et capillaire : deux flux, une barrière',caption:'Coupe schématique sans échelle. Le capillaire est représenté en rose. Les flèches montrent le sens habituel des échanges gazeux selon les gradients de pression partielle.',points:[
+ 'phys-gas-exchange':{title:'Alvéole et capillaire : deux flux, une barrière',caption:'Coupe schématique sans échelle. Le capillaire est représenté en rose. Les flèches montrent le sens habituel des échanges gazeux selon les gradients de pression partielle.',points:[
  {name:'Air alvéolaire',x:305,y:105,detail:'La ventilation renouvelle l’air. Son débit utile dépend du volume courant, de la fréquence et de l’espace mort.'},
  {name:'Barrière alvéolocapillaire',x:190,y:240,detail:'Les gaz diffusent à travers une paroi très fine. Une augmentation d’épaisseur ou une réduction de surface diminue le transfert, à autres conditions comparables.'},
  {name:'Oxygène vers le sang',x:267,y:290,detail:'Dans la situation habituelle, la pression partielle en O₂ est plus élevée dans l’alvéole que dans le sang entrant. L’oxygène diffuse vers le sang.'},

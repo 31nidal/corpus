@@ -31,6 +31,22 @@ import { developmentEmbryologyCourses, developmentEmbryologyQuestions } from '..
 import { additionalGeneticsCourses, additionalGeneticsQuestions } from '../src/study/content/genetics/additional.ts'
 import { additionalBiochemistryCourses, additionalBiochemistryQuestions } from '../src/study/content/biochemistry/additional.ts'
 import { imagingCourses, imagingQuestions } from '../src/study/content/biophysics/imaging.ts'
+import { fluidCourses, fluidQuestions } from '../src/study/content/biophysics/fluids.ts'
+import { radiationCourses, radiationQuestions } from '../src/study/content/biophysics/radiation.ts'
+import { waveCourses, waveQuestions } from '../src/study/content/biophysics/waves.ts'
+import { cellNeuromuscularCourses, cellNeuromuscularQuestions } from '../src/study/content/physiology/cellNeuromuscular.ts'
+import { cardiorespiratoryCourses, cardiorespiratoryQuestions } from '../src/study/content/physiology/cardiorespiratory.ts'
+import { renalEndocrineCourses, renalEndocrineQuestions } from '../src/study/content/physiology/renalEndocrine.ts'
+import { firstImmunologyCourses, firstImmunologyQuestions } from '../src/study/content/immunology/first.ts'
+import { secondImmunologyCourses, secondImmunologyQuestions } from '../src/study/content/immunology/second.ts'
+import { advancedStatisticsCourses, advancedStatisticsQuestions } from '../src/study/content/statistics/advanced.ts'
+import { additionalPharmacologyCourses, additionalPharmacologyQuestions } from '../src/study/content/pharmacology/additional.ts'
+import { additionalPublicHealthCourses, additionalPublicHealthQuestions } from '../src/study/content/publicHealth/additional.ts'
+import { additionalShsCourses, additionalShsQuestions } from '../src/study/content/shs/additional.ts'
+import { drugSocietyCourses, drugSocietyQuestions } from '../src/study/content/drugSociety.ts'
+import { researchCourses, researchQuestions } from '../src/study/content/research/additional.ts'
+import { odontologyCourses, odontologyQuestions } from '../src/study/content/odontology/additional.ts'
+import { medicalEnglishCourses, medicalEnglishQuestions } from '../src/study/content/english/medical.ts'
 
 test('each authored chemistry chapter is a canonical course with a complete learning record', () => {
   assert.equal(chemistryCourseIds.size, 20)
@@ -118,9 +134,18 @@ test('biochemistry, genetics and embryology courses are canonical and have autho
     ['Physiologie', physiologyCourses, physiologyQuestions],
     ['Immunologie', immunologyCourses, immunologyQuestions],
     ['Biostatistiques', statisticsCourses, statisticsQuestions],
+    ['Biostatistiques', advancedStatisticsCourses, advancedStatisticsQuestions],
     ['Pharmacologie', pharmacologyCourses, pharmacologyQuestions],
+    ['Pharmacologie', additionalPharmacologyCourses, additionalPharmacologyQuestions],
     ['Santé publique', publicHealthCourses, publicHealthQuestions],
+    ['Santé publique', additionalPublicHealthCourses, additionalPublicHealthQuestions],
+    ['Santé publique', additionalPublicHealthCourses, additionalPublicHealthQuestions],
     ['Santé, Société, Humanité', shsCourses, shsQuestions],
+    ['Santé, Société, Humanité', additionalShsCourses, additionalShsQuestions],
+    ['Médicament & Société', drugSocietyCourses, drugSocietyQuestions],
+    ['Recherche biomédicale', researchCourses, researchQuestions],
+    ['Odontologie', odontologyCourses, odontologyQuestions],
+    ['Anglais médical', medicalEnglishCourses, medicalEnglishQuestions],
     ['Anatomie', upperLimbCourses, upperLimbQuestions],
     ['Anatomie', lowerLimbCourses, lowerLimbQuestions],
     ['Anatomie', upperNeurovascularCourses, upperNeurovascularQuestions],
@@ -134,7 +159,15 @@ test('biochemistry, genetics and embryology courses are canonical and have autho
     ['Embryologie & Reproduction', developmentEmbryologyCourses, developmentEmbryologyQuestions],
     ['Génétique & Biologie moléculaire', additionalGeneticsCourses, additionalGeneticsQuestions],
     ['Biochimie', additionalBiochemistryCourses, additionalBiochemistryQuestions],
-    ['Biophysique', imagingCourses, imagingQuestions]
+    ['Biophysique', imagingCourses, imagingQuestions],
+    ['Biophysique', fluidCourses, fluidQuestions],
+    ['Biophysique', radiationCourses, radiationQuestions],
+    ['Biophysique', waveCourses, waveQuestions],
+    ['Physiologie', cellNeuromuscularCourses, cellNeuromuscularQuestions],
+    ['Physiologie', cardiorespiratoryCourses, cardiorespiratoryQuestions],
+    ['Physiologie', renalEndocrineCourses, renalEndocrineQuestions],
+    ['Immunologie', firstImmunologyCourses, firstImmunologyQuestions],
+    ['Immunologie', secondImmunologyCourses, secondImmunologyQuestions]
   ]
   for (const [subject, batchCourses, batchQuestions] of batches) {
     assert.ok(batchCourses.length > 0)

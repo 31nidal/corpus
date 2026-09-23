@@ -1,20 +1,24 @@
 import {test,expect} from '@playwright/test'
-import {deepCourses} from '../src/study/deepCourses'
 import {questions} from '../src/study/questions'
 import {courses} from '../src/study/curriculum'
-import {isLegacyHubId} from '../src/study/taxonomy'
+import {canonicalCourses} from '../src/study/taxonomy/canonicalCourses'
+import {legacyHubs} from '../src/study/taxonomy/legacyHubs'
 
-test('chaque cours possède des développements et des exercices associés',async({page})=>{
+test('le catalogue canonique complet possède des développements et des exercices associés',async({page})=>{
  await page.goto('/#tab=cours')
- await expect(page.locator('.subject-card')).toHaveCount(13)
- expect(Object.keys(deepCourses)).toHaveLength(25)
- for(const [id,content]of Object.entries(deepCourses)){
-  expect(content.sections).toHaveLength(3)
-  expect(questions.filter(q=>q.course===id).length).toBeGreaterThanOrEqual(4)
-  if(isLegacyHubId(id))continue
+ await expect(page.locator('.subject-card')).toHaveCount(18)
+ expect(courses).toHaveLength(canonicalCourses.length)
+ expect(new Set(courses.map(course=>course.id)).size).toBe(courses.length)
+ for(const course of courses){
+  expect(legacyHubs.some(hub=>hub.id===course.id),course.id).toBe(false)
+  expect(course.sections.length,course.id).toBeGreaterThanOrEqual(5)
+  expect(questions.filter(q=>q.course===course.id).length,course.id).toBeGreaterThanOrEqual(5)
+ }
+ for(const id of ['anat-hand','phys-cardiac-cycle','embryo-placenta']){
+  const course=courses.find(item=>item.id===id)!
   await page.goto('/#tab=cours&cours='+id)
-  await expect(page.locator('.course-section')).toHaveCount(courses.find(course=>course.id===id)!.sections.length)
-  expect(await page.locator('.course-section p').count()).toBeGreaterThanOrEqual(9)
+  await expect(page.locator('.course-section')).toHaveCount(course.sections.length)
+  await expect(page.locator('.interactive-diagram,.medical-plate')).toHaveCount(1)
  }
 })
 

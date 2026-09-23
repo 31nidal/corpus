@@ -6,8 +6,8 @@ const prerequisites:Record<string,string[]>={
  Anatomie:['Position anatomique et plans de coupe','Vocabulaire de localisation','Organisation générale du corps'],
  'Biologie cellulaire':['Structure générale d’une cellule','Membrane plasmique','Lien entre structure et fonction'],
  Histologie:['Quatre familles tissulaires','Cellule et matrice extracellulaire','Lecture d’une coupe'],
- Embryologie:['Fécondation et divisions cellulaires','Plans anatomiques','Origine des feuillets'],
- Génétique:['Organisation de l’ADN','Expression d’un gène','Division cellulaire'],
+ 'Embryologie & Reproduction':['Fécondation et divisions cellulaires','Plans anatomiques','Origine des feuillets'],
+ 'Génétique & Biologie moléculaire':['Organisation de l’ADN','Expression d’un gène','Division cellulaire'],
  Chimie:['Unités du système international','Quantité de matière','Lecture d’une équation'],
  Biochimie:['Liaisons chimiques','Groupes fonctionnels','Notion de concentration'],
  Physiologie:['Homéostasie','Gradient et débit','Relation entre structure et fonction'],
@@ -16,12 +16,22 @@ const prerequisites:Record<string,string[]>={
  Biostatistiques:['Fractions et pourcentages','Lecture d’un tableau','Population et échantillon'],
  Pharmacologie:['Récepteurs et signalisation','Concentration et dose','Fonctions rénale et hépatique'],
  'Santé publique':['Population et échantillon','Risque et fréquence','Niveaux de prévention'],
+ 'Santé, Société, Humanité':['Histoire et contexte social des soins','Droits de la personne soignée','Analyse éthique et argumentation'],
+ 'Médicament & Société':['Pharmacologie générale','Développement et autorisation des médicaments','Évaluation du bénéfice et des risques'],
+ 'Recherche biomédicale':['Question de recherche et population','Plans d’étude et mesures','Éthique et intégrité scientifique'],
+ Odontologie:['Anatomie de la tête et du cou','Tissus et morphologie dentaires','Repères de santé orale'],
+ 'Anglais médical':['Vocabulaire anatomique fondamental','Lecture de textes scientifiques','Communication clinique structurée'],
 }
 
 const words=(course:Course)=>course.sections.map(s=>s.text+' '+(s.bullets??[]).join(' ')).join(' ').trim().split(/\s+/).filter(Boolean).length
 
 export function finalizeCourseQuality(catalog:Course[]):Course[]{
- return catalog.map(course=>({...course,prerequisites:course.prerequisites??prerequisites[course.category]??['Notions fondamentales du chapitre'],readingMinutes:course.readingMinutes??Math.max(2,Math.ceil(words(course)/180)),review:course.review??{status:'unreviewed',updatedAt:'2026-09-14',sourcesUpdatedAt:'2026-09-14'}}))
+ return catalog.map(course=>{
+  const current=[...new Set(course.prerequisites??[])]
+  const context=prerequisites[course.category]??['Notions fondamentales du chapitre','Vocabulaire disciplinaire associé','Lecture des schémas et tableaux']
+  for(const item of context){if(current.length>=3)break;if(!current.includes(item))current.push(item)}
+  return {...course,prerequisites:current,readingMinutes:course.readingMinutes??Math.max(2,Math.ceil(words(course)/180)),review:course.review??{status:'unreviewed',updatedAt:'2026-09-14',sourcesUpdatedAt:'2026-09-14'}}
+ })
 }
 
 const concise=(text:string,max=220)=>{

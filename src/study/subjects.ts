@@ -4,8 +4,8 @@ export const subjects = [
  {id:'anatomie',title:'Anatomie',description:'Situer les structures, nommer leurs rapports et comprendre les mouvements.',scope:'Os, articulations, muscles, viscères et système nerveux',groups:['Principes','Tête et cou','Rachis','Thorax','Abdomen','Pelvis et périnée','Membre supérieur','Membre inférieur','Neuroanatomie']},
  {id:'biologie-cellulaire',title:'Biologie cellulaire',description:'Comprendre la cellule, ses échanges, son organisation et son renouvellement.',scope:'Membrane, organites, cytosquelette et division',groups:[]},
  {id:'histologie',title:'Histologie',description:'Relier l’organisation microscopique des tissus à leur fonction.',scope:'Épithéliums, tissus conjonctifs et tissus spécialisés',groups:[]},
- {id:'embryologie',title:'Embryologie',description:'Suivre les étapes du développement et l’origine des tissus.',scope:'Fécondation, feuillets, organogenèse et placenta',groups:[]},
- {id:'genetique',title:'Génétique',description:'Comprendre l’expression, la transmission et les variations de l’information.',scope:'ADN, expression des gènes, méiose et hérédité',groups:[]},
+ {id:'embryologie',title:'Embryologie & Reproduction',description:'Suivre le développement humain, la gamétogenèse et la mise en place des organes.',scope:'Fécondation, embryon, organogenèse, placenta et reproduction',groups:[]},
+ {id:'genetique',title:'Génétique & Biologie moléculaire',description:'Comprendre l’expression, la transmission et les variations de l’information biologique.',scope:'ADN, expression des gènes, méiose, hérédité et outils moléculaires',groups:[]},
  {id:'chimie',title:'Chimie',description:'Maîtriser les grandeurs et les équilibres utilisés dans le vivant.',scope:'Liaisons, solutions, concentrations et acide-base',groups:[]},
  {id:'biochimie',title:'Biochimie',description:'Passer des molécules biologiques aux voies métaboliques.',scope:'Protéines, enzymes, glucides, lipides et énergie',groups:[]},
  {id:'physiologie',title:'Physiologie',description:'Expliquer le fonctionnement des systèmes et leurs régulations.',scope:'Homéostasie, signal nerveux, muscle, sang et hormones',groups:['Régulations','Neurophysiologie','Motricité','Sang et hémostase','Respiration','Équilibre hydrique','Régulation endocrine']},
@@ -14,6 +14,11 @@ export const subjects = [
  {id:'biostatistiques',title:'Biostatistiques',description:'Décrire des données, calculer des probabilités et interpréter un résultat.',scope:'Statistiques, probabilités, estimation et tests',groups:[]},
  {id:'pharmacologie',title:'Pharmacologie',description:'Comprendre le devenir d’un médicament et ses effets.',scope:'Pharmacocinétique, récepteurs et relation dose-effet',groups:[]},
  {id:'sante-publique',title:'Santé publique',description:'Étudier la santé à l’échelle des populations et les principes de prévention.',scope:'Déterminants, prévention, études et éthique',groups:[]},
+ {id:'shs',title:'Santé, Société, Humanité',description:'Relier les pratiques de soin à l’histoire, aux droits, à l’éthique et aux expériences vécues.',scope:'Histoire de la médecine, éthique, droit et relation de soin',groups:[]},
+ {id:'medicament-societe',title:'Médicament & Société',description:'Étudier le médicament comme objet scientifique, réglementaire et social.',scope:'Développement, évaluation, accès, usages et pharmacovigilance',groups:[]},
+ {id:'recherche-biomedicale',title:'Recherche biomédicale',description:'Lire, concevoir et évaluer des recherches en santé avec rigueur.',scope:'Plans d’étude, éthique, analyse critique et données de santé',groups:[]},
+ {id:'odontologie',title:'Odontologie',description:'Comprendre l’anatomie orale, les dents et les tissus de soutien.',scope:'Morphologie dentaire, occlusion, parodonte et santé orale',groups:[]},
+ {id:'anglais-medical',title:'Anglais médical',description:'Lire la littérature biomédicale et communiquer avec un vocabulaire précis.',scope:'Terminologie, anatomie, articles et présentation clinique',groups:[]},
 ]
 export type Subject = typeof subjects[number]
 export const subjectFor = (course:Course) => subjects.find(s=>s.title===course.category)!
@@ -21,7 +26,7 @@ export const normalizeSearch = (text:string) => text.normalize('NFD').replace(/[
 
 const placement:Record<string,[string,string]>={
  orientation:['Anatomie','Principes'],homeostasis:['Physiologie','Régulations'],membrane:['Biologie cellulaire','Organisation cellulaire'],organelles:['Biologie cellulaire','Organisation cellulaire'],'cell-cycle':['Biologie cellulaire','Renouvellement cellulaire'],
- tissues:['Histologie','Tissus fondamentaux'],'gene-expression':['Génétique','Information génétique'],'neuronal-signal':['Physiologie','Neurophysiologie'],'muscle-contraction':['Physiologie','Motricité'],blood:['Physiologie','Sang et hémostase'],hemodynamics:['Biophysique','Fluides et échanges'],ventilation:['Physiologie','Respiration'],'fluid-balance':['Physiologie','Équilibre hydrique'],endocrine:['Physiologie','Régulation endocrine'],immunity:['Immunologie','Défenses immunitaires'],metabolism:['Biochimie','Métabolisme énergétique'],
+ tissues:['Histologie','Tissus fondamentaux'],'gene-expression':['Génétique & Biologie moléculaire','Information génétique'],'neuronal-signal':['Physiologie','Neurophysiologie'],'muscle-contraction':['Physiologie','Motricité'],blood:['Physiologie','Sang et hémostase'],hemodynamics:['Biophysique','Fluides et échanges'],ventilation:['Physiologie','Respiration'],'fluid-balance':['Physiologie','Équilibre hydrique'],endocrine:['Physiologie','Régulation endocrine'],immunity:['Immunologie','Défenses immunitaires'],metabolism:['Biochimie','Métabolisme énergétique'],
  FMA7088:['Anatomie','Thorax'],FMA7309:['Anatomie','Thorax'],FMA7197:['Anatomie','Abdomen'],FMA7148:['Anatomie','Abdomen'],FMA7198:['Anatomie','Abdomen'],FMA7200:['Anatomie','Abdomen'],FMA7204:['Anatomie','Abdomen'],FMA50801:['Anatomie','Neuroanatomie'],FMA24474:['Anatomie','Membre inférieur'],
  'anat-cervical':['Anatomie','Rachis'],'anat-spine':['Anatomie','Rachis'],'anat-thorax':['Anatomie','Thorax'],'anat-pelvis':['Anatomie','Pelvis et périnée'],
 }
@@ -33,7 +38,8 @@ const atlasLandmarks:Record<string,string>={
 
 export function organizeCourses(catalog:Course[]):Course[]{
  const mapped=catalog.map(course=>{
-  const [category,tag]=placement[course.id]??[course.category==='Anatomie & physiologie'?'Anatomie':course.category,course.tag]
+  const categoryAlias:Record<string,string>={'Embryologie':'Embryologie & Reproduction','Génétique':'Génétique & Biologie moléculaire'}
+  const [category,tag]=placement[course.id]??[categoryAlias[course.category]??(course.category==='Anatomie & physiologie'?'Anatomie':course.category),course.tag]
   return {...course,category,tag,structure:course.structure??atlasLandmarks[course.id]??null}
  })
  const orderedGroups=new Map(subjects.map(subject=>[subject.title,[...new Set([...subject.groups,...mapped.filter(c=>c.category===subject.title).map(c=>c.tag)])]]))

@@ -7,10 +7,11 @@ import {regionalSystemSupport} from './regionalSystems'
 import {scienceSupport} from './scienceCourses'
 import {firstYearSupport} from './firstYearExpansion'
 import {coreLearningDiagrams} from './coreCourseDepth'
+import {courses} from './curriculum'
 export type Diagram={title:string;caption:string;kind:'flow'|'cycle'|'compare'|'branch';nodes:{label:string;detail:string}[];links?:{from:number;to:number;label?:string}[]}
 type Node=[label:string,detail:string]
 const diagram=(title:string,caption:string,kind:Diagram['kind'],nodes:Node[],links?:Diagram['links']):Diagram=>({title,caption,kind,nodes:nodes.map(([label,detail])=>({label,detail})),links})
-export const diagrams:Record<string,Diagram>={
+const authoredDiagrams:Record<string,Diagram>={
  ...skeletalDiagrams,...systemDiagrams,...regionalSupport.diagrams,...reproductiveSupport.diagrams,...scienceSupport.diagrams,...firstYearSupport.diagrams,...regionalSystemSupport.diagrams,...breastSupport.diagrams,...coreLearningDiagrams,
  orientation:diagram('Trois plans, trois séparations','Comparaison de plans anatomiques : ils décrivent une orientation, pas une position unique dans le corps.','compare',[
  ['Sagittal','Sépare droite et gauche. Un plan sagittal est médian seulement lorsqu’il passe par le milieu.'],['Frontal','Sépare une partie antérieure d’une partie postérieure. Il est aussi appelé coronal.'],['Transversal','Sépare une partie supérieure d’une partie inférieure. Déplacer sa hauteur change les structures traversées.']]),
@@ -63,3 +64,11 @@ export const diagrams:Record<string,Diagram>={
  FMA24474:diagram('Orienter le fémur du proximal au distal','Le schéma associe reliefs et articulations ; les tailles ne sont pas à l’échelle.','flow',[
  ['Hanche','La tête fémorale s’articule avec l’acétabulum du bassin.'],['Tête et col','Région proximale. Le col relie la tête au reste de l’os.'],['Diaphyse','Partie allongée de l’os entre les extrémités.'],['Condyles','Reliefs articulaires de l’extrémité distale.'],['Genou','Le fémur participe à cette articulation par son extrémité distale.']]),
 }
+const publishedIds=new Set(courses.map(course=>course.id))
+const diagrams:Record<string,Diagram>=Object.fromEntries(Object.entries(authoredDiagrams).filter(([id])=>publishedIds.has(id)))
+for(const course of courses){
+ if(diagrams[course.id])continue
+ const children=course.sections.slice(0,7).map(section=>({label:section.title,detail:section.text}))
+ diagrams[course.id]=diagram(`Carte des notions · ${course.title}`,`Synthèse interactive construite à partir des objectifs et des sections de ce cours. Les branches regroupent les notions à relier ; elles ne décrivent pas nécessairement une chaîne causale.`, 'branch',[[course.title,course.objectives.join(' · ')],...children.map(({label,detail})=>[label,detail] as Node)],children.map((_,index)=>({from:0,to:index+1})))
+}
+export {diagrams}

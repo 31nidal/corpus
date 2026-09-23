@@ -6,7 +6,7 @@ async function answer(page:any,correct=true){const title=await page.locator('.qu
 test('cours dédiés : recherche, lien profond, rappel actif et retour au modèle',async({page})=>{
  const glbs:string[]=[];page.on('request',r=>{if(r.url().endsWith('.glb'))glbs.push(r.url())})
  await page.goto('/#tab=cours')
- await expect(page.locator('.subject-card')).toHaveCount(13)
+ await expect(page.locator('.subject-card')).toHaveCount(18)
  await expect(page.locator('.course-tile')).toHaveCount(0)
  expect(glbs).toHaveLength(0)
  await page.getByLabel('Rechercher un cours').fill('Les échanges membranaires');await expect(page.locator('.course-tile')).toHaveCount(1)
