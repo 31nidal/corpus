@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test'
 import {questions} from '../src/study/questions'
 const norm=(s:string)=>s.replace(/\s+/g,' ').trim()
-async function answer(page:any,correct=true){const title=await page.locator('.question-layout h1').innerText();const q=questions.find(q=>norm(q.prompt)===norm(title))||questions.find(q=>norm(q.prompt).startsWith(norm(title).slice(0,40)))!;const picks=correct?q.correct:[q.options.findIndex((_,i)=>!q.correct.includes(i))];for(const i of picks)await page.locator('.answer-options button').nth(i).click();return q}
+async function answer(page:any,correct=true){const title=await page.locator('.question-layout h1').innerText();const q=questions.find(q=>norm(q.prompt)===norm(title))||questions.find(q=>norm(q.prompt).startsWith(norm(title).slice(0,40)))!;const picks=correct?q.correct.map(i=>q.options[i]):[q.options.find((_,i)=>!q.correct.includes(i))!];for(const option of picks)await page.locator('.answer-options button').filter({hasText:option}).click();return q}
 
 test('cours dédiés : recherche, lien profond, rappel actif et retour au modèle',async({page})=>{
  const glbs:string[]=[];page.on('request',r=>{if(r.url().endsWith('.glb'))glbs.push(r.url())})
