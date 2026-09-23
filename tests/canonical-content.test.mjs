@@ -17,6 +17,8 @@ import { statisticsCourses, statisticsQuestions } from '../src/study/content/sta
 import { pharmacologyCourses, pharmacologyQuestions } from '../src/study/content/pharmacology/index.ts'
 import { publicHealthCourses, publicHealthQuestions } from '../src/study/content/publicHealth/index.ts'
 import { shsCourses, shsQuestions } from '../src/study/content/shs/index.ts'
+import { upperLimbCourses, upperLimbQuestions } from '../src/study/content/anatomy/upperLimb.ts'
+import { lowerLimbCourses, lowerLimbQuestions } from '../src/study/content/anatomy/lowerLimb.ts'
 
 test('each authored chemistry chapter is a canonical course with a complete learning record', () => {
   assert.equal(chemistryCourseIds.size, 20)
@@ -106,7 +108,9 @@ test('biochemistry, genetics and embryology courses are canonical and have autho
     ['Biostatistiques', statisticsCourses, statisticsQuestions],
     ['Pharmacologie', pharmacologyCourses, pharmacologyQuestions],
     ['Santé publique', publicHealthCourses, publicHealthQuestions],
-    ['Santé, Société, Humanité', shsCourses, shsQuestions]
+    ['Santé, Société, Humanité', shsCourses, shsQuestions],
+    ['Anatomie', upperLimbCourses, upperLimbQuestions],
+    ['Anatomie', lowerLimbCourses, lowerLimbQuestions]
   ]
   for (const [subject, batchCourses, batchQuestions] of batches) {
     assert.ok(batchCourses.length > 0)
