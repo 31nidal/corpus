@@ -1,14 +1,14 @@
 import {ArrowRight,BookOpen,Bookmark,CheckCircle2,Search,ChevronRight,Layers3} from 'lucide-react'
 import {courses,type Course} from './curriculum'
 import {questions} from './questions'
-import {subjects,groupCourses,courseSearchText,normalizeSearch} from './subjects'
+import {subjects,groupCourses,courseMatchesSearch,normalizeSearch} from './subjects'
 import {legacyHubs} from './taxonomy'
 
 export default function CourseLibrary(p:{subjectId:string;group:string;query:string;filter:string;saved:string[];completed:string[];browse:(subject:string,group?:string)=>void;search:(query:string)=>void;setFilter:(filter:string)=>void;open:(id:string)=>void}){
  const subject=subjects.find(s=>s.id===p.subjectId),own=subject?courses.filter(c=>c.category===subject.title):courses
  const groups=subject?groupCourses(own)[0]?.groups??[]:[]
  const needle=normalizeSearch(p.query)
- const filtered=own.filter(c=>(!p.group||c.tag===p.group)&&(p.filter==='all'||(p.filter==='saved'?p.saved.includes(c.id):!p.completed.includes(c.id)))&&(!needle||courseSearchText(c).includes(needle)))
+ const filtered=own.filter(c=>(!p.group||c.tag===p.group)&&(p.filter==='all'||(p.filter==='saved'?p.saved.includes(c.id):!p.completed.includes(c.id)))&&(!needle||courseMatchesSearch(c,p.query)))
  const savedHubs=p.filter==='saved'?legacyHubs.filter(h=>p.saved.includes(h.id)&&(!subject||h.subject===subject.title)&&(!needle||normalizeSearch(`${h.title} ${h.subject} ${h.module} ${h.reason}`).includes(needle))):[]
  const directory=!subject&&!needle&&p.filter==='all'
  const countQuestions=(items:Course[])=>questions.filter(q=>items.some(c=>c.id===q.course)).length
