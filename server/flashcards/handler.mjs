@@ -56,12 +56,23 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
     const directory = config.RAILWAY_VOLUME_MOUNT_PATH || config.ACCOUNT_DATA_DIR || path.resolve('.data')
     mkdirSync(directory, {recursive: true, mode: 0o700})
     const assetsDir = getAssetsDir()
-    db = new DatabaseSync(path.join(directory, 'mycorpus.sqlite'))
-    db.exec('PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;')
-    initStudySchema(db); initFlashcardSchema(db); migrateFlashcards(db, scheduler)
-    new FlashcardRepository(db).purgeExpiredGenerationReceipts()
-    new FlashcardRepository(db).purgeOrphanAssets(assetsDir)
-    return db
+    const instance = new DatabaseSync(path.join(directory, 'mycorpus.sqlite'))
+    try {
+      instance.exec('PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;')
+      initStudySchema(instance)
+      initFlashcardSchema(instance)
+      migrateFlashcards(instance, scheduler)
+      const repo = new FlashcardRepository(instance, assetsDir)
+      repo.purgeExpiredGenerationReceipts()
+      repo.purgeOrphanAssets(assetsDir)
+      db = instance
+      return db
+    } catch (error) {
+      try {
+        instance.close()
+      } catch {}
+      throw error
+    }
   }
   return async (req, res) => {
     const send = (status, body, type = 'application/json; charset=utf-8') => { res.writeHead(status, {'Content-Type': type, 'Cache-Control': 'no-store'}); res.end(type.startsWith('application/json') ? JSON.stringify(body) : body) }

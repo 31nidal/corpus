@@ -1,3 +1,53 @@
+export const FLASHCARD_EVOLUTIVE_COLUMNS = {
+  flashcards: {
+    note_id: 'TEXT REFERENCES flashcard_notes(id) ON DELETE CASCADE',
+    derivation_key: 'TEXT',
+    card_type: "TEXT NOT NULL DEFAULT 'basic'",
+    typed_target: 'TEXT',
+    accepted_answers_json: 'TEXT',
+    source_type: "TEXT NOT NULL DEFAULT 'manual'",
+    source_course_id: 'TEXT',
+    source_document_id: 'TEXT REFERENCES study_documents(id) ON DELETE SET NULL',
+    source_section_id: 'TEXT',
+    source_locator_json: 'TEXT',
+    source_excerpt: 'TEXT',
+  },
+  flashcard_reviews: {
+    fsrs_stability: 'REAL',
+    fsrs_difficulty: 'REAL',
+    fsrs_reps: 'INTEGER',
+    fsrs_learning_steps: 'INTEGER NOT NULL DEFAULT 0',
+    fsrs_scheduled_days: 'REAL NOT NULL DEFAULT 0',
+    review_version: 'INTEGER NOT NULL DEFAULT 0',
+    fsrs_origin: 'TEXT',
+  },
+  flashcard_review_logs: {
+    previous_state: 'TEXT',
+    next_state: 'TEXT',
+    fsrs_difficulty: 'REAL',
+    fsrs_stability: 'REAL',
+    scheduled_days: 'REAL',
+    elapsed_days: 'REAL',
+    scheduler_version: 'TEXT',
+    scheduler_config_hash: 'TEXT',
+    scheduler_data_json: 'TEXT',
+  },
+}
+
+export function ensureFlashcardColumns(db) {
+  for (const [table, columns] of Object.entries(FLASHCARD_EVOLUTIVE_COLUMNS)) {
+    const tableExists = db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(table)
+    if (tableExists) {
+      const existing = new Set(db.prepare(`PRAGMA table_info(${table})`).all().map(c => c.name))
+      for (const [colName, colDef] of Object.entries(columns)) {
+        if (!existing.has(colName)) {
+          db.exec(`ALTER TABLE ${table} ADD COLUMN ${colName} ${colDef}`)
+        }
+      }
+    }
+  }
+}
+
 export function initFlashcardSchema(db) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS flashcard_save_requests (
@@ -72,10 +122,6 @@ export function initFlashcardSchema(db) {
       updated_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS flashcards_user_deck ON flashcards(user_id, deck_id, updated_at DESC);
-    CREATE INDEX IF NOT EXISTS flashcards_user_source_course ON flashcards(user_id, source_course_id);
-    CREATE INDEX IF NOT EXISTS flashcards_user_source_document ON flashcards(user_id, source_document_id);
-    CREATE INDEX IF NOT EXISTS flashcards_note_id ON flashcards(note_id);
-    CREATE UNIQUE INDEX IF NOT EXISTS flashcards_note_derivation ON flashcards(note_id, derivation_key) WHERE note_id IS NOT NULL;
 
     CREATE TABLE IF NOT EXISTS flashcard_reviews (
       card_id TEXT PRIMARY KEY REFERENCES flashcards(id) ON DELETE CASCADE,
@@ -173,5 +219,14 @@ export function initFlashcardSchema(db) {
       PRIMARY KEY(note_id, role)
     );
     CREATE INDEX IF NOT EXISTS flashcard_note_assets_asset ON flashcard_note_assets(asset_id);
+  `)
+
+  ensureFlashcardColumns(db)
+
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS flashcards_user_source_course ON flashcards(user_id, source_course_id);
+    CREATE INDEX IF NOT EXISTS flashcards_user_source_document ON flashcards(user_id, source_document_id);
+    CREATE INDEX IF NOT EXISTS flashcards_note_id ON flashcards(note_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS flashcards_note_derivation ON flashcards(note_id, derivation_key) WHERE note_id IS NOT NULL;
   `)
 }
