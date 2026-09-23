@@ -1,11 +1,11 @@
 import {storageScope,useAccount} from '../account/store'
 import {useEffect,useState} from 'react'
 import {ArrowLeft,ArrowRight,Check,CheckCircle2,X,Target,Clock3,RotateCcw,Box,BookOpen,Flag,Brain} from 'lucide-react'
-import {questions,isCorrect,shuffled,type Question} from './questions'
+import {questions,isCorrect,shuffled,shuffleQuestionOptions,type Question} from './questions'
 import {courses} from './curriculum'
 import {nextReview,validReview,isDue,type ReviewRecord} from './reviewSchedule'
 import {feedbackUrl} from './feedback'
-import {subjects,groupCourses,normalizeSearch,courseSearchText} from './subjects'
+import {subjects,groupCourses,courseMatchesSearch} from './subjects'
 import GenerationDialog from '../flashcards/GenerationDialog'
 import type{GenerationSource}from'../flashcards/flashcardsTypes'
 type RecordEntry=ReviewRecord
@@ -18,7 +18,7 @@ export default function PracticeWorkspace(p:{course:string|null;navigate:(id:str
  const [difficulty,setDifficulty]=useState('all'),[bankQuery,setBankQuery]=useState(''),[topic,setTopic]=useState(()=>courses.find(c=>c.id===p.course)?.category??'all'),[mode,setMode]=useState<'training'|'exam'>('training'),[count,setCount]=useState(10),[records,setRecords]=useState<Records>(readRecords),[session,setSession]=useState<Session|null>(null),[elapsed,setElapsed]=useState(0),[now,setNow]=useState(Date.now)
  const [flashGeneration,setFlashGeneration]=useState<GenerationSource|null>(null),[toast,setToast]=useState('')
  useEffect(()=>{if(!toast)return;const t=setTimeout(()=>setToast(''),4000);return()=>clearTimeout(t)},[toast])
- const bankCourses=courses.filter(c=>(!p.course||c.id===p.course)&&(topic==='all'||questions.some(q=>q.course===c.id&&q.topic===topic))&&courseSearchText(c).includes(normalizeSearch(bankQuery)))
+ const bankCourses=courses.filter(c=>(!p.course||c.id===p.course)&&(topic==='all'||questions.some(q=>q.course===c.id&&q.topic===topic))&&courseMatchesSearch(c,bankQuery))
  const selectedCourse=courses.find(c=>c.id===p.course),pool=questions.filter(q=>(!p.course||q.course===p.course)&&(topic==='all'||q.topic===topic)&&(difficulty==='all'||(q.difficulty??'essentiel')===difficulty)),wrong=questions.filter(q=>records[q.id]?.wrong),due=questions.filter(q=>isDue(records[q.id],now))
  useEffect(()=>{setSession(null);if(p.course)setTopic(courses.find(c=>c.id===p.course)?.category??'all');setDifficulty('all')},[p.course])
  useEffect(()=>{if(!session||session.done)return;const timer=window.setInterval(()=>setElapsed(Math.floor((Date.now()-session.started)/1000)),1000);return()=>clearInterval(timer)},[session?.started,session?.done])
@@ -26,7 +26,7 @@ export default function PracticeWorkspace(p:{course:string|null;navigate:(id:str
  const save=(items:Question[],answers:Record<string,number[]>)=>{const next={...records},stamp=Date.now();for(const q of items)next[q.id]=nextReview(next[q.id],isCorrect(q,answers[q.id]??[]),stamp);try{accountStorage.setItem('corpus-practice-v1',JSON.stringify(next))}catch{/* scope reports sync errors */}setNow(stamp);setRecords(next)}
  const finish=()=>{if(!session||session.done)return;if(session.mode==='exam')save(session.items,session.answers);accountStorage.event('quiz',{title:session.mode==='exam'?'Examen blanc':'Quiz d’apprentissage',score:session.items.filter(q=>isCorrect(q,session.answers[q.id]??[])).length,total:session.items.length,answers:session.answers,questions:session.items.map(q=>q.id),duration:Math.floor((Date.now()-session.started)/1000)});setSession({...session,done:true})}
  useEffect(()=>{if(session?.mode==='exam'&&!session.done&&elapsed>=session.items.length*75)finish()},[elapsed,session])
- const start=(items=pool,practiceMode=mode)=>{if(!items.length)return;const prioritized=practiceMode==='training'&&items===pool?[...shuffled(due.filter(question=>items.includes(question))),...shuffled(items.filter(question=>!due.includes(question)))]:shuffled(items);setElapsed(0);setSession({items:prioritized.slice(0,count),index:0,answers:{},validated:[],done:false,mode:practiceMode,started:Date.now()})}
+ const start=(items=pool,practiceMode=mode)=>{if(!items.length)return;const prioritized=practiceMode==='training'&&items===pool?[...shuffled(due.filter(question=>items.includes(question))),...shuffled(items.filter(question=>!due.includes(question)))]:shuffled(items);const sessionItems=prioritized.slice(0,count).map(shuffleQuestionOptions);setElapsed(0);setSession({items:sessionItems,index:0,answers:{},validated:[],done:false,mode:practiceMode,started:Date.now()})}
  const q=session?.items[session.index],answers=q?session?.answers[q.id]??[]:[],validated=q?session?.validated.includes(q.id):false
  const choose=(index:number)=>{if(!session||!q||(session.mode==='training'&&validated))return;setSession({...session,answers:{...session.answers,[q.id]:q.format==='boolean'||q.format==='single'?[index]:answers.includes(index)?answers.filter(i=>i!==index):[...answers,index]}})}
  const validate=()=>{if(!session||!q||validated)return;accountStorage.event('quiz',{title:'Réponse · '+q.id,questions:[q.id],answers:{[q.id]:session.answers[q.id]},score:Number(isCorrect(q,session.answers[q.id]??[])),total:1});save([q],session.answers);setSession({...session,validated:[...session.validated,q.id]})}

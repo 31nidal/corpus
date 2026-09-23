@@ -58,8 +58,9 @@ test('un étudiant peut signaler une erreur sans compte GitHub',async({page})=>{
 test('quiz par chapitre : URL, difficulté, navigation examen et bilan',async({page})=>{
  await page.goto('/#tab=entrainement')
  await page.getByLabel('Rechercher un chapitre de quiz').fill('Régulation du débit cardiaque')
- await expect(page.locator('.chapter-bank-grid article')).toHaveCount(1)
- await page.getByRole('button',{name:'Choisir ce chapitre'}).click()
+ const target=page.locator('.chapter-bank-grid article').filter({has:page.getByRole('heading',{name:'Régulation du débit cardiaque, résistances vasculaires périphériques et pression artérielle',exact:true})})
+ await expect(target).toHaveCount(1)
+ await target.getByRole('button',{name:'Choisir ce chapitre'}).click()
  await expect(page).toHaveURL(/cours=phys-cardiovascular-hemodynamics-regulation/)
  await page.reload();await expect(page.getByLabel('Chapitre du quiz')).toHaveValue('phys-cardiovascular-hemodynamics-regulation')
  await page.getByLabel('Niveau du quiz').selectOption('application')

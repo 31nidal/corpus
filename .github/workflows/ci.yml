@@ -42,6 +42,9 @@ jobs:
       - name: Taxonomy tests
         run: npm run test:taxonomy
 
+      - name: Catalog content tests
+        run: npm run test:catalog-content
+
       - name: Feedback tests
         run: npm run test:feedback
 
