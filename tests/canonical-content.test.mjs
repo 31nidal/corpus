@@ -1,9 +1,10 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { courses } from '../src/study/curriculum.ts'
-import { questions } from '../src/study/questions.ts'
+import { questions, reorderQuestionOptions } from '../src/study/questions.ts'
 import { canonicalCourses } from '../src/study/taxonomy/canonicalCourses.ts'
 import { legacyHubs } from '../src/study/taxonomy/legacyHubs.ts'
+import { courseMatchesSearch } from '../src/study/subjects.ts'
 import { chemistryCourseIds, curatedChemistryCourseIds } from '../src/study/content/chemistry/index.ts'
 import { cellBiologyCourses, cellBiologyQuestionCourseIds } from '../src/study/content/cellBiology/index.ts'
 import { biochemistryCourses, biochemistryQuestions } from '../src/study/content/biochemistry/index.ts'
@@ -208,3 +209,29 @@ test('all 305 canonical entries resolve to exactly one pedagogical Course; Legac
   assert.equal(legacyHubs.length, 26)
   assert.ok(legacyHubs.every(hub => !courses.some(course => course.id === hub.id)), 'compatibility hubs are not pedagogical courses')
 })
+
+test('student-oriented search understands aliases, UE labels, legacy IDs and multi-token queries', () => {
+  const get = id => {
+    const course = courses.find(item => item.id === id)
+    assert.ok(course, `${id} exists in the catalog`)
+    return course
+  }
+  assert.equal(courseMatchesSearch(get('cell-membrane-trafficking'), 'organelles biocell membrane'), true)
+  assert.equal(courseMatchesSearch(get('phys-cardiovascular-hemodynamics-regulation'), 'UE3 pression débit résistance'), true)
+  assert.equal(courseMatchesSearch(get('research-critical-reading-diagnostic-study'), 'LCA diagnostic'), true)
+  assert.equal(courseMatchesSearch(get('pharma-absorption-distribution'), 'ICM absorption'), true)
+  assert.equal(courseMatchesSearch(get('english-reading-clinical-trials'), 'UE13 abstract'), true)
+})
+
+test('QCM option reordering preserves answer and explanation semantics', () => {
+  const original = questions.find(question => question.id === 'stats-hypothesis-testing-framework-q1')
+  assert.ok(original)
+  assert.equal(original.options.length, 4)
+  assert.deepEqual(original.correct, [0])
+  const reordered = reorderQuestionOptions(original, [1, 2, 0, 3])
+  assert.equal(reordered.options[2], original.options[0])
+  assert.equal(reordered.why[2], original.why[0])
+  assert.deepEqual(reordered.correct, [2])
+  assert.equal(reordered.id, original.id)
+})
+
