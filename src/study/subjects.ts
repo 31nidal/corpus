@@ -1,4 +1,5 @@
 import type {Course} from './curriculum'
+import {canonicalCourses} from './taxonomy/canonicalCourses'
 
 export const subjects = [
  {id:'anatomie',title:'Anatomie',description:'Situer les structures, nommer leurs rapports et comprendre les mouvements.',scope:'Os, articulations, muscles, viscères et système nerveux',groups:['Principes','Tête et cou','Rachis','Thorax','Abdomen','Pelvis et périnée','Membre supérieur','Membre inférieur','Neuroanatomie']},
@@ -22,7 +23,7 @@ export const subjects = [
 ]
 export type Subject = typeof subjects[number]
 export const subjectFor = (course:Course) => subjects.find(s=>s.title===course.category)!
-export const normalizeSearch = (text:string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/œ/g,'oe').toLowerCase().trim()
+export const normalizeSearch = (text:string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/œ/g,'oe').replace(/[^\p{L}\p{N}]+/gu,' ').replace(/\s+/g,' ').trim()
 
 const placement:Record<string,[string,string]>={
  orientation:['Anatomie','Principes'],homeostasis:['Physiologie','Régulations'],membrane:['Biologie cellulaire','Organisation cellulaire'],organelles:['Biologie cellulaire','Organisation cellulaire'],'cell-cycle':['Biologie cellulaire','Renouvellement cellulaire'],
@@ -60,4 +61,48 @@ export function groupCourses(items:Course[]):{subject:Subject;groups:{title:stri
  }).filter(s=>s.groups.length)
 }
 
-export const courseSearchText=(c:Course)=>normalizeSearch([c.title,c.category,c.tag,...c.objectives,...c.sections.flatMap(s=>[s.title,s.text,...s.bullets??[]]),...(c.glossary??[]).flat()].join(' '))
+const canonicalById=new Map(canonicalCourses.map(course=>[course.id,course]))
+const subjectSearchAliases:Record<string,string[]>={
+ 'Anatomie':['anat','anatomie descriptive','osteologie','arthrologie'],
+ 'Biologie cellulaire':['biocell','bio cell','cell bio'],
+ 'Histologie':['histo'],
+ 'Embryologie & Reproduction':['embryo','embryologie reproduction'],
+ 'Génétique & Biologie moléculaire':['genetique','biologie moleculaire','genomique'],
+ 'Chimie':['chim'],
+ 'Biochimie':['biochim','metabolisme'],
+ 'Physiologie':['physio'],
+ 'Immunologie':['immuno'],
+ 'Biophysique':['biophys','physique medicale'],
+ 'Biostatistiques':['stats','biostats','statistiques'],
+ 'Pharmacologie':['pharma','icm','adme','pharmacocinetique','pharmacodynamie'],
+ 'Santé publique':['sante publique','sante population','epidemiologie'],
+ 'Santé, Société, Humanité':['shs','ssh','ethique','droit de la sante'],
+ 'Médicament & Société':['medicament societe','reglementation medicament','economie medicament'],
+ 'Recherche biomédicale':['recherche','lca','lecture critique article','ebm'],
+ 'Odontologie':['odonto','dentaire'],
+ 'Anglais médical':['anglais medical','medical english'],
+}
+const courseSearchAliases:Record<string,string[]>={
+ 'phys-cardiovascular-hemodynamics-regulation':['cardio','hemodynamique','pression debit resistance','debit cardiaque','pam'],
+ 'phys-pulmonary-mechanics-volumes':['pneumo','spirometrie','volumes pulmonaires'],
+ 'phys-respiratory-regulation':['pneumo','controle respiratoire','regulation ventilation'],
+ 'research-critical-reading-therapeutic-trial':['lca essai therapeutique'],
+ 'research-critical-reading-diagnostic-study':['lca diagnostic'],
+ 'english-reading-clinical-trials':['abstract paper clinical trial pico'],
+}
+
+export const courseSearchText=(c:Course)=>{
+ const canonical=canonicalById.get(c.id)
+ return normalizeSearch([
+  c.id,c.title,c.category,c.tag,...(subjectSearchAliases[c.category]??[]),...(courseSearchAliases[c.id]??[]),
+  canonical?.module??'',canonical?.universityMappings.toulouse.ue??'',canonical?.universityMappings.toulouse.topic??'',...(canonical?.legacyIds??[]),
+  ...c.objectives,...c.sections.flatMap(s=>[s.title,s.text,...s.bullets??[]]),...(c.glossary??[]).flat()
+ ].join(' '))
+}
+
+export const courseMatchesSearch=(c:Course,query:string)=>{
+ const tokens=normalizeSearch(query).split(' ').filter(Boolean)
+ if(!tokens.length)return true
+ const haystack=courseSearchText(c)
+ return tokens.every(token=>haystack.includes(token))
+}
