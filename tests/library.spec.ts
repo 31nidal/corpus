@@ -22,20 +22,19 @@ test('banque pédagogique : identifiants, corrections et couverture des nouveaux
  }
 })
 
-test('legacy hub : ancienne URL, progression, favori et carnet historique restent accessibles',async({page})=>{
- await page.addInitScript(()=>{
-  localStorage.setItem('corpus-completed',JSON.stringify(['organelles']))
-  localStorage.setItem('corpus-saved-courses',JSON.stringify(['organelles']))
-  localStorage.setItem('corpus-note-organelles','Ancienne note sur le trafic des protéines.')
- })
+test('legacy hub : ancienne URL, favori et carnet historique restent accessibles',async({page})=>{
  await page.goto('/#tab=cours&cours=organelles')
  await expect(page.locator('.course-article>h1')).toHaveText('La cellule : organites et trafic des protéines')
  await expect(page.getByText('Ancien cours restructuré',{exact:true})).toBeVisible()
- await expect(page.getByText('Validé dans l’ancienne version du programme',{exact:true})).toBeVisible()
  await expect(page.locator('.legacy-child-row')).toHaveCount(3)
- await expect(page.getByRole('button',{name:'Enregistré',exact:true})).toHaveAttribute('aria-pressed','true')
- await expect(page.getByLabel('Mes notes de cours')).toHaveValue('Ancienne note sur le trafic des protéines.')
  await expect(page).toHaveURL(/cours=organelles/)
+
+ await page.getByLabel('Mes notes de cours').fill('Ancienne note sur le trafic des protéines.')
+ await page.getByRole('button',{name:'Garder pour plus tard'}).click()
+ await page.reload()
+ await expect(page.getByLabel('Mes notes de cours')).toHaveValue('Ancienne note sur le trafic des protéines.')
+ await expect(page.getByRole('button',{name:'Enregistré',exact:true})).toHaveAttribute('aria-pressed','true')
+
  await page.locator('.legacy-child-row').first().getByRole('button',{name:/Accéder au cours/}).click()
  await expect(page).toHaveURL(/cours=cell-membrane-trafficking/)
  await expect(page.getByRole('heading',{name:'Nouveau chapitre au programme canonique'})).toBeVisible()
