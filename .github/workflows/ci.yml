@@ -39,6 +39,9 @@ jobs:
       - name: Study tests
         run: npm run test:study
 
+      - name: Taxonomy tests
+        run: npm run test:taxonomy
+
       - name: Feedback tests
         run: npm run test:feedback
 

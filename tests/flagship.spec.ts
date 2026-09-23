@@ -4,6 +4,7 @@ import {questions} from '../src/study/questions'
 import {flagshipChapters} from '../src/study/flagshipCourses'
 import {medicalPlates} from '../src/study/medicalPlates'
 import {DAY,isDue,nextReview,validReview} from '../src/study/reviewSchedule'
+import {isLegacyHubId} from '../src/study/taxonomy'
 
 test('un rappel anticipé ne débloque pas le palier suivant',()=>{
  const now=1700000000000,first=nextReview(undefined,true,now)
@@ -39,9 +40,11 @@ test('catalogue : cinq chapitres, sources, dessins et QCM cohérents',()=>{
  }
 })
 
-test('les cinq dessins permettent légendes et repérage au clavier',async({page})=>{
+test('les dessins des chapitres complets accessibles permettent légendes et repérage au clavier',async({page})=>{
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message))
- for(const id of Object.keys(flagshipChapters)){
+ const routedFlagshipIds=Object.keys(flagshipChapters).filter(id=>!isLegacyHubId(id))
+ expect(routedFlagshipIds.length).toBeGreaterThan(0)
+ for(const id of routedFlagshipIds){
   await page.goto('/#tab=cours&cours='+id)
   const plate=page.getByRole('figure',{name:medicalPlates[id].title})
   await expect(plate).toBeVisible()
@@ -62,11 +65,11 @@ test('les cinq dessins permettent légendes et repérage au clavier',async({page
 
 test('dessin en thème sombre sur téléphone : repères accessibles après défilement',async({page})=>{
  await page.setViewportSize({width:390,height:844})
- await page.goto('/#tab=cours&cours=ventilation')
+ await page.goto('/#tab=cours&cours=phys-renal')
  await page.getByRole('button',{name:'Activer le thème sombre'}).click()
  const plate=page.locator('.medical-plate')
- await plate.getByRole('button',{name:'Sang capillaire',exact:true}).click()
- await expect(plate.locator('.medical-detail')).toContainText('La perfusion apporte le sang')
+ await plate.getByRole('button',{name:'Tube collecteur',exact:true}).click()
+ await expect(plate.locator('.medical-detail')).toContainText('L’ADH augmente la perméabilité à l’eau')
  expect(await page.locator('.medical-scroll').evaluate(el=>el.scrollLeft)).toBeGreaterThan(0)
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(390)
  await plate.screenshot({path:'/tmp/mycorpus-plate-mobile-dark.png'})

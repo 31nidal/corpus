@@ -29,18 +29,21 @@ test('sibling burying contrôlé : c1 révisée avec Again, c2 buried, c1 réapp
     fields: {text: 'Le {{c1::cœur}} et le {{c2::poumon}}.'},
   })
 
-  const [c1, c2] = note.cards
-  assert.equal(c1.noteId, note.id)
-  assert.equal(c2.noteId, note.id)
-  assert.notEqual(c1.id, c2.id)
+  assert.equal(note.cards.length, 2)
+  for (const card of note.cards) assert.equal(card.noteId, note.id)
+  assert.notEqual(note.cards[0].id, note.cards[1].id)
 
   const fixedNow = Date.now()
 
-  // 1. Initialement, les deux cartes sont dues à Date.now()
-  // Mais reviewQueue partitionne par note_id : une seule doit être éligible (rn = 1)
+  // 1. Initialement, les deux cartes sont dues à Date.now().
+  // La queue choisit déterministement le sibling éligible selon (due_at, id),
+  // pas selon l'ordre du tableau note.cards (les IDs UUID sont aléatoires).
   const initialQueue = repo.reviewQueue(userId, deck.id, 10, 'Europe/Paris', fixedNow)
   assert.equal(initialQueue.length, 1)
-  assert.equal(initialQueue[0].id, c1.id) // c1 est la première
+  const c1 = note.cards.find(card => card.id === initialQueue[0].id)
+  const c2 = note.cards.find(card => card.id !== initialQueue[0].id)
+  assert.ok(c1)
+  assert.ok(c2)
 
   // 2. Simuler la révision de c1 avec Again à 10:00:00
   const preview1 = defaultFsrsScheduler.createPreviewSnapshot(
