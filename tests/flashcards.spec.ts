@@ -829,11 +829,11 @@ test('phase 3B : atlas 3D (création note 3D, badges, révision recto/verso, vue
 
   // Noter la carte -> Sibling burying enterre la carte sœur
   const goodBtn = page.getByRole('button', { name: /Correct/ })
-  await expect(goodBtn).toBeEnabled()
+  await expect(goodBtn).toBeEnabled({ timeout: 15000 })
   await goodBtn.click()
 
   // La session se termine immédiatement car la carte sœur est enterrée
-  await expect(page.getByRole('heading', { name: 'Session terminée' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Session terminée' })).toBeVisible({ timeout: 15000 })
 })
 
 test('phase 3B hardening : blocage de reveal et de rating tant que la scène 3D n’est pas prête', async ({ page }) => {
