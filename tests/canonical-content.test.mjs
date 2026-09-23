@@ -28,6 +28,9 @@ import { pelvisHeadNeckCourses, pelvisHeadNeckQuestions } from '../src/study/con
 import { additionalHistologyCourses, additionalHistologyQuestions } from '../src/study/content/histology/additional.ts'
 import { additionalEmbryologyCourses, additionalEmbryologyQuestions } from '../src/study/content/embryology/additional.ts'
 import { developmentEmbryologyCourses, developmentEmbryologyQuestions } from '../src/study/content/embryology/development.ts'
+import { additionalGeneticsCourses, additionalGeneticsQuestions } from '../src/study/content/genetics/additional.ts'
+import { additionalBiochemistryCourses, additionalBiochemistryQuestions } from '../src/study/content/biochemistry/additional.ts'
+import { imagingCourses, imagingQuestions } from '../src/study/content/biophysics/imaging.ts'
 
 test('each authored chemistry chapter is a canonical course with a complete learning record', () => {
   assert.equal(chemistryCourseIds.size, 20)
@@ -128,7 +131,10 @@ test('biochemistry, genetics and embryology courses are canonical and have autho
     ['Anatomie', pelvisHeadNeckCourses, pelvisHeadNeckQuestions],
     ['Histologie', additionalHistologyCourses, additionalHistologyQuestions],
     ['Embryologie & Reproduction', additionalEmbryologyCourses, additionalEmbryologyQuestions],
-    ['Embryologie & Reproduction', developmentEmbryologyCourses, developmentEmbryologyQuestions]
+    ['Embryologie & Reproduction', developmentEmbryologyCourses, developmentEmbryologyQuestions],
+    ['Génétique & Biologie moléculaire', additionalGeneticsCourses, additionalGeneticsQuestions],
+    ['Biochimie', additionalBiochemistryCourses, additionalBiochemistryQuestions],
+    ['Biophysique', imagingCourses, imagingQuestions]
   ]
   for (const [subject, batchCourses, batchQuestions] of batches) {
     assert.ok(batchCourses.length > 0)
