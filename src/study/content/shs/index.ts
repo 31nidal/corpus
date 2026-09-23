@@ -3,7 +3,6 @@ import type { Question } from '../../questions'
 import { canonicalCourses } from '../../taxonomy/canonicalCourses'
 
 const metadata = new Map(canonicalCourses.filter(item => item.subject === 'Santé, Société, Humanité').map(item => [item.id, item]))
-const base = 'https://www.who.int/'
 type Draft = { objectives: string[]; sections: Course['sections']; trap: string; recall: string; answer: string; source: string; caseStudy: NonNullable<Course['caseStudy']>; glossary: NonNullable<Course['glossary']> }
 const s = (title: string, text: string, bullets?: string[]) => ({ title, text, ...(bullets ? { bullets } : {}) })
 function course(id: string, d: Draft): Course {

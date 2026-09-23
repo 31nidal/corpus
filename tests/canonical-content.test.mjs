@@ -19,6 +19,15 @@ import { publicHealthCourses, publicHealthQuestions } from '../src/study/content
 import { shsCourses, shsQuestions } from '../src/study/content/shs/index.ts'
 import { upperLimbCourses, upperLimbQuestions } from '../src/study/content/anatomy/upperLimb.ts'
 import { lowerLimbCourses, lowerLimbQuestions } from '../src/study/content/anatomy/lowerLimb.ts'
+import { upperNeurovascularCourses, upperNeurovascularQuestions } from '../src/study/content/anatomy/upperNeurovascular.ts'
+import { lowerNeurovascularCourses, lowerNeurovascularQuestions } from '../src/study/content/anatomy/lowerNeurovascular.ts'
+import { trunkWallCourses, trunkWallQuestions } from '../src/study/content/anatomy/trunkWalls.ts'
+import { thoraxVisceraCourses, thoraxVisceraQuestions } from '../src/study/content/anatomy/thoraxViscera.ts'
+import { abdominalCourses, abdominalQuestions } from '../src/study/content/anatomy/abdomen.ts'
+import { pelvisHeadNeckCourses, pelvisHeadNeckQuestions } from '../src/study/content/anatomy/pelvisHeadNeck.ts'
+import { additionalHistologyCourses, additionalHistologyQuestions } from '../src/study/content/histology/additional.ts'
+import { additionalEmbryologyCourses, additionalEmbryologyQuestions } from '../src/study/content/embryology/additional.ts'
+import { developmentEmbryologyCourses, developmentEmbryologyQuestions } from '../src/study/content/embryology/development.ts'
 
 test('each authored chemistry chapter is a canonical course with a complete learning record', () => {
   assert.equal(chemistryCourseIds.size, 20)
@@ -110,7 +119,16 @@ test('biochemistry, genetics and embryology courses are canonical and have autho
     ['Santé publique', publicHealthCourses, publicHealthQuestions],
     ['Santé, Société, Humanité', shsCourses, shsQuestions],
     ['Anatomie', upperLimbCourses, upperLimbQuestions],
-    ['Anatomie', lowerLimbCourses, lowerLimbQuestions]
+    ['Anatomie', lowerLimbCourses, lowerLimbQuestions],
+    ['Anatomie', upperNeurovascularCourses, upperNeurovascularQuestions],
+    ['Anatomie', lowerNeurovascularCourses, lowerNeurovascularQuestions],
+    ['Anatomie', trunkWallCourses, trunkWallQuestions],
+    ['Anatomie', thoraxVisceraCourses, thoraxVisceraQuestions],
+    ['Anatomie', abdominalCourses, abdominalQuestions],
+    ['Anatomie', pelvisHeadNeckCourses, pelvisHeadNeckQuestions],
+    ['Histologie', additionalHistologyCourses, additionalHistologyQuestions],
+    ['Embryologie & Reproduction', additionalEmbryologyCourses, additionalEmbryologyQuestions],
+    ['Embryologie & Reproduction', developmentEmbryologyCourses, developmentEmbryologyQuestions]
   ]
   for (const [subject, batchCourses, batchQuestions] of batches) {
     assert.ok(batchCourses.length > 0)
