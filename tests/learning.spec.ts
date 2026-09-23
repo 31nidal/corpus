@@ -60,7 +60,12 @@ test('quiz : réponse sur une structure réelle, indice et bilan',async({page})=
  await ready(page);await page.getByRole('button',{name:'Entraînement',exact:true}).click();await page.getByRole('button',{name:/Reconnaissance 3D/}).click();await loaded(page)
  await expect(page.getByRole('combobox')).toBeDisabled()
  await page.waitForTimeout(1400)
+ await expect.poll(
+   async()=>page.evaluate(()=>(window as any).__CORPUS_TEST__.project('FMA7197')!==null),
+   {timeout:15000}
+ ).toBe(true)
  const point=await page.evaluate(()=>(window as any).__CORPUS_TEST__.project('FMA7197'))
+ if(!point)throw new Error('FMA7197 is not projectable after the atlas reports loaded')
  await page.mouse.click(point.x,point.y)
  await expect(page.locator('.quiz-feedback')).toContainText('Exact !')
  await page.getByRole('button',{name:'Question suivante'}).click()
