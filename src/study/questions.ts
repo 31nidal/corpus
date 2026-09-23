@@ -37,5 +37,12 @@ const questionCatalog:Question[]=[...reasoningQuestions,...chapterQuestions,...s
  {id:'femur-1',course:'FMA24474',topic:'Locomoteur',prompt:'Le fémur :',options:['Est un os de la cuisse','Participe à la hanche','Participe au genou','Est un os de l’avant-bras'],correct:[0,1,2],why:['Il constitue le squelette de la cuisse.','Sa tête s’articule avec l’acétabulum.','Son extrémité distale participe au genou.','L’avant-bras comprend radius et ulna.']},
 ]
 export const questions:Question[]=completeQuestionBank(courses,[...questionCatalog.filter(q=>!(q.id.startsWith('core-')&&flagshipQuestionCourses.has(q.course))),...flagshipQuestions].map(q=>({...q,topic:courses.find(c=>c.id===q.course)?.category??q.topic})))
+export function reorderQuestionOptions(q:Question,order:number[]):Question{
+ if(order.length!==q.options.length||new Set(order).size!==order.length||order.some(index=>index<0||index>=q.options.length))throw new Error('Ordre de propositions invalide')
+ const newIndexByOld=new Map(order.map((oldIndex,newIndex)=>[oldIndex,newIndex]))
+ return {...q,options:order.map(index=>q.options[index]),why:order.map(index=>q.why[index]),correct:q.correct.map(index=>newIndexByOld.get(index)!).sort((a,b)=>a-b)}
+}
+export function shuffleQuestionOptions(q:Question):Question{return reorderQuestionOptions(q,shuffled(q.options.map((_,index)=>index)))}
+
 export function isCorrect(q:Question,answer:number[]){return answer.length===q.correct.length&&q.correct.every(i=>answer.includes(i))}
 export function shuffled<T>(items:T[]):T[]{const a=[...items];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
