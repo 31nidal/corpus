@@ -117,3 +117,42 @@ test.describe('DiagramViewer engine (Step 1)', () => {
     await expect(modal).toHaveCount(0)
   })
 })
+
+for (const viewport of [{width: 1440, height: 1000}, {width: 820, height: 1180}, {width: 390, height: 844}]) {
+  test(`Carte de notions lisible dans son conteneur à ${viewport.width}px`, async ({page}) => {
+    await page.setViewportSize(viewport)
+    await page.goto('/#tab=cours&cours=cell-cycle-phases-control')
+    const diagram = page.locator('.interactive-diagram')
+    await expect(diagram).toBeVisible()
+    // Reproduce a narrow embedded card even on a wide desktop screen.
+    if (viewport.width === 1440) await diagram.evaluate(el => {el.style.width = '400px'})
+    const root = diagram.locator('.is-root-node')
+    await expect(root.locator('strong')).toHaveText('Cycle cellulaire')
+    await expect(diagram.locator('.diagram-explanation h3')).toContainText('cyclines, CDK et points de contrôle')
+    await expect.poll(async () => (await root.boundingBox())!.width).toBeGreaterThan(220)
+    const nodes = await diagram.locator('.diagram-canvas button').evaluateAll(elements => elements.map(el => {
+      const box = el.getBoundingClientRect()
+      const title = el.querySelector('strong')!
+      return {width: box.width, height: box.height, titleHeight: title.clientHeight,
+        lineHeight: parseFloat(getComputedStyle(title).lineHeight), clipped: title.scrollHeight > title.clientHeight + 1}
+    }))
+    for (const node of nodes) {
+      expect(node.width).toBeGreaterThan(140)
+      expect(node.height).toBeGreaterThanOrEqual(67)
+      expect(node.height).toBeLessThanOrEqual(73)
+      expect(node.titleHeight).toBeLessThanOrEqual(node.lineHeight * 2 + 1)
+      expect(node.clipped).toBe(false)
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(viewport.width)
+    await diagram.locator('.diagram-canvas button').nth(1).click()
+    await expect(diagram.locator('.diagram-explanation h3')).toHaveText('Interphase et phase M')
+    await diagram.getByRole('button', {name: 'Agrandir en plein écran'}).click()
+    const modal = page.locator('.diagram-modal-overlay')
+    await expect(modal.locator('.is-root-node strong')).toHaveText('Cycle cellulaire')
+    await modal.locator('.diagram-canvas button').last().click()
+    await expect(modal.locator('.diagram-explanation h3')).toHaveText('Durée et renouvellement')
+    await page.keyboard.press('Escape')
+    await expect(modal).toHaveCount(0)
+    await expect.poll(async () => (await root.boundingBox())!.width).toBeGreaterThan(220)
+  })
+}

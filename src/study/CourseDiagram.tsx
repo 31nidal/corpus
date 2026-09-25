@@ -1,4 +1,4 @@
-import {useEffect, useId, useState, useCallback} from 'react'
+import {useEffect, useId, useState, useCallback, useRef} from 'react'
 import {ArrowRight, MousePointer2, ZoomIn, ZoomOut, RotateCcw, Maximize2, Minimize2, X, Move} from 'lucide-react'
 import {diagrams} from './diagrams'
 import MedicalDiagram, {medicalPlates} from './MedicalDiagram'
@@ -13,7 +13,10 @@ export default function CourseDiagram({courseId}: {courseId: string}) {
 }
 
 function getNodeDisplayLabel(label: string, isRoot: boolean, compact: boolean): string {
-  const clean = label.replace(/^Carte des notions ·\s*/i, '').trim()
+  const full = label.replace(/^Carte des notions ·\s*/i, '').trim()
+  // Keep the subject; the subtitle and full wording remain in the detail panel.
+  const subject = full.split(/\s*[:–—]\s*/)[0]
+  const clean = isRoot && subject.length >= 8 ? subject : full
   if (isRoot) {
     const maxLen = compact ? 38 : 54
     if (clean.length > maxLen) {
@@ -36,9 +39,10 @@ function GenericDiagram({courseId}: {courseId: string}) {
   const graph = diagrams[courseId]
   const uid = useId().replace(/:/g, '')
   const [active, setActive] = useState(0)
-  const [compact, setCompact] = useState(() =>
-    typeof window !== 'undefined' ? window.matchMedia('(max-width:700px)').matches : false
-  )
+  const embeddedRef = useRef<HTMLDivElement>(null)
+  const fullscreenRef = useRef<HTMLDivElement>(null)
+  const [availableWidth, setAvailableWidth] = useState(360)
+  const compact = availableWidth < 640
 
   // Zoom & Pan state
   const [scale, setScale] = useState(1)
@@ -56,11 +60,14 @@ function GenericDiagram({courseId}: {courseId: string}) {
   }, [courseId])
 
   useEffect(() => {
-    const media = window.matchMedia('(max-width:700px)')
-    const update = () => setCompact(media.matches)
-    media.addEventListener('change', update)
-    return () => media.removeEventListener('change', update)
-  }, [])
+    const element = isFullscreen ? fullscreenRef.current : embeddedRef.current
+    if (!element) return
+    const observer = new ResizeObserver(([entry]) => {
+      setAvailableWidth(Math.max(1, Math.floor(entry.contentRect.width)))
+    })
+    observer.observe(element)
+    return () => observer.disconnect()
+  }, [isFullscreen])
 
   const clamp = (val: number, min: number, max: number) => Math.min(Math.max(val, min), max)
 
@@ -182,18 +189,18 @@ function GenericDiagram({courseId}: {courseId: string}) {
 
   if (!graph) return null
 
-  const width = compact ? 360 : 740
   const n = graph.nodes.length
+  const width = graph.kind === 'branch' ? availableWidth : compact ? 360 : 740
+  const branchColumns = width < 340 ? 1 : width < 640 ? 2 : Math.max(1, Math.min(4, n - 1))
+  const branchWidth = (width - 24 - (branchColumns - 1) * 16) / branchColumns
 
   // Dimensions par nœud
   const getNodeDim = (i: number) => {
     const isRoot = graph.kind === 'branch' && i === 0
+    if (graph.kind === 'branch') return isRoot
+      ? {w: Math.min(width - 24, 380), h: 72, isRoot: true}
+      : {w: branchWidth, h: 68, isRoot: false}
     if (compact) {
-      if (graph.kind === 'branch') {
-        return isRoot
-          ? {w: 280, h: 58, isRoot: true}
-          : {w: 150, h: 56, isRoot: false}
-      }
       if (graph.kind === 'flow') {
         return {w: 260, h: 52, isRoot: i === 0}
       }
@@ -204,12 +211,6 @@ function GenericDiagram({courseId}: {courseId: string}) {
       return {w: 126, h: 50, isRoot: false}
     } else {
       // Desktop
-      if (graph.kind === 'branch') {
-        const branchW = Math.min(170, Math.max(124, (740 - 50) / Math.max(1, n - 1) - 14))
-        return isRoot
-          ? {w: 270, h: 64, isRoot: true}
-          : {w: branchW, h: 60, isRoot: false}
-      }
       if (graph.kind === 'flow') {
         return {w: 180, h: 62, isRoot: i === 0}
       }
@@ -241,38 +242,13 @@ function GenericDiagram({courseId}: {courseId: string}) {
       }
     }
 
-    // 2. Branch (Cartes de notions)
+    // Concept maps use real container pixels: node text never shrinks with the canvas.
     if (graph.kind === 'branch') {
-      if (i === 0) {
-        // Nœud central / racine en haut
-        return {x: width / 2, y: 44}
-      }
+      if (i === 0) return {x: width / 2, y: 48}
       const childIndex = i - 1
-      const totalChildren = n - 1
-      if (!compact) {
-        if (totalChildren <= 4) {
-          const step = (740 - 60) / totalChildren
-          const x = 30 + step * (childIndex + 0.5)
-          return {x, y: 155}
-        } else {
-          const row1Count = Math.ceil(totalChildren / 2)
-          const row2Count = totalChildren - row1Count
-          if (childIndex < row1Count) {
-            const step = (740 - 60) / row1Count
-            return {x: 30 + step * (childIndex + 0.5), y: 145}
-          } else {
-            const r2Idx = childIndex - row1Count
-            const step = (740 - 60) / row2Count
-            return {x: 30 + step * (r2Idx + 0.5), y: 235}
-          }
-        }
-      } else {
-        // Mobile : 2 colonnes équilibrées
-        const row = Math.floor(childIndex / 2)
-        const col = childIndex % 2
-        const x = col === 0 ? 94 : 266
-        const y = 138 + row * 76
-        return {x, y}
+      return {
+        x: 12 + branchWidth / 2 + (childIndex % branchColumns) * (branchWidth + 16),
+        y: 158 + Math.floor(childIndex / branchColumns) * 96,
       }
     }
 
@@ -325,6 +301,14 @@ function GenericDiagram({courseId}: {courseId: string}) {
     if (!a || !b) return ''
     const dimA = getNodeDim(from)
     const dimB = getNodeDim(to)
+
+    // Route each branch beside the cards, never through intervening nodes.
+    if (graph.kind === 'branch' && from === 0) {
+      const left = b.x - dimB.w / 2
+      const lane = left - 8
+      return `M ${a.x} ${a.y + dimA.h / 2} V 102 H ${lane} V ${b.y} H ${left - 2}`
+    }
+
 
     if (graph.kind === 'cycle' && compact && to === 0) {
       return `M ${a.x - dimA.w / 2} ${a.y} H 18 V ${b.y} H ${b.x - dimB.w / 2 - 6}`
@@ -451,6 +435,7 @@ function GenericDiagram({courseId}: {courseId: string}) {
           <button
             key={node.label + i}
             aria-pressed={active === i}
+            aria-label={node.label}
             className={isRoot ? 'is-root-node' : undefined}
             onClick={() => setActive(i)}
             style={{
@@ -509,7 +494,7 @@ function GenericDiagram({courseId}: {courseId: string}) {
           {zoomControls}
         </div>
 
-        <div className="diagram-viewport-wrapper">
+        <div className="diagram-viewport-wrapper" ref={embeddedRef}>
           {canvas}
         </div>
 
@@ -564,7 +549,7 @@ function GenericDiagram({courseId}: {courseId: string}) {
               {zoomControls}
             </div>
 
-            <div className="diagram-modal-body">
+            <div className="diagram-modal-body" ref={fullscreenRef}>
               {canvas}
             </div>
 

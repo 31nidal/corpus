@@ -405,3 +405,28 @@
     font-size: 10px;
   }
 }
+
+/* Concept cards keep their dimensions even in a narrow desktop column. */
+.diagram-branch {
+  flex-shrink: 0;
+}
+
+.diagram-branch button > strong {
+  overflow-wrap: normal;
+  text-wrap: balance;
+}
+
+.diagram-branch button.is-root-node > strong {
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.diagram-explanation > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/* A tall condensed map must scroll from its first node in fullscreen. */
+.diagram-modal-body:has(> .diagram-branch) {
+  justify-content: flex-start;
+}
