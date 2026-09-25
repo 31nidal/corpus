@@ -75,7 +75,7 @@ export const biochemistryCourses: Course[] = [
     trap: 'La fermentation lactique régénère le NAD⁺ ; elle ne constitue pas une étape supplémentaire de synthèse d’ATP au-delà du bilan glycolytique.',
     recall: 'Quel est le bilan net classique en ATP et NADH par molécule de glucose lors de la glycolyse ?',
     answer: 'Deux ATP nets et deux NADH, avec formation de deux pyruvates.',
-    source: '6-3-introduction-to-metabolism', glossary: [['Phosphorylation au niveau du substrat', 'Formation d’ATP par transfert direct d’un phosphate depuis un intermédiaire.'], ['NADH', 'Forme réduite du coenzyme NAD⁺, transporteur d’électrons.'], ['Fermentation lactique', 'Réduction du pyruvate en lactate qui réoxyde le NADH en NAD⁺.']],
+    source: '7-2-glycolysis', glossary: [['Phosphorylation au niveau du substrat', 'Formation d’ATP par transfert direct d’un phosphate depuis un intermédiaire.'], ['NADH', 'Forme réduite du coenzyme NAD⁺, transporteur d’électrons.'], ['Fermentation lactique', 'Réduction du pyruvate en lactate qui réoxyde le NADH en NAD⁺.']],
     caseStudy: { prompt: 'Un globule rouge mature produit de l’ATP malgré l’absence de mitochondries. Quelle voie est indispensable et quel est son rendement net classique ?', answer: 'La glycolyse cytosolique fournit l’ATP, avec un bilan net de deux ATP par glucose.' }
   }),
   course('biochem-fatty-acid-oxidation-ketogenesis', {
@@ -90,7 +90,7 @@ export const biochemistryCourses: Course[] = [
     trap: 'La bêta-oxydation produit principalement de l’acétyl-CoA, du NADH et du FADH₂ ; elle ne transforme pas directement un acide gras en glucose chez l’humain.',
     recall: 'Quel est le rôle de la navette carnitine dans l’oxydation des acides gras à longue chaîne ?',
     answer: 'Elle permet le transfert de groupes acyl à longue chaîne à travers les membranes mitochondriales vers la matrice, où se déroule la bêta-oxydation.',
-    source: '6-3-lipid-metabolism', glossary: [['Acyl-CoA', 'Acide gras activé et lié au coenzyme A.'], ['CPT-I', 'Enzyme de la membrane mitochondriale externe régulant l’entrée des acides gras longs.'], ['Corps cétonique', 'Métabolite hydrosoluble produit par le foie à partir de l’acétyl-CoA.']],
+    source: '7-6-connections-of-carbohydrate-protein-and-lipid-metabolic-pathways', glossary: [['Acyl-CoA', 'Acide gras activé et lié au coenzyme A.'], ['CPT-I', 'Enzyme de la membrane mitochondriale externe régulant l’entrée des acides gras longs.'], ['Corps cétonique', 'Métabolite hydrosoluble produit par le foie à partir de l’acétyl-CoA.']],
     caseStudy: { prompt: 'Pourquoi le malonyl-CoA diminue-t-il l’oxydation des acides gras pendant leur synthèse ?', answer: 'Il inhibe CPT-I, limitant l’entrée mitochondriale des acides gras longs et coordonnant synthèse cytosolique et oxydation mitochondriale.' }
   }),
   course('biochem-oxidative-phosphorylation', {
@@ -103,34 +103,436 @@ export const biochemistryCourses: Course[] = [
       s('Inhibiteurs et découplants', 'Un inhibiteur bloque un transfert ou l’ATP synthase et peut modifier consommation d’oxygène et production d’ATP selon le site d’action. Un découplant augmente la perméabilité aux protons : le gradient se dissipe, la synthèse d’ATP diminue et une part de l’énergie est libérée en chaleur. Les conséquences doivent être interprétées en tenant compte du substrat et de la viabilité cellulaire.'),
     ],
     trap: 'Le complexe II transfère des électrons à la coenzyme Q, mais ne pompe pas de protons à travers la membrane interne.',
-    recall: 'Pourquoi le FADH₂ alimente-t-il généralement moins de synthèse d’ATP que le NADH ?',
-    answer: 'Ses électrons entrent au niveau du complexe II et contournent le complexe I, ce qui réduit le nombre total de protons pompés.',
-    source: '6-5-oxidative-phosphorylation', glossary: [['Force proton-motrice', 'Gradient électrochimique à travers la membrane interne mitochondriale.'], ['Accepteur terminal', 'Molécule recevant les électrons en fin de chaîne, ici l’oxygène.'], ['Découplant', 'Agent dissipant le gradient protonique sans produire directement l’ATP correspondant.']],
+    recall: 'Pourquoi les électrons issus de l’oxydation du succinate permettent-ils moins de synthèse d’ATP que ceux du NADH matriciel ?',
+    answer: 'Le FAD lié à la succinate déshydrogénase transfère les électrons au niveau du complexe II, sans passer par le complexe I. Le pompage protonique associé est donc moindre que pour le NADH matriciel.',
+    source: '7-4-oxidative-phosphorylation', glossary: [['Force proton-motrice', 'Gradient électrochimique à travers la membrane interne mitochondriale.'], ['Accepteur terminal', 'Molécule recevant les électrons en fin de chaîne, ici l’oxygène.'], ['Découplant', 'Agent dissipant le gradient protonique sans produire directement l’ATP correspondant.']],
     caseStudy: { prompt: 'Une molécule découplante dissipe le gradient protonique. Quel effet attendre sur la synthèse d’ATP et la production de chaleur ?', answer: 'La phosphorylation oxydative produit moins d’ATP et une plus grande part de l’énergie est dissipée sous forme de chaleur.' }
   }),
 ]
 
 const prompts: Record<string, [string, string, string, string, string]> = {
-  'biochem-amino-acids-properties': ['Quel niveau décrit la séquence N- vers C-terminale ?', 'Quelles interactions stabilisent principalement une hélice alpha ?', 'Quel résidu peut former un pont disulfure ?', 'Que signifie dénaturer une protéine sans hydrolyse ?', 'Pourquoi une chaîne latérale hydrophobe est-elle souvent enfouie ?'],
+  'biochem-amino-acids-properties': ['Quel niveau décrit la séquence N- vers C-terminale ?', 'Quelles interactions stabilisent principalement une hélice alpha ?', 'Quel résidu peut former un pont disulfure ?', 'Que signifie dénaturer une protéine sans hydrolyse ?', 'Pourquoi une chaîne latérale hydrophobe est-elle souvent enfouie dans une protéine globulaire soluble ?'],
   'biochem-enzymes-kinetics': ['Quel effet une enzyme exerce-t-elle sur l’énergie d’activation ?', 'Dans le modèle simple, que vaut v quand [S] = Km ?', 'Quel paramètre diminue avec une inhibition non compétitive pure ?', 'Une enzyme déplace-t-elle la position de l’équilibre ?', 'Quel rôle joue une rétro-inhibition métabolique ?'],
   'biochem-bioenergetics': ['Que signifie un ΔG négatif ?', 'Comment le couplage énergétique rend-il possible une étape défavorable ?', 'Quel gradient alimente directement l’ATP synthase mitochondriale ?', 'Quel accepteur reçoit les électrons à la fin de la chaîne respiratoire mitochondriale ?', 'Un processus favorable est-il nécessairement rapide ?'],
-  'biochem-carbohydrate': ['Dans quel compartiment se déroule la glycolyse ?', 'Quel est son gain net classique en ATP par glucose ?', 'Quel coenzyme est réduit lors de l’oxydation du glycéraldéhyde-3-phosphate ?', 'Que fait la fermentation lactique au NADH ?', 'La glycolyse requiert-elle directement l’oxygène ?'],
-  'biochem-fatty-acid-oxidation-ketogenesis': ['Quel est le produit carboné récurrent de la bêta-oxydation ?', 'Quel transporteur aide les acides gras longs à entrer dans la matrice mitochondriale ?', 'Quel inhibiteur physiologique freine CPT-I ?', 'Quel cofacteur réducteur soutient la synthèse des acides gras ?', 'Le foie exporte-t-il ses corps cétoniques comme carburant ?'],
-    'biochem-oxidative-phosphorylation': ['Quel gradient traverse directement l’ATP synthase mitochondriale ?', 'Où se situe la chaîne respiratoire mitochondriale ?', 'Quel est l’accepteur terminal des électrons en respiration aérobie ?', 'Que se passe-t-il si la membrane interne devient perméable aux protons ?', 'Le gradient de protons est-il créé par l’ATP synthase ?'],
+  'biochem-carbohydrate': ['Dans quel compartiment se déroule la glycolyse ?', 'Quel est le gain net classique de la glycolyse en ATP par glucose ?', 'Quel coenzyme est réduit lors de l’oxydation du glycéraldéhyde-3-phosphate ?', 'Que fait la fermentation lactique au NADH ?', 'La glycolyse requiert-elle directement l’oxygène ?'],
+  'biochem-fatty-acid-oxidation-ketogenesis': ['Quel est le produit carboné récurrent de la bêta-oxydation ?', 'Quel système assure le transfert des groupements acyle à longue chaîne vers la matrice mitochondriale ?', 'Quel inhibiteur physiologique freine CPT-I ?', 'Quel cofacteur réducteur soutient la synthèse des acides gras ?', 'Le foie exporte-t-il ses corps cétoniques comme carburant ?'],
+    'biochem-oxidative-phosphorylation': ['Quel gradient traverse directement l’ATP synthase mitochondriale ?', 'Où se situe la chaîne respiratoire mitochondriale ?', 'Quel est l’accepteur terminal des électrons en respiration aérobie ?', 'Que se passe-t-il si la membrane interne devient perméable aux protons ?', 'En phosphorylation oxydative, quel système crée principalement le gradient utilisé par l’ATP synthase ?'],
 }
 const correctText: Record<string, string[]> = {
-  'biochem-amino-acids-properties': ['La structure primaire.', 'Des liaisons hydrogène entre groupes du squelette peptidique.', 'La cystéine.', 'Perdre des conformations supérieures sans couper nécessairement les liaisons peptidiques.', 'L’enfouissement limite leur contact avec l’eau et contribue à l’effet hydrophobe.'],
+  'biochem-amino-acids-properties': ['La structure primaire.', 'Des liaisons hydrogène entre groupes du squelette peptidique.', 'La cystéine.', 'Perdre des conformations supérieures sans couper nécessairement les liaisons peptidiques.', 'L’enfouissement limite son contact avec l’eau et contribue à l’effet hydrophobe.'],
   'biochem-enzymes-kinetics': ['Elle l’abaisse en stabilisant l’état de transition.', 'La moitié de Vmax.', 'La Vmax, vitesse maximale lorsque l’enzyme est saturée.', 'Non, elle accélère l’atteinte de l’équilibre sans modifier sa position.', 'Elle adapte le flux en freinant une étape lorsque le produit final est suffisamment abondant.'],
   'biochem-bioenergetics': ['Le processus est favorable dans les conditions considérées, mais sa vitesse n’est pas déterminée par ce seul signe.', 'Le bilan des ΔG devient négatif si les étapes sont mécanistiquement liées.', 'Le gradient électrochimique de protons.', 'L’oxygène, réduit en eau.', 'Non, la vitesse dépend aussi de la barrière d’activation et de la catalyse.'],
   'biochem-carbohydrate': ['Le cytosol, compartiment où se déroulent ses dix réactions.', 'Deux ATP nets.', 'Le NAD⁺, réduit en NADH.', 'Elle réoxyde le NADH en NAD⁺.', 'Non, la voie n’utilise pas directement l’oxygène.'],
   'biochem-fatty-acid-oxidation-ketogenesis': ['L’acétyl-CoA.', 'La navette carnitine.', 'Le malonyl-CoA.', 'Le NADPH, cofacteur réducteur utilisé lors de la synthèse lipidique.', 'Oui, ils peuvent être utilisés par plusieurs tissus après adaptation.'],
-  'biochem-oxidative-phosphorylation': ['Le gradient électrochimique de protons entre espace intermembranaire et matrice.', 'La membrane interne de la mitochondrie.', 'L’oxygène, qui est réduit en eau.', 'Le gradient se dissipe et la synthèse d’ATP peut diminuer malgré une respiration accrue.', 'Non, les complexes de la chaîne respiratoire contribuent à le créer.'],
+  'biochem-oxidative-phosphorylation': ['Le gradient électrochimique de protons entre espace intermembranaire et matrice.', 'La membrane interne de la mitochondrie.', 'L’oxygène, qui est réduit en eau.', 'Le gradient se dissipe et la synthèse d’ATP peut diminuer malgré une respiration accrue.', 'Les complexes I, III et IV de la chaîne respiratoire.'],
 }
-const distractors = ['Elle coupe directement les liaisons peptidiques.', 'Elle consomme obligatoirement un ATP à chaque étape.', 'Elle se déroule uniquement dans le noyau.', 'Elle change nécessairement l’équilibre chimique final.']
-export const biochemistryQuestions: Question[] = biochemistryCourses.flatMap((c, index) => prompts[c.id].map((prompt, qIndex) => {
-  const answer = correctText[c.id][qIndex]
-  const options = [answer, distractors[(qIndex + index) % distractors.length], distractors[(qIndex + index + 1) % distractors.length], distractors[(qIndex + index + 2) % distractors.length]]
-  const correct = [0]
-  return { id: `${c.id}-q${qIndex + 1}`, course: c.id, topic: c.category, prompt, options, correct,
-    why: options.map((option, optionIndex) => optionIndex === 0 ? answer : `${option} Cette proposition ne correspond pas au mécanisme décrit dans le cours.`), difficulty: qIndex < 2 ? 'essentiel' as const : 'application' as const, format: 'single' as const }
+const reviewedChoices: Record<string, {reason: string; options: string[]; why: string[]}[]> = {
+  "biochem-amino-acids-properties": [
+    {
+      "reason": "La structure primaire est l’ordre des résidus reliés par des liaisons peptidiques, lu de l’extrémité N vers l’extrémité C.",
+      "options": [
+        "La structure secondaire.",
+        "La structure tertiaire.",
+        "La structure quaternaire."
+      ],
+      "why": [
+        "La structure secondaire décrit des arrangements locaux, comme l’hélice α, et non la séquence des résidus.",
+        "La structure tertiaire est le repliement tridimensionnel d’une chaîne.",
+        "La structure quaternaire concerne l’association de plusieurs chaînes polypeptidiques."
+      ]
+    },
+    {
+      "reason": "Les groupes C=O et N–H du squelette forment des liaisons hydrogène régulières, classiquement entre les résidus i et i+4 d’une hélice α.",
+      "options": [
+        "Des ponts disulfure entre chaque paire de résidus voisins.",
+        "Des liaisons peptidiques entre chaînes latérales.",
+        "Des interactions hydrogène exclusivement entre chaînes latérales."
+      ],
+      "why": [
+        "Les ponts disulfure impliquent deux cystéines ; ils ne constituent pas le réseau régulier qui stabilise une hélice α.",
+        "Les liaisons peptidiques relient le squelette ; l’hélice ne nécessite pas de nouvelles liaisons covalentes entre chaînes latérales.",
+        "Dans l’hélice α, le réseau caractéristique implique le squelette peptidique, pas exclusivement les groupes latéraux."
+      ]
+    },
+    {
+      "reason": "Deux groupements thiol de cystéines peuvent être oxydés en une liaison covalente S–S.",
+      "options": [
+        "La méthionine.",
+        "La sérine.",
+        "La lysine."
+      ],
+      "why": [
+        "La méthionine contient un thioéther, pas un thiol libre susceptible de former le pont disulfure usuel.",
+        "La sérine porte un hydroxyle ; elle ne fournit pas le soufre d’une liaison S–S.",
+        "La lysine porte une chaîne latérale aminée, sans groupement thiol."
+      ]
+    },
+    {
+      "reason": "La dénaturation perturbe le repliement et souvent l’activité ; la séquence peut rester intacte si les liaisons peptidiques ne sont pas hydrolysées.",
+      "options": [
+        "Changer obligatoirement la séquence en acides aminés.",
+        "Séparer uniquement les sous-unités, sans altérer aucun repliement.",
+        "Hydrolyser chaque liaison peptidique jusqu’aux acides aminés libres."
+      ],
+      "why": [
+        "La perte de conformation n’impose pas un changement de séquence primaire.",
+        "La dénaturation peut affecter les structures secondaire et tertiaire, ainsi que les assemblages quaternaires.",
+        "Une hydrolyse complète détruit la chaîne ; elle n’est pas nécessaire à la dénaturation."
+      ]
+    },
+    {
+      "reason": "Dans une protéine globulaire soluble, l’enfouissement de groupes apolaires réduit leur exposition au solvant aqueux.",
+      "options": [
+        "Parce que toutes les chaînes hydrophobes portent une charge positive.",
+        "Parce que l’eau forme avec elles davantage de liaisons hydrogène qu’avec les groupes polaires.",
+        "Parce que leur position est imposée uniquement par le sens N→C."
+      ],
+      "why": [
+        "Hydrophobicité et charge positive ne sont pas équivalentes ; les chaînes apolaires sont généralement non chargées.",
+        "Les groupes apolaires ne présentent pas les mêmes possibilités de liaison hydrogène avec l’eau que les groupes polaires.",
+        "La séquence influence le repliement, mais le seul sens de lecture ne détermine pas l’exposition d’un résidu au solvant."
+      ]
+    }
+  ],
+  "biochem-enzymes-kinetics": [
+    {
+      "reason": "Le site actif stabilise l’état de transition et ouvre une voie réactionnelle à barrière plus faible, sans changer le ΔG global.",
+      "options": [
+        "Elle augmente la barrière d’activation pour les deux sens.",
+        "Elle rend le ΔG de toute réaction négatif.",
+        "Elle diminue uniquement l’énergie libre des produits."
+      ],
+      "why": [
+        "Une barrière plus haute ralentirait la réaction ; la catalyse abaisse la barrière pertinente.",
+        "Le ΔG dépend des états initial et final ; une enzyme n’en change pas le signe par sa seule présence.",
+        "La catalyse ne modifie pas les niveaux énergétiques des réactifs et produits à l’équilibre."
+      ]
+    },
+    {
+      "reason": "Dans v = Vmax[S]/(Km+[S]), substituer [S]=Km donne v=Vmax/2.",
+      "options": [
+        "Vmax.",
+        "Deux fois Vmax.",
+        "Un quart de Vmax."
+      ],
+      "why": [
+        "La Vmax est approchée lorsque [S] est très supérieur à Km, pas quand les deux sont égaux.",
+        "La vitesse ne dépasse pas Vmax dans le modèle de Michaelis-Menten aux conditions fixées.",
+        "Vmax/4 correspondrait à [S]=Km/3 dans ce modèle, non à [S]=Km."
+      ]
+    },
+    {
+      "reason": "En inhibition non compétitive pure, l’inhibiteur réduit la capacité catalytique sans modifier le Km apparent.",
+      "options": [
+        "Le Km apparent seul.",
+        "La constante d’équilibre de la réaction.",
+        "Le ΔG standard de réaction."
+      ],
+      "why": [
+        "La non-compétition pure conserve Km ; une compétition classique augmente le Km apparent sans changer Vmax.",
+        "Un inhibiteur agit sur la cinétique, pas sur l’équilibre thermodynamique de la réaction considérée.",
+        "La variation d’activité enzymatique ne change pas les propriétés thermodynamiques standard des réactifs et produits."
+      ]
+    },
+    {
+      "reason": "L’enzyme accélère les réactions dans les deux sens ; les concentrations d’équilibre restent fixées par la thermodynamique.",
+      "options": [
+        "Oui, elle augmente nécessairement la proportion de produits à l’équilibre.",
+        "Oui, à condition que sa concentration soit suffisamment élevée.",
+        "Non, parce qu’elle n’accélère que le sens direct."
+      ],
+      "why": [
+        "L’enzyme ne modifie pas la constante d’équilibre ; elle permet seulement de l’atteindre plus vite.",
+        "Ajouter de l’enzyme augmente la capacité catalytique, sans déplacer l’équilibre de la réaction.",
+        "Elle peut catalyser les deux sens ; accélérer seulement le sens direct ne justifierait pas la conservation de l’équilibre."
+      ]
+    },
+    {
+      "reason": "Le produit final peut inhiber une étape régulatrice en amont, limitant sa propre surproduction.",
+      "options": [
+        "Accélérer systématiquement sa propre synthèse quand le produit final s’accumule.",
+        "Transformer directement le produit final en substrat initial.",
+        "Consommer l’enzyme régulatrice à chaque réaction."
+      ],
+      "why": [
+        "Ce serait une rétroaction positive ; la rétro-inhibition réduit une activité en amont.",
+        "La régulation d’une enzyme ne se confond pas avec une réaction de conversion inverse.",
+        "L’enzyme est un catalyseur réutilisable ; une régulation ne nécessite pas sa consommation stœchiométrique."
+      ]
+    }
+  ],
+  "biochem-bioenergetics": [
+    {
+      "reason": "Un ΔG négatif traduit une évolution thermodynamiquement favorable dans le sens étudié, sans information suffisante sur sa rapidité.",
+      "options": [
+        "La réaction est nécessairement instantanée.",
+        "La réaction est à l’équilibre.",
+        "La réaction ne peut se dérouler qu’avec une enzyme."
+      ],
+      "why": [
+        "Une barrière d’activation élevée peut rendre très lent un processus favorable.",
+        "À l’équilibre, ΔG vaut zéro ; une valeur négative indique une force motrice dans le sens direct.",
+        "Une enzyme change la vitesse, mais ne définit pas le signe du ΔG."
+      ]
+    },
+    {
+      "reason": "Les variations d’énergie libre s’additionnent ; le couplage doit relier réellement les réactions, par exemple via un intermédiaire commun.",
+      "options": [
+        "La seule coexistence de deux réactions dans le même récipient suffit.",
+        "Une enzyme change directement le signe du ΔG de l’étape défavorable isolée.",
+        "Une réaction exergonique rend toutes les autres réactions cellulaires favorables."
+      ],
+      "why": [
+        "Sans mécanisme de couplage, l’énergie dissipée par une réaction ne force pas nécessairement l’autre.",
+        "La catalyse ne change pas la thermodynamique ; c’est le bilan des étapes couplées qui devient favorable.",
+        "Le transfert d’énergie doit être organisé et localement couplé ; il n’existe pas d’effet automatique sur toutes les réactions."
+      ]
+    },
+    {
+      "reason": "La force proton-motrice comporte une composante électrique et une différence de pH à travers la membrane interne.",
+      "options": [
+        "Le seul gradient de sodium à travers la membrane plasmique.",
+        "Le gradient de glucose entre cytosol et noyau.",
+        "Le seul gradient de calcium du réticulum sarcoplasmique."
+      ],
+      "why": [
+        "Ce gradient alimente certains transports cellulaires, pas directement l’ATP synthase mitochondriale humaine.",
+        "Le glucose apporte des substrats énergétiques, mais ce n’est pas le flux qui traverse l’ATP synthase.",
+        "Le calcium régule notamment la contraction ; le gradient couplé à l’ATP synthase mitochondriale est protonique."
+      ]
+    },
+    {
+      "reason": "Au complexe IV, l’oxygène reçoit des électrons et participe à la formation d’eau.",
+      "options": [
+        "Le NAD⁺, transformé en NADH en fin de chaîne.",
+        "Le CO₂, réduit directement en glucose.",
+        "Le pyruvate, réduit en lactate par le complexe IV."
+      ],
+      "why": [
+        "Le NADH donne ses électrons à la chaîne ; le NAD⁺ n’est pas son accepteur terminal aérobie.",
+        "La chaîne respiratoire humaine ne réalise pas la fixation du CO₂ en glucose.",
+        "La réduction du pyruvate en lactate est cytosolique et catalysée par la lactate déshydrogénase, pas par le complexe IV."
+      ]
+    },
+    {
+      "reason": "La thermodynamique indique le sens favorable ; la cinétique dépend notamment de la barrière d’activation.",
+      "options": [
+        "Oui, tout ΔG négatif implique une vitesse élevée.",
+        "Oui, si la réaction libère de la chaleur, même sans autre information.",
+        "Non, parce que toute réaction favorable possède un ΔG positif."
+      ],
+      "why": [
+        "Une réaction favorable peut être ralentie par une barrière d’activation importante.",
+        "Le caractère exothermique ne suffit pas à déterminer la vitesse ni même, à lui seul, le ΔG.",
+        "Le signe favorable est négatif ; la lenteur éventuelle relève de la cinétique, pas d’une inversion de ce signe."
+      ]
+    }
+  ],
+  "biochem-carbohydrate": [
+    {
+      "reason": "Les enzymes de la glycolyse fonctionnent dans le cytosol ; la présence de mitochondries n’est pas nécessaire à cette voie.",
+      "options": [
+        "La matrice mitochondriale.",
+        "La membrane interne mitochondriale.",
+        "La lumière du réticulum endoplasmique."
+      ],
+      "why": [
+        "La matrice accueille notamment la pyruvate déshydrogénase et le cycle de Krebs, non les dix étapes glycolytiques.",
+        "Cette membrane porte la chaîne respiratoire et l’ATP synthase, pas la glycolyse.",
+        "La glycolyse est une voie cytosolique ; elle n’a pas pour compartiment la lumière du réticulum."
+      ]
+    },
+    {
+      "reason": "La voie consomme deux ATP puis en produit quatre par phosphorylation au niveau du substrat : le gain net est de deux par glucose.",
+      "options": [
+        "Quatre ATP nets.",
+        "Zéro ATP net.",
+        "Trente-deux ATP nets."
+      ],
+      "why": [
+        "Quatre ATP sont formés, mais il faut soustraire les deux ATP initialement investis.",
+        "Les quatre ATP produits dépassent les deux consommés ; le bilan n’est pas nul.",
+        "Cet ordre de grandeur concerne une oxydation aérobie complète selon les conventions, pas la glycolyse isolée."
+      ]
+    },
+    {
+      "reason": "La glycéraldéhyde-3-phosphate déshydrogénase transfère des électrons au NAD⁺ lors de l’oxydation du substrat.",
+      "options": [
+        "Le NADP⁺, réduit en NADPH.",
+        "Le FAD, réduit en FADH₂.",
+        "L’ATP, réduit en ADP."
+      ],
+      "why": [
+        "Le NADP⁺ intervient notamment dans la voie des pentoses phosphates ; l’enzyme glycolytique utilise le NAD⁺.",
+        "Le FAD intervient dans d’autres réactions d’oxydation, mais pas comme coenzyme de cette étape glycolytique.",
+        "ATP→ADP est une transformation de phosphorylation/hydrolyse, pas la réduction du coenzyme accepteur d’électrons ici."
+      ]
+    },
+    {
+      "reason": "La lactate déshydrogénase réduit le pyruvate en lactate en réoxydant le NADH ; le NAD⁺ peut ainsi être réutilisé par la glycolyse.",
+      "options": [
+        "Elle transforme le NADH en FADH₂.",
+        "Elle produit un NADH supplémentaire à partir du NAD⁺.",
+        "Elle hydrolyse le NADH pour former directement un ATP."
+      ],
+      "why": [
+        "La fermentation lactique régénère le couple NAD⁺/NADH ; elle ne convertit pas un coenzyme en un autre.",
+        "Dans le sens pyruvate→lactate, le NADH est consommé et non produit.",
+        "Cette étape assure un équilibre redox ; elle ne synthétise pas directement d’ATP."
+      ]
+    },
+    {
+      "reason": "Aucune des dix réactions glycolytiques ne consomme O₂ ; la poursuite du flux exige néanmoins une régénération suffisante du NAD⁺.",
+      "options": [
+        "Oui, l’oxygène est le substrat de la phosphofructokinase.",
+        "Oui, chaque glucose consomme directement six O₂ dans la glycolyse.",
+        "Non, parce que la glycolyse n’effectue aucune réaction d’oxydoréduction."
+      ],
+      "why": [
+        "La phosphofructokinase utilise le fructose-6-phosphate et l’ATP, pas O₂.",
+        "Six O₂ correspondent au bilan d’oxydation complète du glucose, pas au bilan glycolytique.",
+        "La voie réduit du NAD⁺ en NADH ; l’absence de consommation directe d’O₂ ne signifie pas absence d’oxydoréduction."
+      ]
+    }
+  ],
+  "biochem-fatty-acid-oxidation-ketogenesis": [
+    {
+      "reason": "Chaque tour de β-oxydation retire généralement une unité à deux carbones sous forme d’acétyl-CoA ; une chaîne impaire laisse finalement du propionyl-CoA.",
+      "options": [
+        "Le malonyl-CoA.",
+        "Le pyruvate.",
+        "Le citrate."
+      ],
+      "why": [
+        "Le malonyl-CoA apporte des unités carbonées à la synthèse des acides gras ; ce n’est pas le produit répété de leur β-oxydation.",
+        "Le pyruvate est notamment le produit de la glycolyse ; la β-oxydation libère surtout de l’acétyl-CoA.",
+        "Le citrate se forme par condensation de l’acétyl-CoA et de l’oxaloacétate, en aval de la β-oxydation."
+      ]
+    },
+    {
+      "reason": "Le groupement acyle d’un acyl-CoA à longue chaîne est transféré à la carnitine pour franchir la membrane interne puis reconstitué en acyl-CoA dans la matrice.",
+      "options": [
+        "La navette malate-aspartate.",
+        "Le transporteur mitochondrial du pyruvate.",
+        "La translocase ADP/ATP."
+      ],
+      "why": [
+        "Cette navette transfère des équivalents réducteurs du NADH cytosolique, pas les groupements acyle des acides gras longs.",
+        "Ce transporteur fait entrer le pyruvate ; il ne remplace pas la navette carnitine.",
+        "Elle échange les nucléotides adényliques entre matrice et cytosol, non les acides gras longs."
+      ]
+    },
+    {
+      "reason": "Le malonyl-CoA, intermédiaire de lipogenèse, inhibe CPT-I et limite l’entrée d’acides gras longs dans la voie mitochondriale d’oxydation.",
+      "options": [
+        "La carnitine.",
+        "L’acétyl-CoA comme inhibiteur direct principal de CPT-I.",
+        "L’oxaloacétate."
+      ],
+      "why": [
+        "La carnitine participe à la navette comme accepteur de groupement acyle ; elle n’est pas le signal inhibiteur physiologique demandé.",
+        "L’acétyl-CoA est un précurseur du malonyl-CoA ; c’est ce dernier qui assure le frein classique sur CPT-I.",
+        "L’oxaloacétate intervient dans le cycle de Krebs et la néoglucogenèse ; il n’est pas l’inhibiteur régulateur classique de CPT-I."
+      ]
+    },
+    {
+      "reason": "La synthèse des acides gras consomme du NADPH lors des étapes réductrices de l’élongation.",
+      "options": [
+        "Le NAD⁺.",
+        "Le FAD oxydé.",
+        "L’ATP comme donneur direct d’électrons."
+      ],
+      "why": [
+        "Le NAD⁺ est une forme oxydée ; il ne fournit pas les électrons des réductions lipogéniques.",
+        "Le FAD accepte des électrons dans certaines oxydations ; il n’est pas le donneur réducteur de la synthase des acides gras.",
+        "L’ATP fournit de l’énergie à certaines étapes, mais le pouvoir réducteur est apporté par le NADPH."
+      ]
+    },
+    {
+      "reason": "Les corps cétoniques sont produits surtout dans le foie puis utilisés par des tissus extra-hépatiques possédant la voie de cétolyse.",
+      "options": [
+        "Non, le foie consomme toute sa production grâce à SCOT.",
+        "Oui, principalement pour être oxydés par les érythrocytes matures.",
+        "Non, ils ne peuvent être utilisés que pour fabriquer des acides biliaires."
+      ],
+      "why": [
+        "Le foie ne possède pas l’activité SCOT nécessaire à la cétolyse classique et exporte les corps cétoniques.",
+        "Les érythrocytes matures n’ont pas de mitochondries et ne peuvent pas oxyder les corps cétoniques.",
+        "Acétoacétate et β-hydroxybutyrate peuvent fournir de l’acétyl-CoA à des tissus extra-hépatiques ; ils ne sont pas limités à cette fonction."
+      ]
+    }
+  ],
+  "biochem-oxidative-phosphorylation": [
+    {
+      "reason": "Le retour des H⁺ vers la matrice peut être couplé à ADP+Pi→ATP ; l’énergie provient de la force proton-motrice.",
+      "options": [
+        "Un flux d’oxygène à travers l’ATP synthase.",
+        "Un flux de NADH à travers la membrane interne.",
+        "Un gradient de glucose à travers la membrane externe."
+      ],
+      "why": [
+        "L’oxygène est réduit au complexe IV ; ce sont les protons qui empruntent le canal de l’ATP synthase.",
+        "Le NADH mitochondrial est oxydé au complexe I ; il ne traverse pas l’ATP synthase.",
+        "Ce gradient ne constitue pas la force motrice directement exploitée par l’ATP synthase."
+      ]
+    },
+    {
+      "reason": "La membrane interne porte les complexes respiratoires et sépare les compartiments entre lesquels s’établit la force proton-motrice.",
+      "options": [
+        "La membrane externe mitochondriale.",
+        "La membrane plasmique de la cellule humaine.",
+        "La lumière du réticulum endoplasmique."
+      ],
+      "why": [
+        "La membrane externe contient notamment des porines ; elle n’héberge pas la chaîne respiratoire humaine.",
+        "Certaines bactéries y placent leur chaîne respiratoire, mais dans la cellule humaine celle-ci est mitochondriale.",
+        "Le réticulum participe entre autres aux synthèses protéiques et lipidiques, pas à la chaîne respiratoire mitochondriale."
+      ]
+    },
+    {
+      "reason": "L’O₂ capte des électrons au complexe IV et est réduit en eau ; son absence limite le flux respiratoire aérobie.",
+      "options": [
+        "Le cytochrome c.",
+        "L’ubiquinone.",
+        "Le NAD⁺."
+      ],
+      "why": [
+        "Le cytochrome c est un transporteur intermédiaire entre les complexes III et IV, pas l’accepteur terminal.",
+        "L’ubiquinone transporte des électrons vers le complexe III ; elle n’est pas l’accepteur final.",
+        "Le NADH cède des électrons au début de la chaîne ; le NAD⁺ n’est pas l’accepteur final aérobie."
+      ]
+    },
+    {
+      "reason": "Une fuite de protons dissocie transport d’électrons et phosphorylation : moins d’énergie est conservée en ATP et davantage peut être dissipée en chaleur.",
+      "options": [
+        "Le rendement ATP par oxygène augmente nécessairement.",
+        "La consommation d’oxygène doit toujours s’arrêter immédiatement.",
+        "Le gradient protonique augmente puisque les protons circulent plus vite."
+      ],
+      "why": [
+        "Le découplage diminue le rendement de phosphorylation, même si la consommation d’oxygène augmente.",
+        "La chaîne peut accélérer lorsque la contre-pression du gradient diminue, si substrats et oxygène restent disponibles.",
+        "Une fuite facilite le retour des protons et tend à dissiper le gradient, pas à l’accroître."
+      ]
+    },
+    {
+      "reason": "En phosphorylation oxydative, les complexes I, III et IV déplacent des protons vers l’espace intermembranaire ; l’ATP synthase exploite leur retour.",
+      "options": [
+        "Oui, l’ATP synthase crée le gradient tout en synthétisant l’ATP dans le même cycle.",
+        "Non, seul le complexe II pompe des protons.",
+        "Non, le gradient provient uniquement de la différence de volume des compartiments."
+      ],
+      "why": [
+        "Dans son fonctionnement de synthèse, l’enzyme utilise le gradient ; un fonctionnement inverse peut hydrolyser l’ATP pour pomper des protons.",
+        "Le complexe II transfère des électrons à l’ubiquinone sans pompage protonique.",
+        "La force proton-motrice est entretenue par des transferts énergétiques, non par la seule géométrie des compartiments."
+      ]
+    }
+  ]
+}
+export const biochemistryQuestions: Question[] = biochemistryCourses.flatMap(c => prompts[c.id].map((prompt, qi) => {
+ const item = reviewedChoices[c.id][qi]
+ return {id: `${c.id}-q${qi + 1}`, course: c.id, topic: c.category, prompt,
+ options: [correctText[c.id][qi], ...item.options], correct: [0], why: [item.reason, ...item.why],
+ difficulty: qi < 2 ? 'essentiel' as const : 'application' as const, format: 'single' as const}
 }))

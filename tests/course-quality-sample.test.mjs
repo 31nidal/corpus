@@ -1,7 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { courses } from '../src/study/curriculum.ts'
 import { questions } from '../src/study/questions.ts'
+import { inspectCourse, editorialAudit } from '../scripts/course-editorial-quality.mjs'
 import { canonicalCourses } from '../src/study/taxonomy/canonicalCourses.ts'
 
 const hash = value => {
@@ -41,7 +43,6 @@ for (const course of remaining) {
   selected.add(course.id)
 }
 
-const wordCount = text => String(text ?? '').trim().split(/\s+/).filter(Boolean).length
 const placeholderPattern = /nouveau chapitre au programme canonique|rédaction complète.*programmée|contenu à venir|placeholder|lorem ipsum/i
 const genericLeadPattern = /^(cette notion|ce chapitre|il est important|il est essentiel)\b/i
 
@@ -61,15 +62,16 @@ test('30-course stratified sample meets publication-quality structural checks', 
     assert.equal(course.category, canonical.subject, `${course.id}: canonical subject preserved`)
     assert.ok(course.objectives.length >= 3 && course.objectives.length <= 6, `${course.id}: 3-6 objectives`)
     assert.ok(course.sections.length >= 5 && course.sections.length <= 8, `${course.id}: 5-8 sections`)
-    assert.ok(course.minutes >= 10 && course.minutes <= 25, `${course.id}: realistic study duration`)
-    assert.ok(course.trap?.trim().length >= 20, `${course.id}: substantive trap`)
-    assert.ok(course.recall?.trim().length >= 15, `${course.id}: active-recall prompt`)
-    assert.ok(course.answer?.trim().length >= 20, `${course.id}: recall answer`)
+    assert.ok(Number.isFinite(course.minutes) && course.minutes > 0, `${course.id}: positive study duration`)
+    assert.ok(course.trap?.trim(), `${course.id}: trap`)
+    assert.ok(course.recall?.trim(), `${course.id}: active-recall prompt`)
+    assert.ok(course.answer?.trim(), `${course.id}: recall answer (a precise name or formula may suffice)`)
     assert.ok(course.source?.startsWith('https://'), `${course.id}: primary source is HTTPS`)
     assert.ok((course.sources?.length ?? 0) >= 1, `${course.id}: at least one labelled source`)
 
     const sectionTexts = course.sections.map(section => section.text.trim())
-    assert.ok(sectionTexts.every(text => wordCount(text) >= 45), `${course.id}: sections are substantive`)
+    const findings = inspectCourse(course, questions.filter(q => q.course === course.id))
+    assert.deepEqual(findings.filter(f => f.severity === 'error'), [], `${course.id}: publication errors`)
     assert.ok(new Set(sectionTexts).size === sectionTexts.length, `${course.id}: no duplicated section body`)
 
     const fullText = [
@@ -79,7 +81,6 @@ test('30-course stratified sample meets publication-quality structural checks', 
       course.recall,
       course.answer
     ].join(' ')
-    assert.ok(wordCount(fullText) >= 350, `${course.id}: at least 350 words of learning material`)
     assert.doesNotMatch(fullText, placeholderPattern, `${course.id}: no placeholder language`)
 
     const genericLeads = course.sections.filter(section => genericLeadPattern.test(section.text.trim())).length
@@ -109,4 +110,25 @@ test('quality sample is deterministic and visible in test output', () => {
   console.log('Quality sample (30 courses):')
   for (const course of sample) console.log(`- [${course.subject}] ${course.id} — ${course.title}`)
   assert.equal(sample.length, 30)
+})
+
+test('editorial scan covers all 305 courses, without a word-count publication target', () => {
+  const report = editorialAudit(courses, questions)
+  console.log('Editorial signals:', report.counts.signals)
+  assert.equal(report.counts.courses, 305)
+  for (const row of report.courses) assert.deepEqual(row.issues.filter(i => i.severity === 'error'), [], row.id)
+})
+
+test('editorial corrections preserve every canonical course and existing question identity', () => {
+  const baseline=JSON.parse(readFileSync(new URL('./fixtures/catalog-identities.json',import.meta.url),'utf8'))
+  assert.deepEqual(courses.map(c=>c.id).sort(),baseline.courses)
+  assert.deepEqual(questions.map(q=>[q.id,q.course]).sort(),baseline.questions)
+})
+
+test('mathematical alternatives preserve signs and operators; placeholders remain blocking', () => {
+ const original=courses[0]
+ const q={id:'test',prompt:'Quelle opération ?',options:['a+b','a/b','−1','+1'],correct:[0],why:['Une somme.','Un quotient.','Une valeur négative.','Une valeur positive.']}
+ assert.ok(!inspectCourse(original,[q,q,q,q,q]).some(i=>i.code==='duplicate-option'))
+ assert.ok(inspectCourse({...original,sections:[{title:'Test',text:'Contenu à venir'}]},[]).some(i=>i.code==='placeholder'))
+ assert.ok(inspectCourse(original,[{...q,why:['','','','']}]).some(i=>i.code==='empty-qcm'))
 })

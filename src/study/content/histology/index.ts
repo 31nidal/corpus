@@ -56,7 +56,7 @@ export const histologyCourses: Course[] = [
 const prompts: Record<string, string[]> = {
   'histo-blood-cells': ['Quels éléments composent les éléments figurés du sang ?', 'Quelle protéine plasmatique contribue fortement à la pression oncotique ?', 'Qu’est-ce qui distingue sérum et plasma ?', 'Quelle est la forme des globules rouges humains matures ?', 'De quelles cellules dérivent les plaquettes ?'],
   'histo-bone-architecture': ['Quel type cellulaire dépose l’ostéoïde ?', 'Quel type cellulaire résorbe l’os ?', 'Pourquoi le cartilage dépend-il de la diffusion pour sa nutrition ?', 'Quel composant organique majeur contribue à la résistance à la traction de l’os ?', 'Que désigne un ostéon ?'],
-  'histo-glands-exocrine-endocrine': ['Une glande endocrine possède-t-elle un conduit excréteur ?', 'Quel mode de sécrétion utilise l’exocytose ?', 'Quel produit une cellule caliciforme sécrète-t-elle ?', 'Quel est le trajet général d’une sécrétion exocrine ?', 'À quoi correspond la sécrétion holocrine ?'],
+  'histo-glands-exocrine-endocrine': ['Une glande endocrine possède-t-elle un conduit excréteur ?', 'Quel mode de sécrétion utilise l’exocytose ?', 'Quel produit une cellule caliciforme libère-t-elle ?', 'Quel est le trajet habituel d’une sécrétion exocrine dans une glande pluricellulaire ?', 'À quoi correspond la sécrétion holocrine ?'],
   'histo-connective-tissues': ['Quelle fonction mécanique assure principalement le collagène ?', 'Quelle protéine découplante participe à la thermogenèse du tissu brun ?', 'Quel aspect lipidique caractérise souvent un adipocyte blanc ?', 'Citez un rôle endocrine du tissu adipeux.', 'Une cicatrice restaure-t-elle toujours l’architecture initiale ?'],
 }
 const answers: Record<string, string[]> = {
@@ -65,10 +65,279 @@ const answers: Record<string, string[]> = {
   'histo-glands-exocrine-endocrine': ['Non, elle libère vers le milieu interstitiel puis le sang.', 'La sécrétion mérocrine.', 'Du mucus, qui protège et lubrifie les surfaces épithéliales.', 'Par un conduit vers une surface ou une lumière.', 'La libération du produit lors de la désintégration de la cellule sécrétrice.'],
   'histo-connective-tissues': ['Résister aux forces de traction.', 'UCP1, ou thermogénine.', 'Une grande goutte lipidique unique qui repousse le noyau vers la périphérie.', 'Il sécrète des adipokines qui modulent notamment métabolisme et signaux endocriniens.', 'Non, la cicatrice peut restaurer la continuité sans reconstituer la spécialisation d’origine.'],
 }
-const distractors = ['Elle est toujours formée d’un seul type de cellule.', 'Elle ne contient aucune matrice extracellulaire.', 'Elle se trouve exclusivement dans le système nerveux.', 'Elle n’a aucune fonction de transport ou de soutien.']
-export const histologyQuestions: Question[] = histologyCourses.flatMap((c, ci) => prompts[c.id].map((prompt, qi) => {
-  const answer = answers[c.id][qi]
-  const options = [answer, distractors[(qi + ci) % 4], distractors[(qi + ci + 1) % 4], distractors[(qi + ci + 2) % 4]]
-  return { id: `${c.id}-q${qi + 1}`, course: c.id, topic: c.category, prompt, options, correct: [0],
-    why: options.map((option, oi) => oi === 0 ? answer : `${option} Cette proposition ne correspond pas à l’organisation tissulaire étudiée.`), difficulty: qi < 2 ? 'essentiel' as const : 'application' as const, format: 'single' as const }
+const reviewedChoices: Record<string, {reason: string; options: string[]; why: string[]}[]> = {
+  "histo-blood-cells": [
+    {
+      "reason": "Les éléments figurés comprennent les cellules sanguines et les plaquettes, qui sont des fragments cellulaires.",
+      "options": [
+        "Érythrocytes, albumine et fibrinogène.",
+        "Leucocytes, plaquettes et lipoprotéines.",
+        "Érythrocytes, leucocytes et sérum."
+      ],
+      "why": [
+        "Albumine et fibrinogène sont des protéines plasmatiques, pas des éléments figurés.",
+        "Les lipoprotéines circulent dans le plasma ; elles ne sont pas comptées comme éléments figurés.",
+        "Le sérum est la phase liquide obtenue après coagulation, non un élément figuré."
+      ]
+    },
+    {
+      "reason": "L’albumine est abondante dans le plasma et contribue fortement à la pression osmotique exercée par ses protéines.",
+      "options": [
+        "L’hémoglobine libre.",
+        "Le collagène I.",
+        "La myosine."
+      ],
+      "why": [
+        "L’hémoglobine est normalement intracellulaire dans les érythrocytes ; elle n’est pas la principale protéine oncotique du plasma.",
+        "Le collagène est surtout une protéine structurale de matrice extracellulaire, non la principale protéine soluble plasmatique.",
+        "La myosine participe à la contraction cellulaire ; elle n’assure pas la pression oncotique plasmatique."
+      ]
+    },
+    {
+      "reason": "La coagulation consomme notamment le fibrinogène en formant la fibrine ; le sérum ne doit pas être décrit comme du plasma simplement dépourvu de cellules.",
+      "options": [
+        "Le sérum contient davantage de fibrinogène que le plasma.",
+        "Le plasma est obtenu uniquement après coagulation complète.",
+        "Le sérum contient les érythrocytes, contrairement au plasma."
+      ],
+      "why": [
+        "Le fibrinogène est consommé lors de la coagulation qui permet d’obtenir le sérum.",
+        "Le plasma est isolé sur sang anticoagulé ; après coagulation, on obtient du sérum.",
+        "Après séparation, ni le plasma ni le sérum ne sont définis par la présence d’érythrocytes."
+      ]
+    },
+    {
+      "reason": "La biconcavité et la déformabilité facilitent les échanges et le passage capillaire ; l’érythrocyte mature est anucléé chez l’humain.",
+      "options": [
+        "Un disque biconcave avec noyau central.",
+        "Une cellule sphérique riche en mitochondries.",
+        "Une cellule à noyau polylobé et granulations."
+      ],
+      "why": [
+        "Le noyau est expulsé pendant la maturation érythroïde ; il n’est pas présent dans l’érythrocyte mature humain.",
+        "L’érythrocyte mature a perdu ses mitochondries ; la forme physiologique est un disque biconcave.",
+        "Cette description correspond à certains granulocytes, notamment le neutrophile, pas à l’érythrocyte."
+      ]
+    },
+    {
+      "reason": "Les mégacaryocytes médullaires libèrent des fragments cytoplasmiques formant les plaquettes, impliquées dans l’hémostase.",
+      "options": [
+        "Des érythroblastes.",
+        "Des monocytes.",
+        "Des lymphoblastes."
+      ],
+      "why": [
+        "Les érythroblastes appartiennent à la lignée érythrocytaire et ne produisent pas les plaquettes.",
+        "Les monocytes sont des leucocytes de la lignée myéloïde ; ils ne se fragmentent pas physiologiquement en plaquettes.",
+        "Les lymphoblastes donnent des cellules lymphoïdes ; la lignée mégacaryocytaire produit les plaquettes."
+      ]
+    }
+  ],
+  "histo-bone-architecture": [
+    {
+      "reason": "L’ostéoblaste synthétise la matrice organique non encore minéralisée, notamment son collagène I : l’ostéoïde.",
+      "options": [
+        "L’ostéoclaste.",
+        "Le chondrocyte.",
+        "Le mégacaryocyte."
+      ],
+      "why": [
+        "L’ostéoclaste résorbe la matrice osseuse par acidification et enzymes, plutôt qu’il ne dépose l’ostéoïde.",
+        "Le chondrocyte entretient la matrice du cartilage ; il n’est pas la cellule de dépôt de l’ostéoïde.",
+        "Le mégacaryocyte produit des plaquettes dans la moelle ; il ne synthétise pas la matrice osseuse."
+      ]
+    },
+    {
+      "reason": "L’ostéoclaste, issu de précurseurs hématopoïétiques, résorbe l’os dans un compartiment acidifié au contact de la matrice.",
+      "options": [
+        "L’ostéoblaste.",
+        "Le chondroblaste.",
+        "Le fibroblaste."
+      ],
+      "why": [
+        "L’ostéoblaste synthétise l’ostéoïde ; il intervient dans la régulation du remodelage, mais pas comme cellule résorptive principale.",
+        "Le chondroblaste produit la matrice cartilagineuse, distincte de la résorption de l’os.",
+        "Le fibroblaste élabore la matrice de tissus conjonctifs ; la résorption osseuse spécialisée relève des ostéoclastes."
+      ]
+    },
+    {
+      "reason": "Le cartilage ne contient pas de vaisseaux : les nutriments diffusent à travers la matrice depuis le périchondre ou le liquide synovial selon le site.",
+      "options": [
+        "Ses chondrocytes sont directement entourés de capillaires.",
+        "Sa matrice minéralisée transporte activement les nutriments.",
+        "Tous les cartilages sont nourris exclusivement par le périchondre."
+      ],
+      "why": [
+        "Le cartilage est avasculaire ; les capillaires se trouvent dans les tissus voisins lorsqu’ils sont présents.",
+        "La nutrition repose sur la diffusion, non sur un transport actif par une matrice ; la plupart des cartilages ne sont pas minéralisés.",
+        "Le cartilage articulaire n’a pas de périchondre et reçoit notamment des nutriments du liquide synovial."
+      ]
+    },
+    {
+      "reason": "Les fibres de collagène I contribuent à la résistance à la traction ; la phase minérale apporte surtout rigidité et résistance à la compression.",
+      "options": [
+        "Le collagène II.",
+        "L’hydroxyapatite comme constituant organique.",
+        "L’élastine comme protéine majoritaire."
+      ],
+      "why": [
+        "Le collagène II est caractéristique de la matrice de nombreux cartilages ; le collagène osseux prédominant est de type I.",
+        "L’hydroxyapatite est un constituant minéral, et non organique, de l’os.",
+        "L’élastine favorise le retour élastique de certains tissus ; elle n’est pas la principale protéine de l’os."
+      ]
+    },
+    {
+      "reason": "L’ostéon comprend des lamelles osseuses concentriques autour d’un canal central contenant des vaisseaux et des nerfs.",
+      "options": [
+        "Une travée isolée entourée de cartilage.",
+        "Une cellule osseuse logée dans une lacune.",
+        "Un canal transversal dépourvu de lamelles concentriques propres."
+      ],
+      "why": [
+        "L’os trabéculaire forme des travées ; celles-ci ne sont pas des ostéons recouverts de cartilage.",
+        "La cellule dans la lacune est un ostéocyte ; l’ostéon est une organisation multicellulaire et matricielle.",
+        "Cette description évoque un canal perforant de Volkmann ; l’ostéon s’organise autour d’un canal de Havers."
+      ]
+    }
+  ],
+  "histo-glands-exocrine-endocrine": [
+    {
+      "reason": "Les produits endocrines sont libérés au pôle basal vers l’interstitium puis les capillaires ; il n’existe pas de conduit excréteur pour cette sécrétion.",
+      "options": [
+        "Oui, un canal conduit ses hormones jusqu’à la surface épithéliale.",
+        "Oui, les capillaires sont ses conduits excréteurs.",
+        "Non, parce que son produit reste stocké définitivement dans la cellule."
+      ],
+      "why": [
+        "Un conduit vers une surface ou une lumière caractérise la voie exocrine, pas endocrine.",
+        "Les capillaires transportent le sang après passage de l’hormone dans l’interstitium ; ils ne sont pas des canaux excréteurs épithéliaux.",
+        "L’absence de conduit ne signifie pas absence de libération : les hormones rejoignent le milieu extracellulaire."
+      ]
+    },
+    {
+      "reason": "Dans la sécrétion mérocrine, les vésicules fusionnent avec la membrane sans perte majeure de cytoplasme ni destruction cellulaire.",
+      "options": [
+        "La sécrétion holocrine.",
+        "La sécrétion apocrine.",
+        "La desquamation épithéliale."
+      ],
+      "why": [
+        "En holocrinie, le produit est libéré avec la désintégration de la cellule, comme dans les glandes sébacées.",
+        "La sécrétion apocrine emporte une portion apicale du cytoplasme ; elle se distingue de l’exocytose mérocrine.",
+        "La desquamation est une perte de cellules superficielles, pas un mécanisme d’exocytose sécrétoire."
+      ]
+    },
+    {
+      "reason": "Les cellules caliciformes libèrent des mucines qui s’hydratent et participent au mucus des surfaces respiratoires ou digestives.",
+      "options": [
+        "Du collagène I organisé en faisceaux.",
+        "Une sécrétion lipidique de type sébum.",
+        "Une sécrétion majoritairement riche en pepsinogène."
+      ],
+      "why": [
+        "Les fibres de collagène sont principalement produites par des cellules conjonctives ; elles ne sont pas le produit des cellules caliciformes.",
+        "Le sébum est associé aux glandes sébacées, à sécrétion holocrine.",
+        "Le pepsinogène est produit par les cellules principales gastriques, pas par les cellules caliciformes."
+      ]
+    },
+    {
+      "reason": "Une sécrétion exocrine rejoint une surface ou une lumière ; les glandes pluricellulaires utilisent généralement un conduit, contrairement aux cellules caliciformes isolées.",
+      "options": [
+        "Vers les capillaires après passage interstitiel, sans débouché de surface.",
+        "Vers le noyau de la cellule sécrétrice.",
+        "Uniquement vers une autre cellule par jonction communicante."
+      ],
+      "why": [
+        "Ce trajet définit la sécrétion endocrine, non la voie exocrine.",
+        "Le produit exocrine est destiné au milieu extracellulaire, pas à l’accumulation intranucléaire.",
+        "Une jonction communicante permet un passage intercellulaire de petites molécules ; ce n’est pas un canal excréteur glandulaire."
+      ]
+    },
+    {
+      "reason": "La cellule entière se désintègre et contribue à la sécrétion ; le renouvellement de la glande remplace les cellules perdues.",
+      "options": [
+        "Une exocytose laissant intacte la cellule.",
+        "La perte du seul pôle apical de la cellule.",
+        "Une diffusion hormonale à travers la membrane basale."
+      ],
+      "why": [
+        "C’est le mécanisme mérocrine ; l’holocrinie implique la perte de la cellule sécrétrice.",
+        "La perte apicale caractérise l’apocrinie ; l’holocrinie engage la cellule entière.",
+        "Ce trajet décrit une libération endocrine, pas la désintégration cellulaire holocrine."
+      ]
+    }
+  ],
+  "histo-connective-tissues": [
+    {
+      "reason": "Les fibrilles de collagène s’assemblent en fibres qui limitent l’étirement et résistent à la traction.",
+      "options": [
+        "Assurer principalement le retour élastique après étirement.",
+        "Former directement la phase minérale de l’os.",
+        "Produire une contraction dépendante de l’actine-myosine."
+      ],
+      "why": [
+        "Cette fonction dépend surtout des fibres élastiques ; le collagène limite l’extension et résiste à la traction.",
+        "Le collagène est une protéine organique ; l’hydroxyapatite constitue la phase minérale.",
+        "Le collagène est extracellulaire et ne constitue pas l’appareil contractile actine-myosine."
+      ]
+    },
+    {
+      "reason": "UCP1 facilite le retour des protons vers la matrice mitochondriale en contournant l’ATP synthase ; l’énergie est dissipée sous forme de chaleur.",
+      "options": [
+        "L’ATP synthase seule.",
+        "La myoglobine.",
+        "Le collagène IV."
+      ],
+      "why": [
+        "L’ATP synthase couple le retour des protons à la synthèse d’ATP ; UCP1 permet le découplage thermogène.",
+        "La myoglobine lie l’oxygène dans le muscle ; elle n’est pas le canal protonique thermogène du tissu brun.",
+        "Le collagène IV forme des réseaux dans les lames basales ; il n’est pas une protéine de découplage mitochondrial."
+      ]
+    },
+    {
+      "reason": "L’adipocyte blanc est typiquement uniloculaire ; sa grande vacuole lipidique refoule le cytoplasme et le noyau.",
+      "options": [
+        "De nombreuses petites gouttelettes et un noyau plutôt central.",
+        "Un noyau polylobé entouré de granulations.",
+        "Une cellule sans noyau remplie d’hémoglobine."
+      ],
+      "why": [
+        "Cette organisation multiloculaire est caractéristique du tissu adipeux brun plutôt que de l’adipocyte blanc typique.",
+        "Cette morphologie évoque un granulocyte ; l’adipocyte possède un noyau unique souvent aplati en périphérie.",
+        "Cette description correspond à l’érythrocyte mature, pas à une cellule adipeuse."
+      ]
+    },
+    {
+      "reason": "La leptine et l’adiponectine sont des adipokines ; le tissu adipeux participe ainsi à la régulation métabolique et ne fait pas que stocker des lipides.",
+      "options": [
+        "Il produit l’insuline comme les cellules β pancréatiques.",
+        "Il est dépourvu d’activité sécrétoire car sa vacuole occupe tout le cytoplasme.",
+        "Il sécrète la bile dans des canalicules."
+      ],
+      "why": [
+        "L’insuline est principalement sécrétée par les cellules β des îlots pancréatiques ; l’adipocyte est notamment une cellule cible.",
+        "L’adipocyte conserve des organites et une activité sécrétoire, malgré la grande place de sa vacuole lipidique.",
+        "La bile est produite par les hépatocytes ; les adipokines sont les médiateurs caractéristiques du tissu adipeux."
+      ]
+    },
+    {
+      "reason": "La réparation par fibrose rétablit une continuité, mais peut remplacer des structures spécialisées par une matrice riche en collagène.",
+      "options": [
+        "Oui, un dépôt de collagène prouve la régénération complète du tissu.",
+        "Oui, dès que la surface de la plaie est refermée.",
+        "Non, car une cicatrice ne contient aucune matrice extracellulaire."
+      ],
+      "why": [
+        "Un dépôt de collagène signe une réparation matricielle, pas nécessairement le retour des cellules et fonctions spécialisées.",
+        "La fermeture de surface ne garantit ni organisation profonde ni récupération fonctionnelle complète.",
+        "La cicatrice contient au contraire une matrice abondante, dont la composition et l’organisation diffèrent du tissu initial."
+      ]
+    }
+  ]
+}
+export const histologyQuestions: Question[] = histologyCourses.flatMap(c => prompts[c.id].map((prompt, qi) => {
+ const item = reviewedChoices[c.id][qi]
+ return {id: `${c.id}-q${qi + 1}`, course: c.id, topic: c.category, prompt,
+ options: [answers[c.id][qi], ...item.options], correct: [0], why: [item.reason, ...item.why],
+ difficulty: qi < 2 ? 'essentiel' as const : 'application' as const, format: 'single' as const}
 }))

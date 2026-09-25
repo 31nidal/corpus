@@ -17,7 +17,54 @@ export const radiationCourses: Course[] = items.map(d => {
  const c = meta.get(d.id); if (!c) throw new Error(`Cours canonique inconnu : ${d.id}`)
  return { id: d.id, title: c.title, category: c.subject, tag: c.module, minutes: 17, structure: null, objectives: d.objectives, sections: d.sections, trap: d.trap, recall: d.recall, answer: d.answer, source: d.source, sources: [{ label: d.label, url: d.source }], prerequisites: ['Unités, énergie et interactions rayonnement-matière'], glossary: [['Activité', 'Nombre de désintégrations nucléaires par seconde.'], ['Dose absorbée', 'Énergie impartie par unité de masse, exprimée en gray.'], ['Atténuation', 'Diminution de l’intensité d’un faisceau par absorption et diffusion.']], caseStudy: { prompt: d.case, answer: d.caseAnswer }, review: { status: 'unreviewed', updatedAt: '2026-09-23', sourcesUpdatedAt: '2026-09-23' } }
 })
+const distractorReasons: Record<string, string> = {
+  "A diminue de 2 et Z de 4.": "L’émission alpha correspond à l’expulsion d’un noyau d’hélium : la masse A diminue de 4 et la charge Z de 2.",
+  "A reste et Z augmente de 1.": "Ceci correspond à une émission bêta moins (un neutron devient proton), non à une émission alpha.",
+  "A diminue de 1 et Z reste constant.": "La masse A varie toujours d’un multiple de 4 lors d’une émission alpha.",
+  "La dose absorbée en joules par kilogramme.": "Le gray (Gy) mesure la dose absorbée en J/kg, tandis que le becquerel (Bq) mesure l’activité en s⁻¹.",
+  "La dose équivalente en sieverts.": "Le sievert (Sv) intègre la radiosensibilité, alors que le becquerel (Bq) quantifie l’activité de la source.",
+  "La masse atomique du radionucléide.": "L’activité (Bq) mesure le taux de désintégration, pas la masse.",
+  "Un huitième.": "Après deux périodes, l’activité est divisée par 2² = 4. Un huitième (1/8) correspondrait à trois périodes.",
+  "La moitié.": "La moitié (1/2) de l’activité initiale reste après une seule période, pas deux.",
+  "La totalité.": "L’activité diminue continuellement par décroissance exponentielle.",
+  "Oui, A diminue de 1.": "L’émission gamma dissipe uniquement de l’énergie. Le nombre de nucléons A reste inchangé.",
+  "Oui, Z augmente de 2.": "Une augmentation de Z correspondrait à une désintégration bêta, pas à un rayonnement gamma.",
+  "Oui, gamma expulse un proton.": "Le rayonnement gamma est électromagnétique, il ne s’agit pas de l’expulsion d’un nucléon.",
+  "T½ = 2λ.": "La période s’obtient par ln(2) divisé par la constante λ.",
+  "T½ = λ/ln(2).": "L’équation correcte inverse ce rapport : T½ = ln(2) / λ.",
+  "T½ = eλ.": "La relation fait intervenir le logarithme de 2, pas une exponentielle.",
+  "Il traverse toujours sans modification.": "L’effet photoélectrique correspond à l’absorption totale du photon par l’atome.",
+  "Il se transforme immédiatement en son.": "L’énergie du photon X est transférée à un électron, pas convertie en onde sonore.",
+  "Il produit toujours deux photons de 511 keV.": "La production de deux photons d’annihilation fait suite à une création de paires, pas à un effet photoélectrique.",
+  "Un proton uniquement.": "La diffusion Compton implique le transfert d’énergie à un électron périphérique, pas à un proton.",
+  "Un neutron.": "Les rayonnements en imagerie interagissent avec les électrons, pas les neutrons.",
+  "Un positron sans photon incident.": "L’émission d’un positron relève de la désintégration bêta plus.",
+  "511 keV.": "511 keV est l’énergie d’un seul photon d’annihilation. La création nécessite 1,022 MeV.",
+  "80 keV.": "80 keV est typique en radiodiagnostic, insuffisant pour la création de paires (seuil 1,022 MeV).",
+  "13,6 eV.": "13,6 eV correspond à l’énergie d’ionisation de l’hydrogène, bien en dessous du seuil.",
+  "L’absorption photoélectrique uniquement.": "L’effet photoélectrique absorbe totalement le photon sans diffuser, contrairement à l’effet Compton.",
+  "La réfraction des ultrasons.": "La réfraction ultrasonore obéit à la loi de Snell-Descartes pour ondes sonores.",
+  "La relaxation T2.": "La relaxation T2 est un phénomène de résonance magnétique (IRM).",
+  "La fréquence du tube.": "μ dépend de l’énergie et du matériau, mais ne représente pas une fréquence.",
+  "Le nombre de photons par pixel.": "L’équation de Beer-Lambert décrit l’atténuation physique macroscopique (μ), pas le signal numérique.",
+  "La dose efficace.": "La dose efficace (Sv) estime le risque radiologique global, tandis que μ (cm⁻¹) quantifie l’atténuation linéaire.",
+  "La dose absorbée.": "La dose absorbée s’exprime en grays (Gy = J/kg), non en becquerels.",
+  "La température nucléaire.": "L’activité radioactive ne mesure pas une température, mais un taux de désintégration.",
+  "La puissance électrique.": "La puissance s’exprime en watts (W). Le Bq est spécifique à l’activité radioactive.",
+  "Une énergie par unité de temps.": "Une énergie par temps est une puissance (watt). Le gray est une énergie par unité de masse (J/kg).",
+  "Une quantité de radioactivité par seconde.": "Ceci correspond au becquerel (activité), alors que le gray quantifie l’énergie absorbée.",
+  "Une probabilité de mutation exacte.": "Le gray est une grandeur physique macroscopique, non une probabilité microscopique.",
+  "Une activité en Bq.": "L’activité caractérise la source émettrice. La dose efficace (Sv) estime l’impact sur le patient.",
+  "Une masse atomique.": "La dose efficace s’exprime en sieverts et prend en compte la radiosensibilité tissulaire.",
+  "Une densité de photons.": "La densité de photons est une fluence. La dose efficace est une grandeur de radioprotection.",
+  "La dilution.": "La justification est le principe évaluant le bénéfice clinique ; la dilution concerne les solutions.",
+  "La sélection naturelle.": "En radioprotection, le principe est la justification médicale.",
+  "La diffraction.": "La diffraction est un phénomène ondulatoire physique.",
+  "Oui, elle donne la probabilité exacte de cancer.": "La dose efficace est un indicateur probabiliste pour une population entière, pas une prédiction individuelle.",
+  "Oui, le calcul individuel ne dépend pas du tissu.": "La dose efficace dépend précisément des facteurs de radiosensibilité propres à chaque organe.",
+  "Oui, elle remplace les informations cliniques.": "L’optimisation radiologique complète mais ne remplace jamais l’évaluation clinique."
+};
 export const radiationQuestions: Question[] = items.flatMap(d => d.q.map((prompt, i) => {
  const options = [d.a[i], ...d.w[i]]
- return { id: `${d.id}-q${i + 1}`, course: d.id, topic: 'Biophysique', prompt, options, correct: [0], why: options.map((_, j) => j === 0 ? `La grandeur ou le mécanisme correct est : ${d.a[i]}` : 'Cette option mélange des grandeurs physiques ou des types d’interaction distincts.'), difficulty: i < 2 ? 'essentiel' as const : 'application' as const, format: 'single' as const }
+ return { id: `${d.id}-q${i + 1}`, course: d.id, topic: 'Biophysique', prompt, options, correct: [0], why: options.map((opt, j) => j === 0 ? `La grandeur ou le mécanisme correct est : ${d.a[i]}` : (distractorReasons[opt] || 'Cette proposition est incorrecte dans ce contexte.')), difficulty: i < 2 ? 'essentiel' as const : 'application' as const, format: 'single' as const }
 }))

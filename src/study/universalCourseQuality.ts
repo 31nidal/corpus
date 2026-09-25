@@ -1,6 +1,8 @@
 import type {Course} from './curriculum'
 import type {Question} from './questions'
 import {authoredQuestionCourseIds} from './content'
+import {supplementalQuestionIds} from './content/supplementalQuestionIds'
+import {organQuestionRevisions} from './content/anatomy/organQuestionRevisions'
 
 const prerequisites:Record<string,string[]>={
  Anatomie:['Position anatomique et plans de coupe','Vocabulaire de localisation','Organisation générale du corps'],
@@ -18,7 +20,7 @@ const prerequisites:Record<string,string[]>={
  'Santé publique':['Population et échantillon','Risque et fréquence','Niveaux de prévention'],
  'Santé, Société, Humanité':['Histoire et contexte social des soins','Droits de la personne soignée','Analyse éthique et argumentation'],
  'Médicament & Société':['Pharmacologie générale','Développement et autorisation des médicaments','Évaluation du bénéfice et des risques'],
- 'Recherche biomédicale':['Question de recherche et population','Plans d’étude et mesures','Éthique et intégrité scientifique'],
+ 'Recherche biomédicale':['Question de recherche et population','Plans d\u2019étude et mesures','Éthique et intégrité scientifique'],
  Odontologie:['Anatomie de la tête et du cou','Tissus et morphologie dentaires','Repères de santé orale'],
  'Anglais médical':['Vocabulaire anatomique fondamental','Lecture de textes scientifiques','Communication clinique structurée'],
 }
@@ -68,9 +70,15 @@ export function completeQuestionBank(catalog:Course[],existing:Question[],minimu
    options:[concise(course.caseStudy.answer,300),...sections.slice(0,2).map(s=>s.summary)],correct:[0],why:['Ce raisonnement répond aux éléments précis du cas.',...sections.slice(0,2).map(s=>`Cette proposition rappelle « ${s.title} », sans résoudre entièrement le cas.`)]})
   candidates.push({id:`quality-${course.id}-recall`,course:course.id,topic:course.category,difficulty:'application',format:'single',prompt:course.recall,
    options:[concise(course.answer,300),...sections.slice(-2).map(s=>s.summary)],correct:[0],why:['Cette réponse reprend le raisonnement attendu du cours.',...sections.slice(-2).map(s=>`Cette proposition relève de « ${s.title} », mais ne répond pas directement à la question.`)]})
-  for(const candidate of candidates){
+  const published=supplementalQuestionIds[course.id]
+  const selectedCandidates=published?published.map(id=>{
+   const candidate=candidates.find(q=>q.id===id)
+   if(!candidate)throw new Error(`Question publiée sans contenu : ${id}`)
+   return {...candidate,...organQuestionRevisions[id]}
+  }):candidates
+  for(const candidate of selectedCandidates){
    if(result.filter(q=>q.course===course.id).length>=courseMinimum)break
-   if(candidate.options.length>=2&&!result.some(q=>q.id===candidate.id||q.prompt===candidate.prompt))result.push(candidate)
+   if(candidate.options.length>=2&&!result.some(q=>q.id===candidate.id||(!published&&q.prompt===candidate.prompt)))result.push(candidate)
   }
   if(result.filter(q=>q.course===course.id).length<courseMinimum)throw new Error(`Banque incomplète pour ${course.id}`)
  }

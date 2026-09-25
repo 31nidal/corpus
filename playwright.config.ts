@@ -5,5 +5,5 @@ export default defineConfig({
     launchOptions: { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] },
     screenshot: 'only-on-failure', trace: 'retain-on-failure' },
   reporter: [['list'], ['html', { open: 'never' }]],
-  webServer: { command: 'npm run dev -- --host 127.0.0.1 --port 5173', url: 'http://127.0.0.1:5173', reuseExistingServer: true }
+  webServer: { env: {VITE_QCM_TEST_SEED:'playwright-qcm'}, command: 'npm run dev -- --host 127.0.0.1 --port 5173', url: 'http://127.0.0.1:5173', reuseExistingServer: true }
 })

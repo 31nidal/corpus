@@ -256,7 +256,7 @@ test('génération et persistance : erreur QCM (front/back non vides, dialogue e
   expect(question).toBeTruthy()
   // The random question may have its correct answer in any position.
   const wrong = question.options.findIndex((_, index) => !question.correct.includes(index))
-  await page.locator('.answer-options button').nth(wrong >= 0 ? wrong : 0).click()
+  await page.locator('.answer-options button').filter({has:page.getByText(question.options[wrong],{exact:true})}).click()
   await page.getByRole('button', { name: 'Valider ma réponse' }).click()
 
   const addBtn = page.getByRole('button', { name: 'Ajouter aux flashcards' })
