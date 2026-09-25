@@ -1,8 +1,18 @@
 import type {Question} from '../../questions'
 import {supplementalQuestionIds} from '../supplementalQuestionIds'
+import {anatomyRevisions1} from '../supplemental/anatomyRevisions1'
+import {anatomyRevisions2} from '../supplemental/anatomyRevisions2'
+import {anatomyRevisions3} from '../supplemental/anatomyRevisions3'
+import {scienceRevisions} from '../supplemental/scienceRevisions'
+import {statsRevisions} from '../supplemental/statsRevisions'
 
 type Draft = Pick<Question, 'prompt' | 'options' | 'correct' | 'why' | 'format'>
 const bank: Record<string, [string, string[], string[]][]> = {
+  ...anatomyRevisions1,
+  ...anatomyRevisions2,
+  ...anatomyRevisions3,
+  ...scienceRevisions,
+  ...statsRevisions,
   "FMA7088": [
     [
       "Quelle cavité contribue le plus à la face sternocostale du cœur ?",
