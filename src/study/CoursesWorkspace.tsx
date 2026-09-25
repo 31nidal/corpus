@@ -62,6 +62,7 @@ function CanonicalPlaceholderView(p:{course:CanonicalCourseMetadata;completed:st
     <div className="study-eyebrow">{p.course.subject.toLocaleUpperCase('fr')} · {p.course.module.toLocaleUpperCase('fr')}</div>
     <h1>{p.course.title}</h1>
     <div className="canonical-placeholder-meta"><span className={`priority-tag priority-${p.course.priority.toLowerCase()}`}>Priorité {p.course.priority}</span><span><GraduationCap size={15}/> Maquette canonique de première année Santé</span><span><BookOpen size={14}/> 10 à 25 min d'apprentissage ciblé</span>{p.completed.includes(p.course.id)&&<span><CheckCircle2 size={15}/> Terminé</span>}</div>
+    <CourseDiagram key={'diagram-'+p.course.id} courseId={p.course.id}/>
     <section className="legacy-hub-explanation"><h2>Nouveau chapitre au programme canonique</h2><p>Ce chapitre fait partie du référentiel pédagogique approfondi MyCorpus. La rédaction complète de son contenu selon les standards éditoriaux de première année Santé est programmée.</p><small>Référentiel universitaire associé : Toulouse {p.course.universityMappings.toulouse.ue} ({p.course.universityMappings.toulouse.topic}).</small></section>
     <section className="legacy-hub-practice-section"><h2>S'entraîner sur cette matière</h2><p>Pratiquez dès maintenant les notions de {p.course.subject} en mode QCM ou examen blanc.</p><button className="study-secondary" onClick={()=>p.practice(p.course.id)}><GraduationCap size={17}/> Lancer un entraînement ({p.course.subject})</button></section>
     <Notebook courseId={p.course.id} title={p.course.title}/>
