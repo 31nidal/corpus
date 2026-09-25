@@ -202,7 +202,7 @@ export default function App() {
 
   useEffect(() => {
     const controller = new AbortController()
-    setManifest(null); setSelectedId(null); setHiddenIds([]); setIsolated(false); setManifestError(false)
+    setManifest(null); if (!readRoute().id) setSelectedId(null); setHiddenIds([]); setIsolated(false); setManifestError(false)
     setLoad({progress:0,ready:[],error:null,complete:false})
     fetch(`${import.meta.env.BASE_URL}models/${body==='female'?'female-regions/manifest.json':detailMode ? 'manifest.json' : 'overview.json'}`, { signal: controller.signal })
       .then(response => { if (!response.ok) throw new Error('manifest'); return response.json() })
@@ -418,7 +418,7 @@ export default function App() {
     <footer className="bottombar"><div className="model-status"><span className={`status-dot ${load.complete ? 'is-ready' : ''}`} /><span>{load.complete ? `${visibleCount} structures actives` : 'Préparation de l’exploration'}</span><span className="footer-divider">/</span><span>{body==='female'?'Human Reference Atlas':'BodyParts3D'}</span></div><button className="education-note" onClick={()=>{setSelectedId(null);setIsolated(false);setCatalogOpen(v=>!v)}}>Index des structures <ArrowUpRight size={12}/></button><div className="footer-actions"><a href="/confidentialite.html" target="_blank">Confidentialité</a><button onClick={() => setModal('about')}>Sources & crédits <ArrowUpRight size={12} /></button><button onClick={() => setModal('help')} aria-label="Aide à la navigation"><CircleHelp size={17} /></button></div></footer>
 
     </div>
-    {learningOpen&&<CoursesWorkspace initial={courseToOpen} completed={completed} complete={completeCourse} explore={id=>{const reference=id.startsWith('HRA-')?'female':'male';setBody(reference);setDetailMode(true);setLearningOpen(false);setPracticeOpen(false);setMyCoursesOpen(false);writeRoute(id,true,reference)}} practice={id=>openStudy('entrainement',id)} navigate={id=>openStudy('cours',id)}/>}
+    {learningOpen&&<CoursesWorkspace initial={courseToOpen} completed={completed} complete={completeCourse} explore={id=>{const reference=id.startsWith('HRA-')?'female':'male';setBody(reference);setSelectedId(id);setDetailMode(true);setLearningOpen(false);setPracticeOpen(false);setMyCoursesOpen(false);writeRoute(id,true,reference)}} practice={id=>openStudy('entrainement',id)} navigate={id=>openStudy('cours',id)}/>}
     {practiceOpen&&<PracticeWorkspace course={practiceCourse} navigate={id=>openStudy('entrainement',id)} learn={id=>openStudy('cours',id)} start3D={startQuiz}/>}
     {myCoursesOpen&&(
       <Suspense fallback={<div className="study-workspace" style={{padding:'4rem 1rem',textAlign:'center',color:'#64748b'}}>Chargement de vos cours…</div>}>
