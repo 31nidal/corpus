@@ -1265,7 +1265,7 @@ export const anatomyRevisions1: Record<string, [string, string[], string[]][]> =
       ]
     ],
     [
-      "À quel niveau vertébral se termine habituellement la moelle épinière chez l'adulte ?",
+      "À quelle hauteur de la colonne vertébrale se termine le cône médullaire de la moelle épinière chez l'adulte ?",
       [
         "Au niveau du bord inférieur de L1 ou bord supérieur de L2 (cône médullaire).",
         "Au niveau de la cinquième vertèbre sacrée (S5).",
