@@ -107,7 +107,7 @@ export default function MedicalDrawingContent({
   if (courseId === 'FMA7088' || courseId === 'anat-heart-chambers-valves') {
     return (
       <g className="drawing-heart-anatomy">
-        {/* Silhouette musculaire du myocarde */}
+        {/* Silhouette myocardique externe et péricarde */}
         <path
           d="M130 180 C110 240 160 360 310 395 C460 360 520 240 490 170 C480 130 430 120 400 130 C360 90 280 85 240 125 C190 120 145 140 130 180 Z"
           fill="var(--med-wash)"
@@ -116,63 +116,75 @@ export default function MedicalDrawingContent({
           strokeLinejoin="round"
         />
 
-        {/* Grands vaisseaux : Veines caves, Tronc pulmonaire, Crosse aortique */}
-        {/* Veine cave sup */}
-        <path d="M165 40 V130" stroke="#376d97" strokeWidth="22" strokeLinecap="round" />
-        {/* Aorte ascendante & crosse */}
+        {/* Veine cave supérieure et inférieure */}
+        <path d="M165 30 V135 M165 330 V390" stroke="#376d97" strokeWidth="22" strokeLinecap="round" />
+        <text x="110" y="45" className="med-annotation">VCS ↑</text>
+        <text x="110" y="380" className="med-annotation">VCI ↓</text>
+
+        {/* Aorte ascendante & crosse aortique avec 3 troncs supra-aortiques */}
         <g {...structProps(7, 'Aorte ascendante et crosse')}>
-          <path d="M315 140 C315 50 385 45 420 80 L420 130" fill="none" stroke="#ba3244" strokeWidth="24" strokeLinecap="round" />
-          {/* 3 troncs supra-aortiques */}
-          <path d="M340 50 V25 M370 48 V25 M395 56 V25" stroke="#ba3244" strokeWidth="7" strokeLinecap="round" />
-          <text x="345" y="42" className="med-label-white">Aorte</text>
+          <path d="M315 140 C315 48 385 42 420 78 L420 130" fill="none" stroke="#ba3244" strokeWidth="24" strokeLinecap="round" />
+          {/* Troncs supra-aortiques : TABC, Carotide commune G, Sous-clavière G */}
+          <path d="M340 50 V20 M370 48 V20 M395 56 V20" stroke="#ba3244" strokeWidth="7" strokeLinecap="round" />
+          <text x="345" y="42" className="med-label-white">Crosse Aorte</text>
         </g>
-        {/* Tronc pulmonaire */}
+
+        {/* Tronc pulmonaire et bifurcation */}
         <g {...structProps(3, 'Tronc pulmonaire')}>
-          <path d="M280 150 C270 90 240 70 200 65 M275 100 C300 85 330 80 350 85" fill="none" stroke="#25627a" strokeWidth="20" strokeLinecap="round" />
-          <text x="220" y="80" className="med-label">Tronc pulm.</text>
+          <path d="M280 150 C270 88 240 68 195 65 M275 98 C300 84 330 78 355 82" fill="none" stroke="#25627a" strokeWidth="20" strokeLinecap="round" />
+          <text x="215" y="78" className="med-label">Tronc pulm.</text>
         </g>
 
         {/* 1. Atrium droit */}
         <g {...structProps(0, 'Atrium droit')}>
           <path d="M145 140 C140 180 160 210 210 210 C210 160 195 140 145 140 Z" fill="#d2e3ee" stroke="#376d97" strokeWidth="3" />
           <text x="155" y="175" className="med-label">Atrium D.</text>
+          <text x="150" y="195" className="med-annotation">Sang veineux</text>
         </g>
 
-        {/* 2. Ventricule droit */}
+        {/* 2. Ventricule droit (paroi 3-5 mm) */}
         <g {...structProps(1, 'Ventricule droit')}>
           <path d="M170 225 C170 300 220 355 295 365 C290 300 270 235 220 225 Z" fill="#e5eff5" stroke="#376d97" strokeWidth="3" />
+          {/* Trabécules charnues */}
+          <path d="M190 290 Q210 320 230 310 M230 330 Q250 350 270 340" stroke="#b4cad7" strokeWidth="2.5" fill="none" />
           <text x="200" y="295" className="med-label">Ventricule D.</text>
         </g>
 
-        {/* 3. Valve tricuspide */}
+        {/* 3. Valve tricuspide & Cordages tendineux */}
         <g {...structProps(2, 'Valve tricuspide')}>
           <path d="M175 215 L225 215" stroke="#376d97" strokeWidth="6" strokeDasharray="5 3" />
-          {/* Cordages */}
+          {/* Cordages tendineux & muscle papillaire */}
           <path d="M185 220 L195 255 M215 220 L210 255" stroke="#7194ab" strokeWidth="2" />
+          <polygon points="190,255 215,255 202,275" fill="#7194ab" />
         </g>
 
         {/* 5. Atrium gauche */}
         <g {...structProps(4, 'Atrium gauche')}>
           <path d="M395 140 C445 140 470 165 470 205 C420 205 400 180 395 140 Z" fill="#fad7dc" stroke="#ba3244" strokeWidth="3" />
           <text x="415" y="175" className="med-label">Atrium G.</text>
+          <text x="405" y="195" className="med-annotation">Veines pulm.</text>
         </g>
 
-        {/* 6. Ventricule gauche */}
+        {/* 6. Ventricule gauche (paroi épaisse 8-12 mm) */}
         <g {...structProps(5, 'Ventricule gauche')}>
-          <path d="M335 225 C335 300 345 355 315 375 C380 365 470 310 460 225 Z" fill="#fcebed" stroke="#ba3244" strokeWidth="4" />
+          <path d="M335 225 C335 300 345 355 315 375 C380 365 470 310 460 225 Z" fill="#fcebed" stroke="#ba3244" strokeWidth="5" />
+          {/* Trabécules et piliers massifs */}
+          <path d="M360 290 Q380 330 410 320 M400 330 Q420 350 440 310" stroke="#e3a4ad" strokeWidth="3" fill="none" />
           <text x="385" y="295" className="med-label">Ventricule G.</text>
+          <text x="375" y="315" className="med-annotation">Haute pression</text>
         </g>
 
-        {/* 7. Valve mitrale */}
+        {/* 7. Valve mitrale & Cordages tendineux */}
         <g {...structProps(6, 'Valve mitrale')}>
           <path d="M380 215 L435 215" stroke="#ba3244" strokeWidth="6" strokeDasharray="5 3" />
-          {/* Cordages */}
-          <path d="M395 220 L400 260 M420 220 L415 260" stroke="#d58691" strokeWidth="2" />
+          {/* Cordages tendineux & muscle papillaire gauche */}
+          <path d="M395 220 L400 260 M420 220 L415 260" stroke="#d58691" strokeWidth="2.5" />
+          <polygon points="395,260 420,260 408,280" fill="#d58691" />
         </g>
 
         {/* 9. Septum interventriculaire */}
         <g {...structProps(8, 'Septum interventriculaire')}>
-          <path d="M295 220 C290 280 295 340 315 385 C335 340 330 280 325 220 Z" fill="#be4d5c" opacity="0.85" />
+          <path d="M295 220 C290 280 295 340 315 385 C335 340 330 280 325 220 Z" fill="#be4d5c" opacity="0.9" />
           <text x="285" y="260" className="med-label-white">Septum</text>
         </g>
       </g>
@@ -246,7 +258,7 @@ export default function MedicalDrawingContent({
   if (courseId === 'FMA7204') {
     return (
       <g className="drawing-kidney-gross">
-        {/* Silhouette rénale en haricot */}
+        {/* Silhouette rénale en haricot & Capsule fibreuse */}
         <path
           d="M200 45 C350 35 480 80 490 200 C490 270 450 300 410 240 C390 190 350 180 350 250 C360 320 440 330 400 375 C310 405 170 365 140 250 C120 150 150 55 200 45 Z"
           fill="var(--med-wash)"
@@ -254,51 +266,61 @@ export default function MedicalDrawingContent({
           strokeWidth="6"
         />
 
-        {/* 1. Cortex rénal périphérique */}
+        {/* 1. Cortex rénal périphérique et arcs sous-capsulaires */}
         <g {...structProps(0, 'Cortex rénal')}>
           <path
             d="M195 65 C320 55 450 95 465 190 C420 160 380 140 330 180 C260 140 180 180 160 240 C145 160 165 75 195 65 Z"
             fill="rgba(196, 122, 134, 0.25)"
             stroke="#9f4a58"
-            strokeWidth="2"
+            strokeWidth="2.5"
             strokeDasharray="4 3"
           />
-          <text x="195" y="90" className="med-label">Cortex rénal</text>
+          <text x="195" y="88" className="med-label">Cortex rénal</text>
         </g>
 
-        {/* 2. Pyramides médullaires de Malpighi */}
-        <g {...structProps(1, 'Pyramides médullaires')}>
-          {/* 4 pyramides triangulaires */}
-          <path d="M220 110 L280 140 L230 165 Z" fill="#9e394b" />
-          <path d="M190 180 L260 200 L200 235 Z" fill="#9e394b" />
-          <path d="M200 255 L270 260 L220 305 Z" fill="#9e394b" />
-          <path d="M240 320 L290 300 L265 355 Z" fill="#9e394b" />
-          <text x="210" y="195" className="med-label-white">Pyramides</text>
+        {/* 2. Pyramides médullaires de Malpighi & Colonnes de Bertin */}
+        <g {...structProps(1, 'Pyramides médullaires de Malpighi')}>
+          {/* Pyramides striées orientées vers les papilles */}
+          <path d="M220 105 L280 135 L230 160 Z" fill="#9e394b" />
+          <path d="M185 175 L255 195 L195 230 Z" fill="#9e394b" />
+          <path d="M195 250 L265 255 L215 298 Z" fill="#9e394b" />
+          <path d="M235 315 L285 295 L260 350 Z" fill="#9e394b" />
+          <path d="M280 100 L325 145 L290 155 Z" fill="#9e394b" opacity="0.8" />
+          {/* Stries radiaires médullaires */}
+          <path d="M230 115 L270 135 M200 185 L245 198 M205 260 L255 260 M245 320 L275 305" stroke="#d58691" strokeWidth="1.5" />
+          <text x="210" y="195" className="med-label-white">Pyramides (Malpighi)</text>
         </g>
 
-        {/* 3. Calices */}
+        {/* 3. Petits et grands calices (Arbre caliciel) */}
         <g {...structProps(2, 'Petits et grands calices')}>
-          <path d="M280 140 Q330 170 350 200 M260 200 Q320 210 350 215 M270 260 Q325 245 350 230 M290 300 Q335 265 355 240" stroke="#488ba8" strokeWidth="5" fill="none" />
-          <text x="320" y="170" className="med-label">Calices</text>
+          <path d="M280 135 Q330 165 350 195 M255 195 Q315 205 350 210 M265 255 Q320 240 350 225 M285 295 Q330 260 350 235" stroke="#488ba8" strokeWidth="5" fill="none" />
+          {/* Calices mineurs coiffant les papilles */}
+          <ellipse cx="280" cy="135" rx="5" ry="8" fill="#488ba8" />
+          <ellipse cx="255" cy="195" rx="5" ry="8" fill="#488ba8" />
+          <ellipse cx="265" cy="255" rx="5" ry="8" fill="#488ba8" />
+          <ellipse cx="285" cy="295" rx="5" ry="8" fill="#488ba8" />
+          <text x="315" y="165" className="med-label">Calices</text>
         </g>
 
-        {/* 4. Bassinet (pyélon) */}
+        {/* 4. Bassinet (pyélon en entonnoir) */}
         <g {...structProps(3, 'Bassinet (pyélon)')}>
-          <path d="M350 190 Q390 210 430 230 L410 270 Q370 250 350 240 Z" fill="#5badd0" opacity="0.6" stroke="#25627a" strokeWidth="3" />
-          <text x="390" y="225" className="med-label-bold">Bassinet</text>
+          <path d="M350 185 Q390 205 430 225 L410 265 Q370 245 350 235 Z" fill="#5badd0" opacity="0.75" stroke="#25627a" strokeWidth="3" />
+          <text x="385" y="222" className="med-label-bold">Bassinet</text>
         </g>
 
         {/* 5. Uretère */}
         <g {...structProps(4, 'Uretère')}>
-          <path d="M420 250 C440 290 455 330 460 395" fill="none" stroke="#25627a" strokeWidth="12" strokeLinecap="round" />
+          <path d="M420 245 C440 285 455 330 460 395" fill="none" stroke="#25627a" strokeWidth="12" strokeLinecap="round" />
           <text x="475" y="350" className="med-label">Uretère ↓</text>
         </g>
 
-        {/* 6. Vaisseaux rénaux (Artère et veine) */}
+        {/* 6. Artère et veine rénales (Hile rénal) */}
         <g {...structProps(5, 'Artère et veine rénales')}>
-          <path d="M540 140 L430 180" stroke="#ba3244" strokeWidth="10" strokeLinecap="round" />
-          <path d="M540 165 L440 195" stroke="#376d97" strokeWidth="10" strokeLinecap="round" />
-          <text x="490" y="130" className="med-label">Vaisseaux du hile</text>
+          <path d="M540 135 L425 175" stroke="#ba3244" strokeWidth="11" strokeLinecap="round" />
+          <path d="M540 162 L435 192" stroke="#376d97" strokeWidth="11" strokeLinecap="round" />
+          {/* Branches interlobaires */}
+          <path d="M430 175 Q380 150 330 135 M430 175 Q370 210 320 230" stroke="#ba3244" strokeWidth="4" fill="none" />
+          <text x="485" y="125" className="med-label">Vaisseaux du hile</text>
         </g>
       </g>
     )
@@ -371,72 +393,80 @@ export default function MedicalDrawingContent({
     )
   }
 
-  // 6. Anatomie des poumons et arbre trachéobronchique (FMA7309)
+  // 6. Anatomie des poumons et arbre trachéobronchique (FMA7309 - Patrick J. Lynch / Yale University CC BY 2.5)
   if (courseId === 'FMA7309') {
     return (
       <g className="drawing-lungs-anatomy">
-        {/* 1. Trachée et carène */}
+        {/* 1. Trachée et carène (bifurcation T4-T5) */}
         <g {...structProps(0, 'Trachée et carène')}>
-          <path d="M320 30 V125" stroke="#5da9c6" strokeWidth="20" strokeLinecap="round" />
-          {/* Anneaux cartilagineux */}
-          {[50, 70, 90, 110].map(y => (
-            <path key={y} d={`M310 ${y} H330`} stroke="#ffffff" strokeWidth="2" />
+          <path d="M320 25 V125" stroke="#5da9c6" strokeWidth="22" strokeLinecap="round" />
+          {/* Anneaux cartilagineux en C */}
+          {[42, 62, 82, 102, 118].map(y => (
+            <path key={y} d={`M309 ${y} H331`} stroke="#ffffff" strokeWidth="2.5" />
           ))}
-          {/* Bifurcation */}
-          <path d="M320 125 L260 170 M320 125 L380 180" stroke="#5da9c6" strokeWidth="14" strokeLinecap="round" />
-          <text x="335" y="65" className="med-label">Trachée</text>
-          <text x="310" y="145" className="med-label-bold">Carène (T4-T5)</text>
+          {/* Bifurcation trachéale & éperon de la carène */}
+          <path d="M320 125 L255 170 M320 125 L385 180" stroke="#5da9c6" strokeWidth="15" strokeLinecap="round" />
+          <text x="338" y="60" className="med-label">Trachée</text>
+          <text x="305" y="145" className="med-label-bold">Carène (T4-T5)</text>
         </g>
 
-        {/* 2. Poumon droit (3 lobes) */}
+        {/* 2. Poumon droit (3 lobes délimités par scissure horizontale et oblique) */}
         <g {...structProps(1, 'Poumon droit (3 lobes)')}>
           <path
-            d="M260 120 C230 60 160 80 140 160 C120 240 110 320 160 360 C230 380 270 340 265 250 C260 180 280 140 260 120 Z"
+            d="M260 120 C230 55 160 75 140 155 C120 235 110 320 160 365 C230 385 270 345 265 250 C260 180 280 140 260 120 Z"
             fill="var(--med-wash)"
             stroke="#2e6d82"
             strokeWidth="4"
           />
-          {/* Scissure horizontale */}
-          <path d="M130 220 Q200 215 265 240" stroke="#2e6d82" strokeWidth="3" strokeDasharray="4 2" />
+          {/* Scissure horizontale (4e côte) */}
+          <path d="M130 220 Q200 215 265 240" stroke="#2e6d82" strokeWidth="3" strokeDasharray="5 2" />
           {/* Scissure oblique droite */}
-          <path d="M160 140 Q210 270 220 365" stroke="#2e6d82" strokeWidth="3" strokeDasharray="4 2" />
-          <text x="155" y="160" className="med-label">Lobe sup.</text>
+          <path d="M160 135 Q210 270 220 370" stroke="#2e6d82" strokeWidth="3" strokeDasharray="5 2" />
+          {/* Arborisations bronchiques droites */}
+          <path d="M255 170 L200 160 M255 170 L210 230 M255 170 L230 290" stroke="#87bed1" strokeWidth="3" fill="none" />
+          <text x="155" y="155" className="med-label">Lobe sup.</text>
           <text x="165" y="245" className="med-label">Lobe moy.</text>
-          <text x="180" y="325" className="med-label">Lobe inf.</text>
+          <text x="180" y="330" className="med-label">Lobe inf.</text>
         </g>
 
-        {/* 3. Poumon gauche (2 lobes & incisure cardiaque) */}
+        {/* 3. Poumon gauche (2 lobes avec incisure cardiaque & lingula) */}
         <g {...structProps(2, 'Poumon gauche (2 lobes)')}>
           <path
-            d="M380 120 C410 60 480 80 500 160 C520 240 530 320 480 360 C420 380 375 350 380 290 C360 250 370 210 380 190 C385 150 365 140 380 120 Z"
+            d="M380 120 C410 55 480 75 500 155 C520 235 530 320 480 365 C420 385 375 355 380 290 C360 250 370 210 380 190 C385 150 365 140 380 120 Z"
             fill="var(--med-wash)"
             stroke="#ba5d6d"
             strokeWidth="4"
           />
           {/* Scissure oblique gauche */}
-          <path d="M470 140 Q430 260 410 365" stroke="#ba5d6d" strokeWidth="3" strokeDasharray="4 2" />
+          <path d="M470 135 Q430 260 410 370" stroke="#ba5d6d" strokeWidth="3" strokeDasharray="5 2" />
+          {/* Arborisations bronchiques gauches */}
+          <path d="M385 180 L440 165 M385 180 L440 280" stroke="#dda8b1" strokeWidth="3" fill="none" />
           {/* Incisure cardiaque */}
-          <text x="385" y="250" className="med-annotation-bold">Incisure cardiaque</text>
-          <text x="440" y="180" className="med-label">Lobe sup.</text>
-          <text x="445" y="315" className="med-label">Lobe inf.</text>
+          <text x="382" y="250" className="med-annotation-bold">Incisure cardiaque</text>
+          <text x="440" y="175" className="med-label">Lobe sup.</text>
+          <text x="445" y="320" className="med-label">Lobe inf.</text>
         </g>
 
-        {/* 4. Plèvre */}
-        <g {...structProps(3, 'Plèvre')}>
-          <path d="M100 240 Q95 320 135 365" stroke="#58a183" strokeWidth="4" fill="none" />
-          <text x="60" y="280" className="med-label">Plèvre</text>
+        {/* 4. Plèvre viscérale et pariétale */}
+        <g {...structProps(3, 'Plèvre viscérale et pariétale')}>
+          <path d="M95 230 Q90 325 130 375" stroke="#58a183" strokeWidth="5" fill="none" />
+          <path d="M85 240 Q80 335 125 385" stroke="#58a183" strokeWidth="2.5" strokeDasharray="3 2" fill="none" />
+          <text x="50" y="280" className="med-label">Plèvre</text>
         </g>
 
         {/* 5. Hile pulmonaire */}
         <g {...structProps(4, 'Hile pulmonaire')}>
-          <circle cx="270" cy="220" r="18" fill="none" stroke="#ba3244" strokeWidth="3" strokeDasharray="3 2" />
-          <text x="240" y="200" className="med-label">Hile droit</text>
+          <circle cx="270" cy="220" r="20" fill="none" stroke="#ba3244" strokeWidth="3.5" strokeDasharray="4 2" />
+          {/* Vaisseaux pulmonaires */}
+          <circle cx="265" cy="215" r="6" fill="#376d97" />
+          <circle cx="276" cy="225" r="5" fill="#ba3244" />
+          <text x="240" y="195" className="med-label">Hile droit</text>
         </g>
       </g>
     )
   }
 
-  // 7. Cerveau & Hémisphère cérébral (FMA50801)
+  // 7. Cerveau & Hémisphère cérébral (FMA50801 - Patrick J. Lynch / Yale University CC BY 2.5)
   if (courseId === 'FMA50801') {
     return (
       <g className="drawing-brain-hemisphere">
@@ -448,30 +478,34 @@ export default function MedicalDrawingContent({
           strokeWidth="6"
         />
 
-        {/* 1. Lobe frontal (antérieur) */}
+        {/* 1. Lobe frontal (moteur et préfrontal) */}
         <g {...structProps(0, 'Lobe frontal')}>
           <path
             d="M135 210 C125 145 200 65 315 65 L315 200 C270 200 210 210 135 210 Z"
             fill="rgba(58, 140, 179, 0.28)"
           />
-          <text x="180" y="135" className="med-label-bold">LOBE FRONTAL</text>
-          <text x="175" y="155" className="med-annotation">Moteur (M1) · Broca</text>
+          {/* Gyri frontaux */}
+          <path d="M150 140 Q220 130 280 140 M170 175 Q240 165 290 175" stroke="#3a8cb3" strokeWidth="2" fill="none" opacity="0.6" />
+          <text x="180" y="130" className="med-label-bold">LOBE FRONTAL</text>
+          <text x="175" y="150" className="med-annotation">Moteur (M1) · Broca</text>
         </g>
 
         {/* 2. Sillon central de Rolando */}
         <g {...structProps(1, 'Sillon central (de Rolando)')}>
           <path d="M320 55 Q310 130 335 195" stroke="#cf4b5a" strokeWidth="6" strokeLinecap="round" fill="none" />
-          <text x="280" y="45" className="med-label-bold">Sillon central (Rolando)</text>
+          <text x="275" y="45" className="med-label-bold">Sillon central (Rolando)</text>
         </g>
 
-        {/* 3. Lobe pariétal */}
+        {/* 3. Lobe pariétal (somatosensitif) */}
         <g {...structProps(2, 'Lobe pariétal')}>
           <path
             d="M330 65 C410 65 475 90 480 185 L345 195 Z"
             fill="rgba(224, 154, 76, 0.28)"
           />
-          <text x="375" y="130" className="med-label-bold">PARIÉTAL</text>
-          <text x="380" y="150" className="med-annotation">Sensitif (S1)</text>
+          {/* Gyrus postcentral sensitif */}
+          <path d="M340 75 Q330 135 355 190" stroke="#e09a4c" strokeWidth="3" fill="none" opacity="0.7" />
+          <text x="375" y="125" className="med-label-bold">PARIÉTAL</text>
+          <text x="380" y="145" className="med-annotation">Sensitif (S1)</text>
         </g>
 
         {/* 4. Sillon latéral de Sylvius */}
@@ -480,17 +514,19 @@ export default function MedicalDrawingContent({
           <text x="210" y="235" className="med-label-bold">Sillon latéral (Sylvius)</text>
         </g>
 
-        {/* 5. Lobe temporal */}
+        {/* 5. Lobe temporal (audition et mémoire) */}
         <g {...structProps(4, 'Lobe temporal')}>
           <path
             d="M195 225 Q300 210 405 225 C405 270 330 285 240 295 C190 280 185 245 195 225 Z"
             fill="rgba(69, 156, 120, 0.28)"
           />
-          <text x="245" y="265" className="med-label-bold">TEMPORAL</text>
-          <text x="240" y="282" className="med-annotation">Audition · Wernicke</text>
+          {/* Gyri temporaux supérieur, moyen et inférieur */}
+          <path d="M210 250 Q300 240 380 250 M220 270 Q300 260 360 270" stroke="#459c78" strokeWidth="2" fill="none" opacity="0.6" />
+          <text x="245" y="260" className="med-label-bold">TEMPORAL</text>
+          <text x="240" y="278" className="med-annotation">Audition · Wernicke</text>
         </g>
 
-        {/* 6. Lobe occipital */}
+        {/* 6. Lobe occipital (vision V1) */}
         <g {...structProps(5, 'Lobe occipital')}>
           <path
             d="M485 185 C555 185 555 245 520 265 L460 220 Z"
@@ -500,7 +536,7 @@ export default function MedicalDrawingContent({
           <text x="500" y="235" className="med-annotation">Vision (V1)</text>
         </g>
 
-        {/* 7. Cervelet */}
+        {/* 7. Cervelet (folia cérébelleuses) */}
         <g {...structProps(6, 'Cervelet')}>
           <path
             d="M410 290 C450 280 520 295 505 365 C450 380 400 350 410 290 Z"
@@ -508,15 +544,17 @@ export default function MedicalDrawingContent({
             stroke="#416173"
             strokeWidth="3"
           />
-          {/* Folia cérébelleuses */}
-          <path d="M430 310 Q470 315 485 330 M425 335 Q460 340 480 355" stroke="#7e9ba8" strokeWidth="2" fill="none" />
+          {/* Folia cérébelleuses de Patrick Lynch */}
+          <path d="M430 305 Q470 310 485 325 M425 325 Q460 330 480 345 M420 345 Q450 350 470 360" stroke="#7e9ba8" strokeWidth="2" fill="none" />
           <text x="440" y="325" className="med-label">Cervelet</text>
         </g>
 
-        {/* 8. Tronc cérébral */}
+        {/* 8. Tronc cérébral (mésencéphale, pont, bulbe) */}
         <g {...structProps(7, 'Tronc cérébral')}>
           <path d="M350 285 L350 395 L390 395 L390 290" fill="#9db8c6" stroke="#416173" strokeWidth="3" />
-          <text x="320" y="370" className="med-label">Tronc cérébral</text>
+          {/* Protubérance annulaire (pont de Varole) */}
+          <path d="M345 325 C335 340 335 360 350 370" stroke="#416173" strokeWidth="3" fill="#9db8c6" />
+          <text x="315" y="370" className="med-label">Tronc cérébral</text>
         </g>
       </g>
     )

@@ -8,10 +8,21 @@ export interface DiagramPoint {
   clinicalNote?: string
 }
 
+export interface PlateAttribution {
+  author: string
+  title: string
+  source: string
+  originalUrl: string
+  license: string
+  licenseUrl: string
+  modifications: string
+}
+
 export interface MedicalPlate {
   title: string
   caption: string
   category?: string
+  attribution?: PlateAttribution
   points: DiagramPoint[]
 }
 
@@ -20,7 +31,7 @@ export const medicalPlates: Record<string, MedicalPlate> = {
   'phys-cardiac-cycle': {
     title: 'La boucle pression-volume du ventricule gauche',
     caption:
-      'Tracé hémodynamique complet du ventricule gauche (courbe de Wiggers). Pression ventriculaire en mmHg en ordonnée, volume en mL en abscisse. Les 4 repères correspondent aux transitions valvulaires clés suivant le cycle dans le sens antihoraire.',
+      'Tracé hémodynamique complet du ventricule gauche (cycle pression-volume). Pression ventriculaire en mmHg en ordonnée, volume en mL en abscisse. Les 4 repères correspondent aux transitions valvulaires clés suivant le cycle dans le sens antihoraire.',
     category: 'Cardiologie & Physiologie',
     points: [
       {
@@ -68,6 +79,16 @@ export const medicalPlates: Record<string, MedicalPlate> = {
     caption:
       'Coupe frontale schématique montrant les 4 cavités cardiaques, les valves atrioventriculaires et sigmoïdes, ainsi que la séparation stricte par les septums interatrial et interventriculaire.',
     category: 'Anatomie cardiovasculaire',
+    attribution: {
+      author: 'Équipe MyCorpus',
+      title: 'Anatomie interne du cœur : cavités, valves et flux sanguin',
+      source: 'Conception vectorielle originale MyCorpus',
+      originalUrl: 'https://mycorpus.med',
+      license: 'Propriétaire MyCorpus / Libre pour les utilisateurs',
+      licenseUrl: 'https://mycorpus.med',
+      modifications:
+        'Tracé vectoriel SVG haute fidélité représentant les 4 cavités, les trabécules, les piliers tendineux, les 4 valves cardiaques et la crosse aortique.'
+    },
     points: [
       {
         name: 'Atrium droit',
@@ -157,6 +178,16 @@ export const medicalPlates: Record<string, MedicalPlate> = {
     caption:
       'Coupe frontale schématique montrant les 4 cavités cardiaques, les valves atrioventriculaires et sigmoïdes, ainsi que la séparation stricte par les septums interatrial et interventriculaire.',
     category: 'Anatomie cardiovasculaire',
+    attribution: {
+      author: 'Équipe MyCorpus',
+      title: 'Anatomie interne du cœur : cavités, valves et flux sanguin',
+      source: 'Conception vectorielle originale MyCorpus',
+      originalUrl: 'https://mycorpus.med',
+      license: 'Propriétaire MyCorpus / Libre pour les utilisateurs',
+      licenseUrl: 'https://mycorpus.med',
+      modifications:
+        'Tracé vectoriel SVG haute fidélité représentant les 4 cavités, les trabécules, les piliers tendineux, les 4 valves cardiaques et la crosse aortique.'
+    },
     points: [
       {
         name: 'Atrium droit',
@@ -301,6 +332,16 @@ export const medicalPlates: Record<string, MedicalPlate> = {
     caption:
       'Coupe coronale schématique du parenchyme rénal montrant la disposition concentrique du cortex externe, des pyramides médullaires de Malpighi et de l’arbre caliciel conduisant l’urine au bassinet.',
     category: 'Anatomie urogénitale',
+    attribution: {
+      author: 'Équipe MyCorpus',
+      title: 'Coupe coronale macroscopique du rein humain',
+      source: 'Conception vectorielle originale MyCorpus',
+      originalUrl: 'https://mycorpus.med',
+      license: 'Propriétaire MyCorpus / Libre pour les utilisateurs',
+      licenseUrl: 'https://mycorpus.med',
+      modifications:
+        'Tracé vectoriel SVG haute fidélité détaillant le cortex rénal, les colonnes de Bertin, les pyramides de Malpighi striées, les papilles, l’arbre caliciel et le pédicule vasculaire.'
+    },
     points: [
       {
         name: 'Cortex rénal',
@@ -418,6 +459,16 @@ export const medicalPlates: Record<string, MedicalPlate> = {
     caption:
       'Vue antérieure schématique des deux poumons montrant la lobation asymétrique (3 lobes à droite, 2 lobes à gauche avec incisure cardiaque) et la bifurcation trachéobronchique.',
     category: 'Anatomie respiratoire',
+    attribution: {
+      author: 'Patrick J. Lynch, illustrateur médical & C. Carl Jaffe, MD, cardiologue (Yale University)',
+      title: 'Lungs diagram detailed',
+      source: 'Yale University School of Medicine / Wikimedia Commons',
+      originalUrl: 'https://commons.wikimedia.org/wiki/File:Lungs_diagram_detailed.svg',
+      license: 'CC BY 2.5 Generic',
+      licenseUrl: 'https://creativecommons.org/licenses/by/2.5/',
+      modifications:
+        'Vectorisation anatomique des scissures, lobation droite (3 lobes) et gauche (2 lobes avec incisure cardiaque), arbre bronchique et annotations en français par MyCorpus.'
+    },
     points: [
       {
         name: 'Trachée et carène',
@@ -473,6 +524,16 @@ export const medicalPlates: Record<string, MedicalPlate> = {
     caption:
       'Vue latérale gauche schématique de l’encéphale mettant en évidence les 4 lobes cérébraux externes, les sillons délimitants (Rolando et Sylvius), le cervelet et le tronc cérébral.',
     category: 'Neuroanatomie',
+    attribution: {
+      author: 'Patrick J. Lynch, illustrateur médical & C. Carl Jaffe, MD, cardiologue (Yale University)',
+      title: 'Brain human lateral view',
+      source: 'Yale University School of Medicine / Wikimedia Commons',
+      originalUrl: 'https://commons.wikimedia.org/wiki/File:Brain_human_lateral_view.svg',
+      license: 'CC BY 2.5 Generic',
+      licenseUrl: 'https://creativecommons.org/licenses/by/2.5/',
+      modifications:
+        'Nettoyage vectoriel des textes anglais, adaptation sémantique des groupes interactifs, surbrillance bidirectionnelle et annotations pédagogiques en français par MyCorpus.'
+    },
     points: [
       {
         name: 'Lobe frontal',

@@ -220,6 +220,41 @@
   margin-top: 4px !important;
 }
 
+.medical-attribution {
+  margin-top: 14px;
+  padding: 8px 12px;
+  background: rgba(22, 126, 145, 0.05);
+  border: 1px solid rgba(22, 126, 145, 0.15);
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #557788;
+}
+
+.medical-attribution p {
+  margin: 0;
+}
+
+.medical-attribution a {
+  color: #167e91;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.medical-attribution a:hover {
+  color: #0f5461;
+}
+
+body.dark-mode .medical-attribution {
+  background: rgba(43, 182, 206, 0.07);
+  border-color: rgba(43, 182, 206, 0.2);
+  color: #8da4b0;
+}
+
+body.dark-mode .medical-attribution a {
+  color: #2bb6ce;
+}
+
 /* Zoom & Controls */
 .diagram-view-controls {
   display: inline-flex;
