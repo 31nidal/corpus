@@ -88,44 +88,87 @@
   position: absolute;
   display: flex;
   justify-content: center;
+  align-items: center;
   flex-direction: column;
   gap: 3px;
-  padding: 6px 8px;
+  padding: 5px 8px;
   border: 1px solid #cfdee7;
   background: #ffffff;
   border-radius: 10px;
-  box-shadow: 0 3px 8px rgba(34, 72, 93, 0.06);
+  box-shadow: 0 2px 6px rgba(34, 72, 93, 0.06);
   color: #4e7284;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, transform 0.15s;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s, box-shadow 0.15s;
   box-sizing: border-box;
+  text-align: center;
+  overflow: hidden;
 }
 
 .diagram-canvas button > span {
   font-size: 9px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.5px;
-  color: #7799a8;
+  color: #6d93a3;
+  line-height: 1;
 }
 
 .diagram-canvas button > strong {
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
-  line-height: 1.35;
-  overflow-wrap: anywhere;
+  line-height: 1.25;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: normal;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+
+.diagram-canvas button.is-root-node {
+  background: linear-gradient(145deg, #f0f8fa 0%, #ffffff 100%);
+  border: 1.5px solid #167e91;
+  box-shadow: 0 4px 12px rgba(22, 126, 145, 0.12);
+  z-index: 3;
+}
+
+.diagram-canvas button.is-root-node > span {
+  color: #167e91;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.6px;
+}
+
+.diagram-canvas button.is-root-node > strong {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #164756;
 }
 
 .diagram-canvas button:hover {
   border-color: #338ba1;
   background: #f4fbfd;
+  transform: translateY(-1px);
+}
+
+.diagram-canvas button.is-root-node:hover {
+  border-color: #0f5c6b;
+  background: #eaf5f8;
 }
 
 .diagram-canvas button[aria-pressed=true] {
   background: #e2f2f5;
-  border-color: #338ba1;
+  border-color: #167e91;
   color: #1b6074;
-  box-shadow: 0 0 0 2.5px rgba(120, 184, 196, 0.25);
-  z-index: 2;
+  box-shadow: 0 0 0 2.5px rgba(22, 126, 145, 0.3);
+  z-index: 4;
+}
+
+.diagram-canvas button.is-root-node[aria-pressed=true] {
+  background: #dbeef2;
+  border-color: #0f5c6b;
+  box-shadow: 0 0 0 3px rgba(22, 126, 145, 0.35);
 }
 
 .diagram-canvas button:focus-visible {
@@ -150,6 +193,14 @@
   border-radius: 8px;
   font-size: 12px;
   font-weight: 600;
+  white-space: nowrap;
+}
+
+.diagram-explanation > span.is-root-badge {
+  color: #0f5c6b;
+  background: #dbeef2;
+  border: 1px solid #9dc8d2;
+  font-weight: 700;
 }
 
 .diagram-explanation h3 {
@@ -225,6 +276,20 @@
   color: #d0e4ec;
 }
 
+[data-theme=dark] .diagram-canvas button.is-root-node {
+  background: linear-gradient(145deg, #1b4554 0%, #15333f 100%);
+  border-color: #38b4c7;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme=dark] .diagram-canvas button.is-root-node > span {
+  color: #72cedb;
+}
+
+[data-theme=dark] .diagram-canvas button.is-root-node > strong {
+  color: #e5f6f8;
+}
+
 [data-theme=dark] .diagram-canvas button > span {
   color: #8bb3c4;
 }
@@ -234,11 +299,22 @@
   border-color: #70bcc8;
 }
 
+[data-theme=dark] .diagram-canvas button.is-root-node:hover {
+  background: #235163;
+  border-color: #8be1ee;
+}
+
 [data-theme=dark] .diagram-canvas button[aria-pressed=true] {
   background: #286375;
   border-color: #70bcc8;
   color: #ffffff;
   box-shadow: 0 0 0 2.5px rgba(112, 188, 200, 0.3);
+}
+
+[data-theme=dark] .diagram-canvas button.is-root-node[aria-pressed=true] {
+  background: #22677a;
+  border-color: #8be1ee;
+  box-shadow: 0 0 0 3px rgba(139, 225, 238, 0.4);
 }
 
 [data-theme=dark] .diagram-edge {
@@ -258,6 +334,12 @@
   background: #254957;
   color: #a3dbe2;
   border-color: #3c6575;
+}
+
+[data-theme=dark] .diagram-explanation > span.is-root-badge {
+  background: #1e4f60;
+  color: #72cedb;
+  border-color: #38b4c7;
 }
 
 [data-theme=dark] .diagram-navigation button:hover {
@@ -281,12 +363,25 @@
     align-items: stretch;
   }
 
+  .diagram-canvas button {
+    padding: 4px 6px;
+  }
+
   .diagram-canvas button > strong {
     font-size: 11px;
+    line-height: 1.22;
+  }
+
+  .diagram-canvas button.is-root-node > strong {
+    font-size: 12px;
   }
 
   .diagram-canvas button > span {
     font-size: 8px;
+  }
+
+  .diagram-canvas button.is-root-node > span {
+    font-size: 8.5px;
   }
 
   .diagram-explanation {

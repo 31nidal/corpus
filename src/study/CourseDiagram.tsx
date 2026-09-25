@@ -12,6 +12,26 @@ export default function CourseDiagram({courseId}: {courseId: string}) {
   )
 }
 
+function getNodeDisplayLabel(label: string, isRoot: boolean, compact: boolean): string {
+  const clean = label.replace(/^Carte des notions ·\s*/i, '').trim()
+  if (isRoot) {
+    const maxLen = compact ? 38 : 54
+    if (clean.length > maxLen) {
+      const sub = clean.slice(0, maxLen)
+      const lastSpace = sub.lastIndexOf(' ')
+      return (lastSpace > 18 ? sub.slice(0, lastSpace) : sub) + '…'
+    }
+    return clean
+  }
+  const maxLen = compact ? 28 : 42
+  if (clean.length > maxLen) {
+    const sub = clean.slice(0, maxLen)
+    const lastSpace = sub.lastIndexOf(' ')
+    return (lastSpace > 14 ? sub.slice(0, lastSpace) : sub) + '…'
+  }
+  return clean
+}
+
 function GenericDiagram({courseId}: {courseId: string}) {
   const graph = diagrams[courseId]
   const uid = useId().replace(/:/g, '')
@@ -112,8 +132,8 @@ function GenericDiagram({courseId}: {courseId: string}) {
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isDragging || scale <= 1) return
-    const maxPanX = (340 * (scale - 1)) / 2 + 100
-    const maxPanY = (340 * (scale - 1)) / 2 + 100
+    const maxPanX = (360 * (scale - 1)) / 2 + 100
+    const maxPanY = (360 * (scale - 1)) / 2 + 100
     const nextX = clamp(e.clientX - dragStart.x, -maxPanX, maxPanX)
     const nextY = clamp(e.clientY - dragStart.y, -maxPanY, maxPanY)
     setPosition({x: nextX, y: nextY})
@@ -147,8 +167,8 @@ function GenericDiagram({courseId}: {courseId: string}) {
       const ratio = dist / initialPinchDist
       setScale(clamp(Number((initialPinchScale * ratio).toFixed(2)), 0.75, 3.5))
     } else if (e.touches.length === 1 && isDragging && scale > 1) {
-      const maxPanX = (340 * (scale - 1)) / 2 + 120
-      const maxPanY = (340 * (scale - 1)) / 2 + 120
+      const maxPanX = (360 * (scale - 1)) / 2 + 120
+      const maxPanY = (360 * (scale - 1)) / 2 + 120
       const nextX = clamp(e.touches[0].clientX - dragStart.x, -maxPanX, maxPanX)
       const nextY = clamp(e.touches[0].clientY - dragStart.y, -maxPanY, maxPanY)
       setPosition({x: nextX, y: nextY})
@@ -162,45 +182,134 @@ function GenericDiagram({courseId}: {courseId: string}) {
 
   if (!graph) return null
 
-  const width = compact ? 340 : 720
+  const width = compact ? 360 : 740
   const n = graph.nodes.length
-  const nodeWidth = compact
-    ? 142
-    : graph.kind === 'branch'
-      ? Math.min(154, 640 / Math.max(1, n - 1) - 12)
-      : 174
-  const nodeHeight = 66
+
+  // Dimensions par nœud
+  const getNodeDim = (i: number) => {
+    const isRoot = graph.kind === 'branch' && i === 0
+    if (compact) {
+      if (graph.kind === 'branch') {
+        return isRoot
+          ? {w: 280, h: 58, isRoot: true}
+          : {w: 150, h: 56, isRoot: false}
+      }
+      if (graph.kind === 'flow') {
+        return {w: 260, h: 52, isRoot: i === 0}
+      }
+      if (graph.kind === 'compare') {
+        return n <= 2 ? {w: 154, h: 60, isRoot: false} : {w: 270, h: 52, isRoot: false}
+      }
+      // cycle
+      return {w: 126, h: 50, isRoot: false}
+    } else {
+      // Desktop
+      if (graph.kind === 'branch') {
+        const branchW = Math.min(170, Math.max(124, (740 - 50) / Math.max(1, n - 1) - 14))
+        return isRoot
+          ? {w: 270, h: 64, isRoot: true}
+          : {w: branchW, h: 60, isRoot: false}
+      }
+      if (graph.kind === 'flow') {
+        return {w: 180, h: 62, isRoot: i === 0}
+      }
+      if (graph.kind === 'cycle') {
+        return {w: 154, h: 56, isRoot: false}
+      }
+      // compare
+      const cols = Math.min(4, n)
+      return {w: Math.min(180, (740 - 40) / cols - 16), h: 62, isRoot: false}
+    }
+  }
+
   const ranks = Array<number>(n).fill(Infinity)
   ranks[0] = 0
   if (graph.links)
     for (let pass = 0; pass < n; pass++)
       for (const edge of graph.links)
         ranks[edge.to] = Math.min(ranks[edge.to], ranks[edge.from] + 1)
-  const levels = graph.nodes.map((_, i) =>
-    graph.links ? (Number.isFinite(ranks[i]) ? ranks[i] : 1) : i === 0 ? 0 : 1
-  )
+
   const positions = graph.nodes.map((_, i) => {
-    if (graph.kind === 'cycle' && !compact) {
-      const angle = -Math.PI / 2 + (i * 2 * Math.PI) / n
-      return {x: 360 + 245 * Math.cos(angle), y: 180 + 132 * Math.sin(angle)}
+    // 1. Cycle
+    if (graph.kind === 'cycle') {
+      if (!compact) {
+        const angle = -Math.PI / 2 + (i * 2 * Math.PI) / n
+        return {x: 370 + 245 * Math.cos(angle), y: 185 + 130 * Math.sin(angle)}
+      } else {
+        const angle = -Math.PI / 2 + (i * 2 * Math.PI) / n
+        return {x: 180 + 115 * Math.cos(angle), y: 160 + 105 * Math.sin(angle)}
+      }
     }
+
+    // 2. Branch (Cartes de notions)
     if (graph.kind === 'branch') {
-      const siblings = levels
-        .map((level, index) => (level === levels[i] ? index : -1))
-        .filter(index => index >= 0)
-      const index = siblings.indexOf(i)
-      const columns = compact ? Math.min(2, siblings.length) : siblings.length
-      const previousRows = Array.from({length: levels[i]}, (_, level) =>
-        Math.ceil(levels.filter(value => value === level).length / (compact ? 2 : n))
-      ).reduce((a, b) => a + b, 0)
-      return {x: (width / columns) * (index % columns + 0.5), y: 43 + (previousRows + Math.floor(index / columns)) * 112}
+      if (i === 0) {
+        // Nœud central / racine en haut
+        return {x: width / 2, y: 44}
+      }
+      const childIndex = i - 1
+      const totalChildren = n - 1
+      if (!compact) {
+        if (totalChildren <= 4) {
+          const step = (740 - 60) / totalChildren
+          const x = 30 + step * (childIndex + 0.5)
+          return {x, y: 155}
+        } else {
+          const row1Count = Math.ceil(totalChildren / 2)
+          const row2Count = totalChildren - row1Count
+          if (childIndex < row1Count) {
+            const step = (740 - 60) / row1Count
+            return {x: 30 + step * (childIndex + 0.5), y: 145}
+          } else {
+            const r2Idx = childIndex - row1Count
+            const step = (740 - 60) / row2Count
+            return {x: 30 + step * (r2Idx + 0.5), y: 235}
+          }
+        }
+      } else {
+        // Mobile : 2 colonnes équilibrées
+        const row = Math.floor(childIndex / 2)
+        const col = childIndex % 2
+        const x = col === 0 ? 94 : 266
+        const y = 138 + row * 76
+        return {x, y}
+      }
     }
-    const columns = compact ? (graph.kind === 'compare' ? 2 : 1) : 3
-    const row = Math.floor(i / columns)
-    const col = row % 2 === 0 ? i % columns : columns - 1 - (i % columns)
-    return {x: (width / columns) * (col + 0.5), y: 45 + row * 116}
+
+    // 3. Flow (Étapes séquentielles)
+    if (graph.kind === 'flow') {
+      if (!compact) {
+        const columns = 3
+        const row = Math.floor(i / columns)
+        const col = row % 2 === 0 ? i % columns : columns - 1 - (i % columns)
+        return {x: (740 / columns) * (col + 0.5), y: 45 + row * 115}
+      } else {
+        // Mobile : colonne verticale unique
+        return {x: 180, y: 42 + i * 78}
+      }
+    }
+
+    // 4. Compare
+    if (graph.kind === 'compare') {
+      if (!compact) {
+        const columns = Math.min(4, n)
+        const row = Math.floor(i / columns)
+        const col = i % columns
+        return {x: (740 / columns) * (col + 0.5), y: 45 + row * 110}
+      } else {
+        if (n <= 2) {
+          const col = i % 2
+          return {x: col === 0 ? 94 : 266, y: 48}
+        } else {
+          return {x: 180, y: 42 + i * 76}
+        }
+      }
+    }
+
+    return {x: width / 2, y: 50 + i * 80}
   })
-  const height = Math.max(...positions.map(p => p.y)) + 48
+
+  const height = Math.max(...positions.map((p, idx) => p.y + getNodeDim(idx).h / 2)) + 28
   const links =
     graph.links ??
     (graph.kind === 'compare'
@@ -209,20 +318,38 @@ function GenericDiagram({courseId}: {courseId: string}) {
         ? graph.nodes.slice(1).map((_, i) => ({from: 0, to: i + 1}))
         : graph.nodes.slice(1).map((_, i) => ({from: i, to: i + 1})))
   const edges = graph.kind === 'cycle' ? [...links, {from: n - 1, to: 0}] : links
+
   const path = (from: number, to: number) => {
     const a = positions[from]
     const b = positions[to]
-    if (graph.kind === 'cycle' && compact && to === 0)
-      return 'M ' + (a.x - nodeWidth / 2) + ' ' + a.y + ' H 30 V ' + b.y + ' H ' + (b.x - nodeWidth / 2 - 6)
-    if (Math.abs(a.y - b.y) < 8) {
-      const dir = b.x > a.x ? 1 : -1
-      return 'M ' + (a.x + (dir * nodeWidth) / 2) + ' ' + a.y + ' L ' + (b.x - dir * (nodeWidth / 2 + 6)) + ' ' + b.y
+    if (!a || !b) return ''
+    const dimA = getNodeDim(from)
+    const dimB = getNodeDim(to)
+
+    if (graph.kind === 'cycle' && compact && to === 0) {
+      return `M ${a.x - dimA.w / 2} ${a.y} H 18 V ${b.y} H ${b.x - dimB.w / 2 - 6}`
     }
-    const dir = b.y > a.y ? 1 : -1
-    const start = a.y + (dir * nodeHeight) / 2
-    const end = b.y - dir * (nodeHeight / 2 + 6)
-    const middle = (start + end) / 2
-    return 'M ' + a.x + ' ' + start + ' V ' + middle + ' H ' + b.x + ' V ' + end
+
+    // Lien vertical direct
+    if (Math.abs(a.x - b.x) < 12 && b.y > a.y) {
+      const startY = a.y + dimA.h / 2
+      const endY = b.y - dimB.h / 2 - 6
+      return `M ${a.x} ${startY} V ${endY}`
+    }
+
+    // Lien horizontal direct
+    if (Math.abs(a.y - b.y) < 12) {
+      const dir = b.x > a.x ? 1 : -1
+      const startX = a.x + dir * (dimA.w / 2)
+      const endX = b.x - dir * (dimB.w / 2 + 6)
+      return `M ${startX} ${a.y} H ${endX}`
+    }
+
+    // Ramification orthogonale
+    const startY = a.y + dimA.h / 2
+    const endY = b.y - dimB.h / 2 - 6
+    const midY = (startY + endY) / 2
+    return `M ${a.x} ${startY} V ${midY} H ${b.x} V ${endY}`
   }
 
   const zoomPercent = Math.round(scale * 100)
@@ -314,28 +441,38 @@ function GenericDiagram({courseId}: {courseId: string}) {
           />
         ))}
       </svg>
-      {graph.nodes.map((node, i) => (
-        <button
-          key={node.label}
-          aria-pressed={active === i}
-          onClick={() => setActive(i)}
-          style={{
-            left: ((positions[i].x - nodeWidth / 2) / width) * 100 + '%',
-            top: ((positions[i].y - nodeHeight / 2) / height) * 100 + '%',
-            width: (nodeWidth / width) * 100 + '%',
-            height: (nodeHeight / height) * 100 + '%',
-          }}
-        >
-          <span>{String(i + 1).padStart(2, '0')}</span>
-          <strong>{node.label}</strong>
-        </button>
-      ))}
+      {graph.nodes.map((node, i) => {
+        const dim = getNodeDim(i)
+        const isRoot = dim.isRoot
+        const displayLabel = getNodeDisplayLabel(node.label, isRoot, compact)
+        const badgeText = isRoot ? 'NOTION CENTRALE' : String(i + 1).padStart(2, '0')
+
+        return (
+          <button
+            key={node.label + i}
+            aria-pressed={active === i}
+            className={isRoot ? 'is-root-node' : undefined}
+            onClick={() => setActive(i)}
+            style={{
+              left: ((positions[i].x - dim.w / 2) / width) * 100 + '%',
+              top: ((positions[i].y - dim.h / 2) / height) * 100 + '%',
+              width: (dim.w / width) * 100 + '%',
+              height: (dim.h / height) * 100 + '%',
+            }}
+          >
+            <span>{badgeText}</span>
+            <strong title={node.label}>{displayLabel}</strong>
+          </button>
+        )
+      })}
     </div>
   )
 
   const explanation = (
     <div className="diagram-explanation" aria-live="polite">
-      <span>{String(active + 1).padStart(2, '0')}</span>
+      <span className={getNodeDim(active).isRoot ? 'is-root-badge' : undefined}>
+        {getNodeDim(active).isRoot ? 'NOTION' : String(active + 1).padStart(2, '0')}
+      </span>
       <div>
         <h3>{graph.nodes[active].label}</h3>
         <p>{graph.nodes[active].detail}</p>
