@@ -746,20 +746,57 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
  * High-quality grounded summary generator derived strictly from parsed section contents
  */
 export function generateLocalSummary(title, sections) {
-  const chapters = sections.map(sec => {
-    // Extract key sentences and normalize whitespace
-    const sentences = sec.content
-      .split(/(?<=[.!?])\s+/)
-      .map(s => s.replace(/\s+/g, ' ').trim())
-      .filter(s => s.length >= 25 && s.length <= 250 && !/^(figure|tableau|schéma)\b/i.test(s))
+  const normalize = value => String(value || '').replace(/\s+/g, ' ').trim()
+  const stopLead = /^(figure|tableau|schéma|source|référence|bibliographie|objectif|introduction|conclusion)\b/i
 
-    const keyPoints = sentences.slice(0, Math.min(4, Math.max(2, sentences.length)))
+  const scoreSentence = (sentence, sectionTitle) => {
+    const value = normalize(sentence)
+    if (value.length < 35 || value.length > 280 || stopLead.test(value)) return -Infinity
+
+    let score = 0
+    if (value.length >= 70 && value.length <= 190) score += 3
+    if (/\d/.test(value)) score += 1
+    if (/\b(est|sont|permet|assure|comprend|contient|constitue|présente|se compose|se divise|innerve|vascularise|relie|traverse|forme|participe|fonctionne)\b/i.test(value)) score += 2
+    if (/\b(artère|veine|nerf|muscle|os|ligament|organe|structure|cellule|récepteur|cavité|cortex|moelle|tronc|branche|fonction|mécanisme|pression|débit|innervation|vascularisation)\b/i.test(value)) score += 2
+    if (sectionTitle && value.toLowerCase().includes(String(sectionTitle).toLowerCase().split(/\s+/)[0] || '')) score += 1
+    if (/^(ce|cette|cela|il|elle|ils|elles)\b/i.test(value)) score -= 1
+    return score
+  }
+
+  const chapters = sections.map(sec => {
+    const sentences = normalize(sec.content)
+      .split(/(?<=[.!?])\s+/)
+      .map(normalize)
+      .filter(Boolean)
+
+    const ranked = sentences
+      .map((sentence, index) => ({ sentence, index, score: scoreSentence(sentence, sec.title) }))
+      .filter(item => Number.isFinite(item.score))
+      .sort((a, b) => b.score - a.score || a.index - b.index)
+
+    const selected = []
+    const seen = new Set()
+    for (const item of ranked) {
+      const key = item.sentence
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9 ]+/g, '')
+        .split(/\s+/)
+        .slice(0, 10)
+        .join(' ')
+      if (!key || seen.has(key)) continue
+      seen.add(key)
+      selected.push(item)
+      if (selected.length >= 5) break
+    }
+
+    selected.sort((a, b) => a.index - b.index)
+
+    const keyPoints = selected.map(item => item.sentence)
     if (keyPoints.length === 0) {
-      if (sec.content && sec.content.length > 20) {
-        keyPoints.push(sec.content.replace(/\s+/g, ' ').slice(0, 180))
-      } else {
-        keyPoints.push(`Section couvrant les pages ${sec.startPage} à ${sec.endPage}.`)
-      }
+      const fallback = normalize(sec.content).slice(0, 220)
+      keyPoints.push(fallback || `Section couvrant les pages ${sec.startPage} à ${sec.endPage}.`)
     }
 
     return {
@@ -767,171 +804,130 @@ export function generateLocalSummary(title, sections) {
       title: sec.title,
       pages: `Pages ${sec.startPage}–${sec.endPage}`,
       keyPoints,
-      excerpt: sentences.slice(0, 2).join(' ') || sec.content.replace(/\s+/g, ' ').slice(0, 200)
+      excerpt: keyPoints.slice(0, 2).join(' ')
     }
   })
 
+  const overviewPoints = chapters
+    .filter(chapter => chapter.keyPoints?.length)
+    .slice(0, 3)
+    .map(chapter => chapter.keyPoints[0])
+
   return {
     title,
-    overview: `Fiche de synthèse structurée établie à partir des ${sections.length} sections du document « ${title} ». Les points clés sont strictement extraits du texte source.`,
+    overview: overviewPoints.join(' ') || `Synthèse structurée de « ${title} » à partir de ${sections.length} section(s).`,
     sectionCount: sections.length,
     chapters
   }
 }
 
-const MEDICAL_INVERSIONS = [
-  [/\bgauche\b/gi, 'droite'],
-  [/\bdroite\b/gi, 'gauche'],
-  [/\bantérieur(s)?\b/gi, 'postérieur$1'],
-  [/\bantérieure(s)?\b/gi, 'postérieure$1'],
-  [/\bpostérieur(s)?\b/gi, 'antérieur$1'],
-  [/\bpostérieure(s)?\b/gi, 'antérieure$1'],
-  [/\bsupérieur(s)?\b/gi, 'inférieur$1'],
-  [/\bsupérieure(s)?\b/gi, 'inférieure$1'],
-  [/\binférieur(s)?\b/gi, 'supérieur$1'],
-  [/\binférieure(s)?\b/gi, 'supérieure$1'],
-  [/\bmédial(e)?(s)?\b/gi, 'latéral$1$2'],
-  [/\blatéral(e)?(s)?\b/gi, 'médial$1$2'],
-  [/\bproximal(e)?(s)?\b/gi, 'distal$1$2'],
-  [/\bdistal(e)?(s)?\b/gi, 'proximal$1$2'],
-  [/\baugmente(nt)?\b/gi, 'diminue$1'],
-  [/\bdiminue(nt)?\b/gi, 'augmente$1'],
-  [/\bartériel(le)?(s)?\b/gi, 'veineux$1$2'],
-  [/\bveineux(se)?(s)?\b/gi, 'artériel$1$2'],
-  [/\bactive(ment)?\b/gi, 'passive$1'],
-  [/\bpassive(ment)?\b/gi, 'active$1'],
-  [/\bafférent(e)?(s)?\b/gi, 'efférent$1$2'],
-  [/\befférent(e)?(s)?\b/gi, 'afférent$1$2'],
-  [/\bstimule(nt)?\b/gi, 'inhibe$1'],
-  [/\binhibe(nt)?\b/gi, 'stimule$1'],
-  [/\bcentral(e)?(s)?\b/gi, 'périphérique$1$2'],
-  [/\bpériphérique(s)?\b/gi, 'central$1'],
-  [/\bexterne(s)?\b/gi, 'interne$1'],
-  [/\binterne(s)?\b/gi, 'externe$1'],
-  [/\bpermet(tent)?\b/gi, 'empêche$1'],
-  [/\best\b/gi, 'n’est pas'],
-  [/\bsont\b/gi, 'ne sont pas']
-]
+const LOCAL_QCM_STOPWORDS = new Set([
+  'alors','ainsi','apres','après','avant','avec','avoir','cette','comme','dans','depuis','donc','elle','elles',
+  'entre','etre','être','fait','font','leurs','mais','meme','même','moins','plus','pour','sans','selon','sont',
+  'sous','sur','tous','tout','toute','toutes','vers','dont','afin','chez','celui','celle','ceux','celles',
+  'peut','peuvent','permet','permettent','notamment','également','partir','niveau','cours','page',
+  'section','structure','structures','correspond','correspondent','présente','présentent','comprend','comprennent'
+])
 
-function createMedicalDistractor(sentence, seed = 0) {
-  for (let i = 0; i < MEDICAL_INVERSIONS.length; i++) {
-    const [pattern, repl] = MEDICAL_INVERSIONS[(i + seed) % MEDICAL_INVERSIONS.length]
-    if (pattern.test(sentence)) {
-      return sentence.replace(pattern, repl).trim()
-    }
-  }
-  // Fallback negation
-  if (/^Le |^La |^Les |^L’|^L'/i.test(sentence)) {
-    return sentence.replace(/^(Le|La|Les|L’|L')\s+/i, '$1 ') + ' n’est pas observé dans cette situation.'
-  }
-  return 'L’inverse est décrit pour cette structure dans le cours.'
+function extractGroundedSentences(section) {
+  return String(section.content || '')
+    .replace(/\s+/g, ' ')
+    .split(/(?<=[.!?])\s+/)
+    .map(sentence => sentence.trim())
+    .filter(sentence =>
+      sentence.length >= 45 &&
+      sentence.length <= 240 &&
+      !/^(figure|tableau|schéma|source|référence|bibliographie)\b/i.test(sentence)
+    )
+}
+
+function candidateTerms(sentence) {
+  const matches = sentence.match(/[A-Za-zÀ-ÖØ-öø-ÿŒœ'-]{5,}/g) || []
+  return [...new Set(matches)]
+    .filter(word => !LOCAL_QCM_STOPWORDS.has(word.toLowerCase()))
+    .filter(word => !/^\d+$/.test(word))
+    .sort((a, b) => b.length - a.length)
 }
 
 /**
- * Strict source-grounded QCM generator
- * Never generates answers from outside the uploaded document.
+ * Strict source-grounded local fallback.
+ * It avoids inventing medically false statements: each question is an exact cloze from the
+ * uploaded course, and every distractor is a term that appears elsewhere in the same document.
  */
 export function generateLocalGroundedQuestions(doc, sections, count = 5) {
-  const result = []
-  let questionIdx = 1
+  const sectionPool = sections
+    .map(section => ({ ...section, sentences: extractGroundedSentences(section) }))
+    .filter(section => section.sentences.length > 0)
 
-  const candidateSections = sections.filter(s => s.content && s.content.length > 40)
-  if (candidateSections.length === 0) return []
+  if (sectionPool.length === 0) return []
 
-  const promptsTemplates = [
-    (title) => `D’après la section « ${title} », quelle proposition est conforme au texte du cours ?`,
-    (title) => `Concernant les données exposées dans « ${title} », quelle affirmation est exacte ?`,
-    (title) => `À propos des repères décrits dans « ${title} », quelle proposition est juste ?`,
-    (title) => `Quelle proposition est validée par les éléments de la section « ${title} » ?`
-  ]
-
-  for (let i = 0; i < count; i++) {
-    const sec = candidateSections[i % candidateSections.length]
-    const rawSentences = sec.content
-      .split(/(?<=[.!?])\s+/)
-      .map(s => s.trim())
-      .filter(s => s.length >= 25 && s.length <= 220 && !/^(figure|tableau|schéma)\b/i.test(s))
-
-    if (rawSentences.length === 0) {
-      rawSentences.push(sec.content.slice(0, 150))
-    }
-
-    const coreSentence = rawSentences[i % rawSentences.length] || rawSentences[0]
-    const cleanTrue = coreSentence.endsWith('.') ? coreSentence.slice(0, -1) : coreSentence
-
-    // Generate 3 plausible distractors from the course content
-    const distractors = []
-    
-    // Distractor 1: Medical inversion of the core statement
-    const d1 = createMedicalDistractor(cleanTrue, i)
-    distractors.push(d1 !== cleanTrue ? d1 : `Cette structure n’intervient pas dans ce mécanisme.`)
-
-    // Distractor 2: Inversion of another sentence if available, or inverted landmark
-    const otherSentence = rawSentences[(i + 1) % rawSentences.length]
-    if (otherSentence && otherSentence !== coreSentence) {
-      const d2 = createMedicalDistractor(otherSentence.endsWith('.') ? otherSentence.slice(0, -1) : otherSentence, i + 3)
-      distractors.push(d2)
-    } else {
-      distractors.push(`L’orientation anatomique opposée est indiquée à la page ${sec.startPage}.`)
-    }
-
-    // Distractor 3: Inverted physiological direction or contrast
-    const thirdSentence = rawSentences[(i + 2) % rawSentences.length]
-    if (thirdSentence && thirdSentence !== coreSentence) {
-      const d3 = createMedicalDistractor(thirdSentence.endsWith('.') ? thirdSentence.slice(0, -1) : thirdSentence, i + 7)
-      distractors.push(d3)
-    } else {
-      distractors.push(`Cette fonction est attribuée à un autre organe dans cette même section.`)
-    }
-
-    // Ensure 3 unique distractors that don't match cleanTrue
-    const finalDistractors = distractors
-      .filter(d => d !== cleanTrue)
-      .slice(0, 3)
-
-    while (finalDistractors.length < 3) {
-      finalDistractors.push(`Cette modalité est inversée par rapport aux données du cours (page ${sec.startPage}).`)
-    }
-
-    // Randomize position of correct answer (0, 1, 2, or 3)
-    const correctPos = (i * 2 + 1) % 4
-    const options = []
-    const why = []
-    let distractorIdx = 0
-
-    for (let pos = 0; pos < 4; pos++) {
-      if (pos === correctPos) {
-        options.push(cleanTrue)
-        why.push(`Exact. Conforme au texte de la page ${sec.startPage} : « ${cleanTrue} ».`)
-      } else {
-        const distText = finalDistractors[distractorIdx++]
-        options.push(distText)
-        why.push(`Non conforme : contredit le passage source de la page ${sec.startPage}.`)
+  const globalTerms = []
+  for (const section of sectionPool) {
+    for (const sentence of section.sentences) {
+      for (const term of candidateTerms(sentence)) {
+        if (!globalTerms.some(existing => existing.toLowerCase() === term.toLowerCase())) {
+          globalTerms.push(term)
+        }
       }
     }
+  }
 
-    const qId = `study-${doc.id.slice(0, 8)}-${questionIdx++}`
-    const promptBuilder = promptsTemplates[i % promptsTemplates.length]
+  const questions = []
+  let cursor = 0
 
-    result.push({
-      id: qId,
+  while (questions.length < count && cursor < count * 8) {
+    const section = sectionPool[cursor % sectionPool.length]
+    const sentence = section.sentences[Math.floor(cursor / sectionPool.length) % section.sentences.length]
+    const terms = candidateTerms(sentence)
+    const target = terms[(cursor + questions.length) % Math.max(terms.length, 1)]
+    cursor += 1
+
+    if (!target) continue
+
+    const distractors = globalTerms
+      .filter(term => term.toLowerCase() !== target.toLowerCase())
+      .filter(term => !sentence.toLowerCase().includes(term.toLowerCase()))
+      .sort((a, b) => Math.abs(a.length - target.length) - Math.abs(b.length - target.length))
+      .slice(0, 3)
+
+    if (distractors.length < 3) continue
+
+    const escapedTarget = target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const cloze = sentence.replace(new RegExp(`\\b${escapedTarget}\\b`, 'i'), '_____')
+    if (cloze === sentence) continue
+
+    const correctPos = (questions.length * 3 + 1) % 4
+    const options = []
+    let distractorIndex = 0
+    for (let pos = 0; pos < 4; pos++) {
+      options.push(pos === correctPos ? target : distractors[distractorIndex++])
+    }
+
+    const why = options.map((option, index) =>
+      index === correctPos
+        ? `Exact : le passage source emploie le terme « ${target} ».`
+        : `Le terme attendu dans le passage source est « ${target} ».`
+    )
+
+    questions.push({
+      id: `study-${doc.id.slice(0, 8)}-${questions.length + 1}`,
       course: `doc-${doc.id}`,
       topic: doc.title,
-      prompt: promptBuilder(sec.title),
+      prompt: `Complétez exactement l’énoncé du cours (section « ${section.title} ») : « ${cloze} »`,
       options,
       correct: [correctPos],
       why,
-      difficulty: i % 2 === 0 ? 'essentiel' : 'application',
+      difficulty: sentence.length > 150 ? 'application' : 'essentiel',
       format: 'single',
       documentId: doc.id,
-      sourceSectionId: sec.id,
-      sourceSectionTitle: sec.title,
-      sourcePages: [sec.startPage, sec.endPage],
-      sourceExcerpt: cleanTrue
+      sourceSectionId: section.id,
+      sourceSectionTitle: section.title,
+      sourcePages: [section.startPage, section.endPage],
+      sourceExcerpt: sentence
     })
   }
 
-  return result
+  return questions
 }
 
 export function formatAnkiCsv(title, filename, questions) {
