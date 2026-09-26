@@ -1,5 +1,5 @@
 import { DatabaseSync } from 'node:sqlite'
-import { createHash, randomUUID } from 'node:crypto'
+import { createHash, randomInt, randomUUID } from 'node:crypto'
 import { mkdirSync, existsSync, unlinkSync, writeFileSync, readFileSync, renameSync } from 'node:fs'
 import path from 'node:path'
 import { extractPdfPagesAndText, chunkIntoSections } from './pdfExtractor.mjs'
@@ -585,6 +585,19 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
             return send(400, { error: 'Aucune section trouvée pour générer des questions.' })
           }
 
+          const existingQuestions = d.prepare(`
+            SELECT id, prompt, options_json as optionsJson, correct_json as correctJson,
+              source_excerpt as sourceExcerpt, section_id as sourceSectionId
+            FROM study_questions WHERE document_id = ? AND user_id = ?
+          `).all(documentId, user.id).map(row => ({
+            id: row.id,
+            prompt: row.prompt,
+            options: JSON.parse(row.optionsJson),
+            correct: JSON.parse(row.correctJson),
+            sourceExcerpt: row.sourceExcerpt,
+            sourceSectionId: row.sourceSectionId
+          }))
+
           const hasRemoteProvider = Boolean(provider && typeof provider.generateStudyQuestions === 'function')
           let quotaReserved = false
 
@@ -612,17 +625,34 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
               quotaReserved = false
             }
             // Strict local grounded generation
-            generatedQuestions = generateLocalGroundedQuestions(doc, sections, count)
+            generatedQuestions = generateLocalGroundedQuestions(doc, sections, count, replaceExisting ? [] : existingQuestions)
           }
 
           const validSectionIds = new Set(sections.map(section => section.id))
-          const preparedQuestions = generatedQuestions
-            .map((question, index) => prepareStudyQuestion(question, {
-              documentId,
-              fallbackSection: sections[index % sections.length],
-              validSectionIds
-            }))
-            .filter(Boolean)
+          const sectionsById = new Map(sections.map(section => [section.id, section]))
+          const priorQuestionsForDeduplication = replaceExisting ? [] : existingQuestions
+          const prepareUniqueQuestions = items => {
+            const prepared = []
+            const seen = [...priorQuestionsForDeduplication]
+            for (const question of items.slice(0, count)) {
+              const item = prepareStudyQuestion(question, { documentId, validSectionIds, sectionsById })
+              if (!item || seen.some(previous => questionNearDuplicate(previous, item))) continue
+              prepared.push(item)
+              seen.push(item)
+            }
+            return prepared
+          }
+          let preparedQuestions = prepareUniqueQuestions(generatedQuestions)
+
+          // If a configured provider returns no supported novel question, try local facts.
+          if (!preparedQuestions.length && hasRemoteProvider && generatedQuestions.length) {
+            if (quotaReserved) {
+              releaseGenerationQuota(user.id, d)
+              quotaReserved = false
+            }
+            generatedQuestions = generateLocalGroundedQuestions(doc, sections, count, priorQuestionsForDeduplication)
+            preparedQuestions = prepareUniqueQuestions(generatedQuestions)
+          }
 
           if (!preparedQuestions.length) {
             if (quotaReserved) {
@@ -766,7 +796,29 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
   }
 }
 
-function prepareStudyQuestion(question, { documentId, fallbackSection, validSectionIds }) {
+function normalizeStudyText(value) {
+  return String(value || '').normalize('NFKC').toLocaleLowerCase('fr-FR').replace(/\s+/g, ' ').trim()
+}
+
+function comparableStudyText(value) {
+  return normalizeStudyText(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[’']/g, "'").replace(/[^\p{L}\p{N}]+/gu, ' ').trim()
+}
+
+function questionNearDuplicate(a, b) {
+  const excerptA = comparableStudyText(a.sourceExcerpt)
+  const excerptB = comparableStudyText(b.sourceExcerpt)
+  if (excerptA && excerptA === excerptB) return true
+  if (a.sourceSectionId && b.sourceSectionId && a.sourceSectionId !== b.sourceSectionId) return false
+  if (comparableStudyText(a.prompt) === comparableStudyText(b.prompt)) return true
+  if (comparableStudyText(a.options?.[a.correct?.[0]]) !== comparableStudyText(b.options?.[b.correct?.[0]])) return false
+  const left = new Set(comparableStudyText(a.prompt).split(' ').filter(word => word.length > 2))
+  const right = new Set(comparableStudyText(b.prompt).split(' ').filter(word => word.length > 2))
+  if (!left.size || !right.size) return false
+  return [...left].filter(word => right.has(word)).length / Math.min(left.size, right.size) >= 0.92
+}
+
+function prepareStudyQuestion(question, { documentId, validSectionIds, sectionsById }) {
   if (!question || typeof question !== 'object') return null
 
   const prompt = String(question.prompt || '').replace(/\s+/g, ' ').trim()
@@ -777,18 +829,25 @@ function prepareStudyQuestion(question, { documentId, fallbackSection, validSect
     ? [...new Set(question.correct.filter(index => Number.isInteger(index)))]
     : []
 
-  if (prompt.length < 12 || options.length < 2 || options.length > 6) return null
+  if (prompt.length < 20 || options.length < 3 || options.length > 5) return null
   if (options.some(option => option.length < 1)) return null
-  if (new Set(options.map(option => option.toLocaleLowerCase('fr-FR'))).size !== options.length) return null
-  if (!correct.length || correct.some(index => index < 0 || index >= options.length)) return null
+  if (new Set(options.map(comparableStudyText)).size !== options.length) return null
+  if (correct.length !== 1 || correct.some(index => index < 0 || index >= options.length)) return null
+
+  const sourceSection = sectionsById.get(question.sourceSectionId)
+  if (!sourceSection || !validSectionIds.has(question.sourceSectionId)) return null
+  const sourceExcerpt = String(question.sourceExcerpt || '').replace(/\s+/g, ' ').trim()
+  const comparableSource = comparableStudyText(sourceSection.content)
+  const comparableExcerpt = comparableStudyText(sourceExcerpt)
+  if (comparableExcerpt.length < 35 || !comparableSource.includes(comparableExcerpt)) return null
+  if (!comparableExcerpt.includes(comparableStudyText(options[correct[0]]))) return null
 
   const rawWhy = Array.isArray(question.why) ? question.why : []
   const why = options.map((_, index) => {
     const value = String(rawWhy[index] || '').replace(/\s+/g, ' ').trim()
-    return value || (correct.includes(index)
-      ? 'Cette proposition correspond au passage source du cours.'
-      : 'Cette proposition ne correspond pas au passage source du cours.')
+    return value
   })
+  if (why.some(value => value.length < 20)) return null
 
   const order = options.map((_, index) => index)
   for (let i = order.length - 1; i > 0; i--) {
@@ -796,12 +855,9 @@ function prepareStudyQuestion(question, { documentId, fallbackSection, validSect
     ;[order[i], order[j]] = [order[j], order[i]]
   }
 
-  const sourceSectionId = validSectionIds.has(question.sourceSectionId)
-    ? question.sourceSectionId
-    : fallbackSection.id
-  const sourcePages = Array.isArray(question.sourcePages) ? question.sourcePages : []
-  const startPage = Number.isInteger(sourcePages[0]) ? sourcePages[0] : fallbackSection.startPage
-  const endPage = Number.isInteger(sourcePages[1]) ? sourcePages[1] : fallbackSection.endPage
+  const sourceSectionId = sourceSection.id
+  const startPage = sourceSection.startPage
+  const endPage = sourceSection.endPage
   const shuffledCorrect = order
     .map((originalIndex, newIndex) => correct.includes(originalIndex) ? newIndex : -1)
     .filter(index => index >= 0)
@@ -817,9 +873,9 @@ function prepareStudyQuestion(question, { documentId, fallbackSection, validSect
     why: order.map(index => why[index]),
     sourceSectionId,
     sourcePages: [startPage, endPage],
-    sourceExcerpt: String(question.sourceExcerpt || '').replace(/\s+/g, ' ').trim() || 'Passage source du cours.',
+    sourceExcerpt,
     difficulty: ['essentiel', 'application'].includes(question.difficulty) ? question.difficulty : 'essentiel',
-    format: question.format === 'multiple' ? 'multiple' : 'single'
+    format: 'single'
   }
 }
 
@@ -902,113 +958,197 @@ export function generateLocalSummary(title, sections) {
   }
 }
 
-const LOCAL_QCM_STOPWORDS = new Set([
-  'alors','ainsi','apres','après','avant','avec','avoir','cette','comme','dans','depuis','donc','elle','elles',
-  'entre','etre','être','fait','font','leurs','mais','meme','même','moins','plus','pour','sans','selon','sont',
-  'sous','sur','tous','tout','toute','toutes','vers','dont','afin','chez','celui','celle','ceux','celles',
-  'peut','peuvent','permet','permettent','notamment','également','partir','niveau','cours','page',
-  'section','structure','structures','correspond','correspondent','présente','présentent','comprend','comprennent'
-])
+const MEDICAL_ENTITY_PREFIX = String.raw`(?:le|la|les|l['’])?\s*(?:nerf|artère|artere|veine|vaisseau|muscle|os|ligament|tendon|organe|glande|articulation|vertèbre|vertebre|cavité|cavite|valve|canal|conduit|bronche|nerfs|artères|arteres|veines|vaisseaux|muscles|organes|glandes|articulations|vertèbres|vertebres|cavités|cavites|valves|canaux|conduits|bronches)\b`
 
-function extractGroundedSentences(section) {
-  return String(section.content || '')
-    .replace(/\s+/g, ' ')
-    .split(/(?<=[.!?])\s+/)
+function extractStudySentences(section) {
+  const content = typeof section.content === 'string'
+    ? section.content
+    : (section.content?.text || section.text || '')
+  return String(content).replace(/\s+/g, ' ').split(/(?<=[.!?])\s+/)
     .map(sentence => sentence.trim())
-    .filter(sentence =>
-      sentence.length >= 45 &&
-      sentence.length <= 240 &&
-      !/^(figure|tableau|schéma|source|référence|bibliographie)\b/i.test(sentence)
-    )
+    .filter(sentence => sentence.length >= 35 && sentence.length <= 360 &&
+      !/^(figure|tableau|schéma|source|référence|bibliographie)\b/i.test(sentence))
 }
 
-function candidateTerms(sentence) {
-  const matches = sentence.match(/[A-Za-zÀ-ÖØ-öø-ÿŒœ'-]{5,}/g) || []
-  return [...new Set(matches)]
-    .filter(word => !LOCAL_QCM_STOPWORDS.has(word.toLowerCase()))
-    .filter(word => !/^\d+$/.test(word))
-    .sort((a, b) => b.length - a.length)
+function trimEntity(value) {
+  let result = String(value || '').replace(/^[\s,;:–—-]+|[\s,;:–—-]+$/g, '').trim()
+  result = result.split(/\s+(?:qui|dont|tandis que|alors que|mais|ce qui|car|notamment|en revanche|par ailleurs|lorsque|quand)\b/i)[0]
+  result = result.split(/[,;](?:\s|$)/)[0].trim()
+  if (result.split(/\s+/).length > 10) result = result.split(/\s+/).slice(-8).join(' ')
+  return result.replace(/[.!?]+$/g, '').trim()
+}
+
+function startsWithMedicalType(value, typePattern) {
+  return new RegExp(`^(?:(?:le|la|les)\\s+|l['’])?(?:${typePattern})\\b`, 'i').test(String(value || '').trim())
+}
+
+function addStudyFact(facts, section, sentence, kind, subject, answer, relation) {
+  const cleanSubject = trimEntity(subject)
+  const cleanAnswer = trimEntity(answer)
+  if (!cleanSubject || !cleanAnswer || cleanSubject.length < 3 || cleanAnswer.length < 3) return
+  if (cleanSubject.split(/\s+/).length > 9 || cleanAnswer.split(/\s+/).length > 12) return
+  if (/^(?:il|elle|ils|elles|ce|cela|ça|on|nous|vous)\b/i.test(cleanSubject)) return
+  if (comparableStudyText(cleanSubject) === comparableStudyText(cleanAnswer)) return
+  const signature = [kind, comparableStudyText(cleanSubject), comparableStudyText(cleanAnswer)].join('|')
+  if (facts.some(fact => fact.signature === signature)) return
+  facts.push({ signature, section, evidence: sentence, kind, subject: cleanSubject, answer: cleanAnswer, relation })
+}
+
+/** Extract only relations whose subject, predicate and answer can be quoted from the PDF. */
+export function extractStudyFacts(sections) {
+  const facts = []
+  const prefix = MEDICAL_ENTITY_PREFIX
+  for (const section of sections) {
+    for (const sentence of extractStudySentences(section)) {
+      let match
+
+      // Active relations preserve the typed entity on the left (nerf/artère/vaisseau).
+      match = sentence.match(new RegExp(`^(${prefix}[^,;.!?]{1,70}?)\\s+(innerve|vascularise|irrigue|draine|alimente)\\s+(.+)$`, 'i'))
+      if (match) {
+        const agent = trimEntity(match[1])
+        const verb = match[2].toLocaleLowerCase('fr-FR')
+        const patient = trimEntity(match[3])
+        if (startsWithMedicalType(agent, 'nerf') && verb === 'innerve') addStudyFact(facts, section, sentence, 'innervation', patient, agent, 'est innervé par')
+        if (startsWithMedicalType(agent, 'artère|artere|veine|vaisseau') && ['vascularise','irrigue','alimente'].includes(verb)) {
+          addStudyFact(facts, section, sentence, 'vascularisation', patient, agent, 'est vascularisé par')
+        }
+        if (startsWithMedicalType(agent, 'veine|vaisseau') && verb === 'draine') addStudyFact(facts, section, sentence, 'drainage', patient, agent, 'est drainé par')
+      }
+
+      // Passive relations are common in anatomy descriptions.
+      match = sentence.match(new RegExp(`^(.{2,90}?)\\s+(?:est|sont)\\s+innervé(?:e|es|s)?\\s+par\\s+(${prefix}[^,;.!?]{1,70})`, 'i'))
+      if (match) addStudyFact(facts, section, sentence, 'innervation', match[1], match[2], 'est innervé par')
+
+      match = sentence.match(new RegExp(`^(.{2,90}?)\\s+(?:est|sont)\\s+(?:vascularisé(?:e|es|s)?|irrigué(?:e|es|s)?)\\s+par\\s+(${prefix}[^,;.!?]{1,70})`, 'i'))
+      if (match) addStudyFact(facts, section, sentence, 'vascularisation', match[1], match[2], 'est vascularisé par')
+
+      match = sentence.match(/^(.{2,90}?)\s+(?:est|sont)\s+(?:situé(?:e|es|s)?|localisé(?:e|es|s)?|placé(?:e|es|s)?)\s+(dans|sur|sous|devant|derrière|entre|au niveau de|à proximité de)\s+(.+)$/i)
+      if (match) addStudyFact(facts, section, sentence, 'localisation', match[1], `${match[2]} ${match[3]}`, 'se situe')
+
+      match = sentence.match(/^(.{2,90}?)\s+(?:se situe|se trouve|prend naissance|débute|se termine|débouche|rejoint|traverse|chemine|passe)\s+(dans|sur|sous|devant|derrière|entre|au niveau de|à proximité de|à|vers|par|dans la|dans le|dans les)\s+(.+)$/i)
+      if (match) addStudyFact(facts, section, sentence, 'trajet', match[1], `${match[2]} ${match[3]}`, 'suit le trajet')
+
+      match = sentence.match(/^(.{2,90}?)\s+(permet|assure|participe à|contribue à|joue un rôle dans|a pour rôle de|sert à|est responsable de)\s+(.+)$/i)
+      if (match) addStudyFact(facts, section, sentence, 'fonction', match[1], match[3], match[2])
+
+      match = sentence.match(/^(.{2,90}?)\s+(entraîne|provoque|conduit à|aboutit à|augmente|diminue|réduit|favorise|déclenche)\s+(.+)$/i)
+      if (match) addStudyFact(facts, section, sentence, 'conséquence', match[1], match[3], match[2])
+
+      match = sentence.match(/^(.{2,90}?)\s+(?:comprend|contient|est composé(?:e)? de|est constitué(?:e)? de|est formé(?:e)? de)\s+(.+)$/i)
+      if (match && /[,;]|\bet\b/i.test(match[2])) addStudyFact(facts, section, sentence, 'classification', match[1], match[2], 'comprend')
+
+      match = sentence.match(/^(.{2,90}?)\s+(?:compte|comporte|mesure|est égal(?:e)? à|correspond à)\s+(\d+(?:[,.]\d+)?\s*(?:%|mmHg|mm|cm|mL|ml|L|l|Hz|h|jours?|semaines?|mois|ans?|vertèbres?|nerfs?|artères?|veines?|muscles?|couches?|parties?|segments?|valves?|branches?)?[^,;.!?]*)/i)
+      if (match) addStudyFact(facts, section, sentence, 'valeur', match[1], match[2], 'a pour valeur')
+    }
+  }
+  return facts
+}
+
+function entityAnswerType(value) {
+  if (/\bmmhg\b/i.test(value)) return 'pression'
+  if (/%/.test(value)) return 'pourcentage'
+  if (/\b(?:mm|cm|mL|ml|l|L|Hz|h|jours?|semaines?|mois|ans?)\b/i.test(value)) return 'mesure'
+  if (/\b(?:vertèbres?|nerfs?|artères?|arteres?|veines?|muscles?|couches?|parties?|segments?|valves?|branches?)\b/i.test(value)) return 'effectif'
+  if (/\bnerf\b/i.test(value)) return 'nerf'
+  if (/\b(?:artère|artere)\b/i.test(value)) return 'artère'
+  if (/\bveine\b/i.test(value)) return 'veine'
+  if (/\b(?:vaisseau|artère|artere|veine)\b/i.test(value)) return 'vaisseau'
+  return null
+}
+
+function questionStemForFact(fact) {
+  switch (fact.kind) {
+    case 'innervation': return `Quel nerf le document associe-t-il à l’innervation de ${fact.subject} ?`
+    case 'vascularisation': return `Quel vaisseau le document associe-t-il à la vascularisation de ${fact.subject} ?`
+    case 'localisation': return `Où le document situe-t-il ${fact.subject} ?`
+    case 'trajet': return `Quel trajet le document décrit-il pour ${fact.subject} ?`
+    case 'fonction': return `Quel rôle le document attribue-t-il à ${fact.subject} ?`
+    case 'conséquence': return `Quelle conséquence le document associe-t-il à ${fact.subject} ?`
+    case 'classification': return `Quels éléments le document regroupe-t-il pour ${fact.subject} ?`
+    case 'valeur': return `Quelle valeur le document indique-t-il pour ${fact.subject} ?`
+    case 'drainage': return `Quel vaisseau le document associe-t-il au drainage de ${fact.subject} ?`
+    default: return null
+  }
+}
+
+function relatedFacts(fact, facts) {
+  return facts.filter(candidate => candidate.kind === fact.kind && candidate.signature !== fact.signature &&
+    (fact.kind !== 'innervation' && fact.kind !== 'vascularisation' && fact.kind !== 'drainage' && fact.kind !== 'valeur' ||
+      entityAnswerType(candidate.answer) === entityAnswerType(fact.answer)))
+}
+
+function factExplanation(fact, isCorrect, targetFact) {
+  if (isCorrect) return `Le passage indique que ${fact.subject} ${fact.relation} ${fact.answer}. Extrait : « ${fact.evidence} »`
+  return `Le document associe « ${fact.answer} » à ${fact.subject} dans un autre passage. Pour ${targetFact.subject}, il indique : ${targetFact.relation} ${targetFact.answer}.`
 }
 
 /**
- * Strict source-grounded local fallback.
- * It avoids inventing medically false statements: each question is an exact cloze from the
- * uploaded course, and every distractor is a term that appears elsewhere in the same document.
+ * Conservative, fact-based local fallback. It emits a question only when the PDF itself
+ * supplies one source relation and three distinct, same-category alternatives.
  */
-export function generateLocalGroundedQuestions(doc, sections, count = 5) {
-  const sectionPool = sections
-    .map(section => ({ ...section, sentences: extractGroundedSentences(section) }))
-    .filter(section => section.sentences.length > 0)
+export function generateLocalGroundedQuestions(doc, sections, count = 5, existingQuestions = []) {
+  const facts = extractStudyFacts(sections)
+  const candidates = []
+  const emitted = new Set()
 
-  if (sectionPool.length === 0) return []
-
-  const globalTerms = []
-  for (const section of sectionPool) {
-    for (const sentence of section.sentences) {
-      for (const term of candidateTerms(sentence)) {
-        if (!globalTerms.some(existing => existing.toLowerCase() === term.toLowerCase())) {
-          globalTerms.push(term)
-        }
-      }
+  for (const fact of facts) {
+    const prompt = questionStemForFact(fact)
+    if (!prompt) continue
+    const distractorFacts = relatedFacts(fact, facts)
+    const distinct = new Map()
+    for (const alternative of distractorFacts) {
+      const key = comparableStudyText(alternative.answer)
+      if (key !== comparableStudyText(fact.answer) && !distinct.has(key)) distinct.set(key, alternative)
     }
-  }
+    if (distinct.size < 3) continue
 
-  const questions = []
-  let cursor = 0
+    const factKey = `${comparableStudyText(fact.evidence)}|${comparableStudyText(fact.answer)}`
+    if (emitted.has(factKey)) continue
+    emitted.add(factKey)
 
-  while (questions.length < count && cursor < count * 8) {
-    const section = sectionPool[cursor % sectionPool.length]
-    const sentence = section.sentences[Math.floor(cursor / sectionPool.length) % section.sentences.length]
-    const terms = candidateTerms(sentence)
-    const target = terms[(cursor + questions.length) % Math.max(terms.length, 1)]
-    cursor += 1
-
-    if (!target) continue
-
-    const distractors = globalTerms
-      .filter(term => term.toLowerCase() !== target.toLowerCase())
-      .filter(term => !sentence.toLowerCase().includes(term.toLowerCase()))
-      .sort((a, b) => Math.abs(a.length - target.length) - Math.abs(b.length - target.length))
-      .slice(0, 3)
-
-    if (distractors.length < 3) continue
-
-    const escapedTarget = target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    const cloze = sentence.replace(new RegExp(`\\b${escapedTarget}\\b`, 'i'), '_____')
-    if (cloze === sentence) continue
-
-    const correctPos = (questions.length * 3 + 1) % 4
-    const options = []
-    let distractorIndex = 0
-    for (let pos = 0; pos < 4; pos++) {
-      options.push(pos === correctPos ? target : distractors[distractorIndex++])
-    }
-
-    const why = options.map((option, index) =>
-      index === correctPos
-        ? `Exact : le passage source emploie le terme « ${target} ».`
-        : `Le terme attendu dans le passage source est « ${target} ».`
-    )
-
-    questions.push({
-      id: `study-${doc.id.slice(0, 8)}-${questions.length + 1}`,
+    const optionsWithFacts = [
+      { text: fact.answer, fact, correct: true },
+      ...[...distinct.values()].slice(0, 3).map(alternative => ({ text: alternative.answer, fact: alternative, correct: false }))
+    ]
+    const raw = {
+      id: `local-${randomUUID()}`,
       course: `doc-${doc.id}`,
       topic: doc.title,
-      prompt: `Complétez exactement l’énoncé du cours (section « ${section.title} ») : « ${cloze} »`,
-      options,
-      correct: [correctPos],
-      why,
-      difficulty: sentence.length > 150 ? 'application' : 'essentiel',
+      prompt,
+      options: optionsWithFacts.map(item => item.text),
+      correct: [0],
+      why: optionsWithFacts.map(item => factExplanation(item.fact, item.correct, fact)),
+      difficulty: ['innervation','vascularisation','trajet','conséquence'].includes(fact.kind) ? 'application' : 'essentiel',
       format: 'single',
       documentId: doc.id,
-      sourceSectionId: section.id,
-      sourceSectionTitle: section.title,
-      sourcePages: [section.startPage, section.endPage],
-      sourceExcerpt: sentence
-    })
+      sourceSectionId: fact.section.id,
+      sourceSectionTitle: fact.section.title,
+      sourcePages: [fact.section.startPage, fact.section.endPage],
+      sourceExcerpt: fact.evidence
+    }
+    const seen = [...existingQuestions, ...candidates]
+    if (seen.some(question => questionNearDuplicate(question, raw))) continue
+    candidates.push(raw)
   }
 
-  return questions
+  // Keep source order for a stable learning progression; vary answer positions independently.
+  const selected = candidates.slice(0, Math.max(0, count))
+  for (let index = 0; index < selected.length; index++) {
+    const question = selected[index]
+    const rotation = randomInt(4)
+    const order = [0, 1, 2, 3].map(offset => (offset + rotation) % 4)
+    const sourceToDisplay = new Map(order.map((sourceIndex, displayIndex) => [sourceIndex, displayIndex]))
+    const rawOptions = question.options
+    const rawWhy = question.why
+    const factCorrectIndex = sourceToDisplay.get(0)
+    selected[index] = {
+      ...question,
+      options: order.map(sourceIndex => rawOptions[sourceIndex]),
+      correct: [factCorrectIndex],
+      why: order.map(sourceIndex => rawWhy[sourceIndex])
+    }
+  }
+  return selected
 }
 
 export function formatAnkiCsv(title, filename, questions) {

@@ -593,6 +593,11 @@ export default function MyCoursesWorkspace(props: {
                         <strong>Explication :</strong>{' '}
                         {q.correct.map(correctIdx => q.why[correctIdx]).filter(Boolean).join(' ') || 'La réponse est justifiée par le passage source.'}
                       </p>
+                      {!q.correct.includes(questionAnswers[q.id]) && q.why[questionAnswers[q.id]] && (
+                        <p style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '0.35rem' }}>
+                          <strong>Votre choix :</strong> {q.why[questionAnswers[q.id]]}
+                        </p>
+                      )}
                     </div>
                   )}
                 </article>

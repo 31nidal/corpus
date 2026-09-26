@@ -51,9 +51,10 @@ test('parcours complet Mes cours : connexion → upload PDF → extraction → s
   // 4. Upload du fichier PDF de cours
   const pdfBuffer = makeTestPdf([
     'Chapitre 1 : Pharmacologie cardiovasculaire et antiarythmiques.',
-    'Les betabloquants ralentissent la frequence cardiaque et diminuent la contractilite.',
-    'L amiodarone est un antiarythmique de classe III qui prolonge la periode refractaire.',
-    'La surveillance de l intervalle QT permet de prevenir le risque de torsades de pointes.'
+    'Le nerf phrénique innerve le diaphragme.',
+    'Le nerf vague innerve les muscles du pharynx.',
+    'Le nerf hypoglosse innerve les muscles de la langue.',
+    'Le nerf facial innerve les muscles de la mimique.'
   ])
 
   const fileChooserPromise = page.waitForEvent('filechooser')
@@ -73,7 +74,7 @@ test('parcours complet Mes cours : connexion → upload PDF → extraction → s
   // 6. Génération de la synthèse
   await page.getByRole('button', { name: /Générer la synthèse/ }).click()
   await expect(page.locator('.mycourses-summary-card')).toBeVisible({ timeout: 25000 })
-  await expect(page.locator('.mycourses-workspace .intro-text')).toContainText('Fiche de synthèse')
+  await expect(page.locator('.mycourses-workspace .intro-text')).toContainText('Chapitre 1')
   await expect(page.locator('.mycourses-summary-card h3')).toBeVisible()
 
   // 7. Génération de QCM

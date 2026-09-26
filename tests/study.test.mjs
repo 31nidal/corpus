@@ -184,10 +184,15 @@ test('Study API : inscription, upload PDF, extraction, structuration et quotas',
 
     // 4. Upload valid course PDF via binary stream
     const validPdf = makePdf([
-      'Chapitre 1 : Physiologie respiratoire et mecanique ventilatoire.',
-      'Le diaphragme est le muscle principal de la respiration chez l etre humain.',
-      'Lors de la contraction du diaphragme, la pression intra-thoracique diminue.',
-      'L oxygene diffuse ensuite des alveoles vers le sang capillaire pulmonaire.'
+      'Chapitre 1 : Anatomie fonctionnelle et innervation périphérique.',
+      'Le nerf phrénique innerve le diaphragme.',
+      'Le nerf vague innerve les muscles du pharynx.',
+      'Le nerf hypoglosse innerve les muscles de la langue.',
+      'Le nerf facial innerve les muscles de la mimique.',
+      'Le nerf radial innerve les muscles extenseurs du bras.',
+      'Le nerf médian innerve plusieurs muscles fléchisseurs de l avant-bras.',
+      'Le nerf ulnaire innerve les muscles intrinsèques de la main.',
+      'Le nerf fibulaire profond innerve les muscles de la loge antérieure de la jambe.'
     ])
 
     const uploadRes = await api.uploadPdf(sessionCookie, 'Physiologie Respiratoire', 'respiration.pdf', validPdf)
@@ -229,6 +234,25 @@ test('Study API : inscription, upload PDF, extraction, structuration et quotas',
     assert.ok(q1.sourceSectionId)
     assert.ok(q1.sourceExcerpt)
 
+    const assertGroundedQuestion = question => {
+      assert.equal(question.correct.length, 1)
+      assert.ok(question.correct[0] >= 0 && question.correct[0] < question.options.length)
+      assert.ok(question.options.length >= 3 && question.options.length <= 5)
+      assert.equal(new Set(question.options.map(option => option.trim().toLocaleLowerCase('fr-FR'))).size, question.options.length)
+      assert.equal(question.why.length, question.options.length)
+      assert.ok(question.why.every(reason => typeof reason === 'string' && reason.trim().length >= 20))
+      assert.ok(question.sourceExcerpt.length >= 35)
+      assert.ok(Array.isArray(question.sourcePages) && question.sourcePages.length === 2)
+      assert.ok(question.sourcePages[0] >= 1 && question.sourcePages[1] >= question.sourcePages[0])
+      const sourceSection = getRes.data.document.sections.find(section => section.id === question.sourceSectionId)
+      assert.ok(sourceSection, 'la section source doit appartenir au PDF importé')
+      const normalize = value => value.normalize('NFKC').toLocaleLowerCase('fr-FR').replace(/\s+/g, ' ').trim()
+      assert.ok(normalize(sourceSection.content).includes(normalize(question.sourceExcerpt)), 'l’extrait doit être exact et issu du PDF')
+      assert.ok(normalize(question.sourceExcerpt).includes(normalize(question.options[question.correct[0]])), 'la bonne réponse doit apparaître dans l’extrait source')
+      return question
+    }
+    qcmRes.data.questions.forEach(assertGroundedQuestion)
+
     // 9. Fetch questions for document
     const qListRes = await api.call(`/api/study/documents/${docId}/questions`, undefined, sessionCookie)
     assert.equal(qListRes.status, 200)
@@ -242,6 +266,8 @@ test('Study API : inscription, upload PDF, extraction, structuration et quotas',
     assert.equal(combined.status, 200)
     assert.equal(combined.data.questions.length, qcmRes.data.questions.length + qcmRes2.data.questions.length)
     assert.equal(new Set(combined.data.questions.map(question => question.id)).size, combined.data.questions.length)
+    combined.data.questions.forEach(assertGroundedQuestion)
+    assert.equal(new Set(combined.data.questions.map(question => question.sourceExcerpt)).size, combined.data.questions.length, 'aucune question ne doit reprendre le même fait source')
 
     // 9c. Explicit replacement deletes the previous series only after successful generation.
     const replacementRes = await api.call(`/api/study/documents/${docId}/questions`, { count: 2, replace: true }, sessionCookie)
@@ -252,6 +278,9 @@ test('Study API : inscription, upload PDF, extraction, structuration et quotas',
     assert.equal(afterReplacement.status, 200)
     assert.equal(afterReplacement.data.questions.length, replacementRes.data.questions.length)
     assert.equal(new Set(afterReplacement.data.questions.map(question => question.id)).size, afterReplacement.data.questions.length)
+    afterReplacement.data.questions.forEach(assertGroundedQuestion)
+    const priorIds = new Set(combined.data.questions.map(question => question.id))
+    assert.ok(afterReplacement.data.questions.every(question => !priorIds.has(question.id)), 'le remplacement crée une nouvelle série avec de nouveaux IDs')
 
     // 10. Export to Anki
     const ankiRes = await api.call(`/api/study/documents/${docId}/anki`, undefined, sessionCookie)
@@ -338,14 +367,15 @@ test('Système de quota IA : non atteint, atteint, reset mensuel, isolation et a
       }
     },
     async generateStudyQuestions({ documentTitle, count, sections }) {
+      const evidence = sections[0]?.content || sections[0]?.text || 'Extrait pédagogique fourni dans le cours.'
       return [{
         id: 'mock-q-1',
-        prompt: `Question sur ${documentTitle} ?`,
-        options: ['Choix A', 'Choix B', 'Choix C', 'Choix D'],
+        prompt: `Quelle information est donnée dans le document ${documentTitle} ?`,
+        options: [evidence, 'Proposition distincte non retenue A', 'Proposition distincte non retenue B', 'Proposition distincte non retenue C'],
         correct: [0],
-        why: ['Explication A', 'Explication B', 'Explication C', 'Explication D'],
+        why: ['Cette proposition reprend le passage fourni dans le document source.', 'Le document ne soutient pas cette proposition.', 'Cette proposition ne correspond pas au passage source.', 'Cette proposition contredit les informations fournies.'],
         sourceSectionId: sections[0]?.id,
-        sourceExcerpt: 'Extrait source provider',
+        sourceExcerpt: evidence,
         difficulty: 'essentiel',
         format: 'single'
       }]
@@ -377,8 +407,10 @@ test('Système de quota IA : non atteint, atteint, reset mensuel, isolation et a
     // Upload d'un cours pour Alice
     const pdfAlice = makePdf([
       'Chapitre : Neurologie et transmission synaptique.',
-      'Le potentiel d action se propage le long de l axone jusqu au bouton synaptique.',
-      'La liberation de neurotransmetteurs permet la communication entre les neurones.'
+      'Le nerf phrénique innerve le diaphragme.',
+      'Le nerf vague innerve les muscles du pharynx.',
+      'Le nerf hypoglosse innerve les muscles de la langue.',
+      'Le nerf facial innerve les muscles de la mimique.'
     ])
     const upAlice = await api.uploadPdf(aliceCookie, 'Neurophysiologie', 'neuro.pdf', pdfAlice)
     assert.equal(upAlice.status, 201)
@@ -479,8 +511,10 @@ test('Le fallback local sans provider externe ne consomme pas le quota et n\'est
 
     const pdf = makePdf([
       'Chapitre : Cardiologie clinique.',
-      'Le ventricule gauche assure l ejection systolique du sang vers l aorte.',
-      'La fraction d ejection normale est superieure a cinquante-cinq pour cent.'
+      'Le nerf phrénique innerve le diaphragme.',
+      'Le nerf vague innerve les muscles du pharynx.',
+      'Le nerf hypoglosse innerve les muscles de la langue.',
+      'Le nerf facial innerve les muscles de la mimique.'
     ])
     const up = await api.uploadPdf(cookie, 'Cardiologie', 'cardio.pdf', pdf)
     assert.equal(up.status, 201)
@@ -533,8 +567,10 @@ test('Aucune génération n’est débitée en cas d’échec réel du provider 
 
     const pdf = makePdf([
       'Chapitre : Gastro-enterologie.',
-      'Le foie produit la bile stockee dans la vesicule biliaire.',
-      'L absorption des lipides necessite une emulsion par les sels biliaires.'
+      'Le nerf phrénique innerve le diaphragme.',
+      'Le nerf vague innerve les muscles du pharynx.',
+      'Le nerf hypoglosse innerve les muscles de la langue.',
+      'Le nerf facial innerve les muscles de la mimique.'
     ])
     const up = await api.uploadPdf(cookie, 'Gastroenterologie', 'gastro.pdf', pdf)
     assert.equal(up.status, 201)
@@ -620,4 +656,3 @@ test('Concurrence et réservation atomique : deux requêtes simultanées avec 1 
     try { rmSync(dir, { recursive: true, force: true }) } catch { /* cleanup */ }
   }
 })
-
