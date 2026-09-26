@@ -209,12 +209,19 @@ export default function MyCoursesWorkspace(props: {
     }
   }
 
-  const handleGenerateQuestions = async (count = 5) => {
+  const handleGenerateQuestions = async (count = 5, replace = false) => {
     if (!currentDoc) return
+    if (replace && questions.length > 0 && !window.confirm('Remplacer tous les QCM existants de ce cours par une nouvelle série ?')) return
+
     try {
       setGeneratingQcm(true)
-      const newQ = await generateDocumentQuestions(currentDoc.id, count)
-      setQuestions(prev => [...newQ, ...prev])
+      const newQ = await generateDocumentQuestions(currentDoc.id, count, undefined, replace)
+      setQuestions(prev => replace ? newQ : [...newQ, ...prev])
+      if (replace) {
+        setQuestionAnswers({})
+        setRevealedQuestions({})
+        setPracticeSession(null)
+      }
       setActiveTab('questions')
     } catch (err: any) {
       alert(err.message || 'Échec de la génération du QCM.')
@@ -470,6 +477,16 @@ export default function MyCoursesWorkspace(props: {
                 >
                   <FileCheck size={16} /> {generatingQcm ? 'Génération…' : 'Générer +5 QCM'}
                 </button>
+                {questions.length > 0 && (
+                  <button
+                    className="mycourses-action-btn mycourses-action-secondary"
+                    onClick={() => handleGenerateQuestions(Math.min(Math.max(questions.length, 5), 20), true)}
+                    disabled={generatingQcm}
+                    title="Supprimer les QCM actuels puis générer une nouvelle série"
+                  >
+                    <RefreshCw size={15} /> Remplacer les QCM
+                  </button>
+                )}
               </div>
             </div>
 
