@@ -562,6 +562,7 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
         if (req.method === 'POST' && action === 'questions') {
           let count = 5
           let sectionId = null
+          let replaceExisting = false
           try {
             let raw = ''
             for await (const chunk of req) raw += chunk
@@ -569,6 +570,7 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
               const body = JSON.parse(raw)
               if (body.count && Number.isInteger(body.count)) count = Math.min(Math.max(body.count, 1), 20)
               if (body.sectionId) sectionId = String(body.sectionId)
+              replaceExisting = body.replace === true
             }
           } catch { /* default count */ }
 
@@ -613,9 +615,30 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
             generatedQuestions = generateLocalGroundedQuestions(doc, sections, count)
           }
 
+          const validSectionIds = new Set(sections.map(section => section.id))
+          const preparedQuestions = generatedQuestions
+            .map((question, index) => prepareStudyQuestion(question, {
+              documentId,
+              fallbackSection: sections[index % sections.length],
+              validSectionIds
+            }))
+            .filter(Boolean)
+
+          if (!preparedQuestions.length) {
+            if (quotaReserved) {
+              releaseGenerationQuota(user.id, d)
+              quotaReserved = false
+            }
+            return send(422, { error: 'Aucun QCM de qualité suffisante n’a pu être généré à partir de ce document.' })
+          }
+
           const now = new Date().toISOString()
           d.exec('BEGIN IMMEDIATE')
           try {
+            if (replaceExisting) {
+              d.prepare('DELETE FROM study_questions WHERE document_id = ? AND user_id = ?').run(documentId, user.id)
+            }
+
             const insertQ = d.prepare(`
               INSERT INTO study_questions(
                 id, document_id, user_id, section_id, start_page, end_page, 
@@ -623,9 +646,9 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
               ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `)
 
-            for (const q of generatedQuestions) {
+            for (const q of preparedQuestions) {
               insertQ.run(
-                q.id || `q-${randomUUID()}`,
+                q.id,
                 documentId,
                 user.id,
                 q.sourceSectionId || sections[0].id,
@@ -652,8 +675,9 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
           }
 
           return send(201, {
-            count: generatedQuestions.length,
-            questions: generatedQuestions
+            count: preparedQuestions.length,
+            replaced: replaceExisting,
+            questions: preparedQuestions
           })
         }
 
@@ -739,6 +763,63 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
         ...(error.code ? { code: error.code } : {})
       })
     }
+  }
+}
+
+function prepareStudyQuestion(question, { documentId, fallbackSection, validSectionIds }) {
+  if (!question || typeof question !== 'object') return null
+
+  const prompt = String(question.prompt || '').replace(/\s+/g, ' ').trim()
+  const options = Array.isArray(question.options)
+    ? question.options.map(option => String(option || '').replace(/\s+/g, ' ').trim())
+    : []
+  const correct = Array.isArray(question.correct)
+    ? [...new Set(question.correct.filter(index => Number.isInteger(index)))]
+    : []
+
+  if (prompt.length < 12 || options.length < 2 || options.length > 6) return null
+  if (options.some(option => option.length < 1)) return null
+  if (new Set(options.map(option => option.toLocaleLowerCase('fr-FR'))).size !== options.length) return null
+  if (!correct.length || correct.some(index => index < 0 || index >= options.length)) return null
+
+  const rawWhy = Array.isArray(question.why) ? question.why : []
+  const why = options.map((_, index) => {
+    const value = String(rawWhy[index] || '').replace(/\s+/g, ' ').trim()
+    return value || (correct.includes(index)
+      ? 'Cette proposition correspond au passage source du cours.'
+      : 'Cette proposition ne correspond pas au passage source du cours.')
+  })
+
+  const order = options.map((_, index) => index)
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[order[i], order[j]] = [order[j], order[i]]
+  }
+
+  const sourceSectionId = validSectionIds.has(question.sourceSectionId)
+    ? question.sourceSectionId
+    : fallbackSection.id
+  const sourcePages = Array.isArray(question.sourcePages) ? question.sourcePages : []
+  const startPage = Number.isInteger(sourcePages[0]) ? sourcePages[0] : fallbackSection.startPage
+  const endPage = Number.isInteger(sourcePages[1]) ? sourcePages[1] : fallbackSection.endPage
+  const shuffledCorrect = order
+    .map((originalIndex, newIndex) => correct.includes(originalIndex) ? newIndex : -1)
+    .filter(index => index >= 0)
+
+  return {
+    ...question,
+    id: `q-${randomUUID()}`,
+    course: `doc-${documentId}`,
+    documentId,
+    prompt,
+    options: order.map(index => options[index]),
+    correct: shuffledCorrect,
+    why: order.map(index => why[index]),
+    sourceSectionId,
+    sourcePages: [startPage, endPage],
+    sourceExcerpt: String(question.sourceExcerpt || '').replace(/\s+/g, ' ').trim() || 'Passage source du cours.',
+    difficulty: ['essentiel', 'application'].includes(question.difficulty) ? question.difficulty : 'essentiel',
+    format: question.format === 'multiple' ? 'multiple' : 'single'
   }
 }
 
