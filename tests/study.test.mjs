@@ -234,6 +234,25 @@ test('Study API : inscription, upload PDF, extraction, structuration et quotas',
     assert.equal(qListRes.status, 200)
     assert.equal(qListRes.data.questions.length, qcmRes.data.questions.length)
 
+    // 9b. A second additive generation must not collide on primary keys.
+    const qcmRes2 = await api.call(`/api/study/documents/${docId}/questions`, { count: 2 }, sessionCookie)
+    assert.equal(qcmRes2.status, 201)
+    assert.ok(qcmRes2.data.questions.length >= 1)
+    const combined = await api.call(`/api/study/documents/${docId}/questions`, undefined, sessionCookie)
+    assert.equal(combined.status, 200)
+    assert.equal(combined.data.questions.length, qcmRes.data.questions.length + qcmRes2.data.questions.length)
+    assert.equal(new Set(combined.data.questions.map(question => question.id)).size, combined.data.questions.length)
+
+    // 9c. Explicit replacement deletes the previous series only after successful generation.
+    const replacementRes = await api.call(`/api/study/documents/${docId}/questions`, { count: 2, replace: true }, sessionCookie)
+    assert.equal(replacementRes.status, 201)
+    assert.equal(replacementRes.data.replaced, true)
+    assert.ok(replacementRes.data.questions.length >= 1)
+    const afterReplacement = await api.call(`/api/study/documents/${docId}/questions`, undefined, sessionCookie)
+    assert.equal(afterReplacement.status, 200)
+    assert.equal(afterReplacement.data.questions.length, replacementRes.data.questions.length)
+    assert.equal(new Set(afterReplacement.data.questions.map(question => question.id)).size, afterReplacement.data.questions.length)
+
     // 10. Export to Anki
     const ankiRes = await api.call(`/api/study/documents/${docId}/anki`, undefined, sessionCookie)
     assert.equal(ankiRes.status, 200)
