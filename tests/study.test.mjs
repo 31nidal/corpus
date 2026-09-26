@@ -8,6 +8,7 @@ import { Readable } from 'node:stream'
 import { DatabaseSync } from 'node:sqlite'
 import { createAccountHandler } from '../server/accounts.mjs'
 import { createStudyHandler, initStudySchema, getOrResetStudyQuota, MAX_STUDY_FILE_SIZE_BYTES } from '../server/study.mjs'
+import { OllamaProvider, createStudyProvider } from '../server/providers.mjs'
 
 test('la limite PDF reste à 25 Mo pour les nouveaux comptes et les quotas existants', () => {
   const db = new DatabaseSync(':memory:')
@@ -593,6 +594,166 @@ test('Aucune génération n’est débitée en cas d’échec réel du provider 
     // Vérifier que la génération n'a toujours PAS été débitée
     const quotaAfterQcm = await api.call('/api/study/quotas', undefined, cookie)
     assert.equal(quotaAfterQcm.data.quota.generationsUsed, 0, 'Aucune génération débitée sur échec provider pour les questions')
+  } finally {
+    try { rmSync(dir, { recursive: true, force: true }) } catch { /* cleanup */ }
+  }
+})
+
+test('Ollama Study utilise uniquement des faits du PDF, ne consomme pas le quota payant et valide sa sortie', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'mycorpus-ollama-study-'))
+  const capturedPrompts = []
+  let remoteCalls = 0
+  let mockError = null
+  const fetchImpl = async (_url, options) => {
+    try {
+      const payload = JSON.parse(options.body)
+      const prompt = payload.messages[1].content
+      capturedPrompts.push(prompt)
+      const context = JSON.parse(prompt.slice(prompt.lastIndexOf('\n\n') + 2))
+      if (prompt.includes('"chapters"')) {
+        const section = context.sections[0]
+        return new Response(JSON.stringify({ message: { content: JSON.stringify({
+          title: context.documentTitle,
+          overview: 'La synthèse présente les principales relations d innervation décrites dans le document.',
+          chapters: [{ sectionId: section.id, title: section.title, summary: 'Cette section décrit plusieurs relations entre des nerfs périphériques et leurs territoires moteurs.', keyPoints: ['Le nerf phrenique innerve le diaphragme.', 'Plusieurs nerfs craniens commandent des muscles de la tete.'] }]
+        }) } }), { status: 200 })
+      }
+      const fact = context.facts[0]
+      const correct = payload.model === 'invalid-qcm-test' ? 'Un nerf absent du document' : fact.answer
+      return new Response(JSON.stringify({ message: { content: JSON.stringify({ questions: [{
+        prompt: `Quel nerf le document associe-t-il à l’innervation de ${fact.subject} ?`,
+        options: [correct, ...fact.distractors],
+        correct: [0],
+        why: [
+          `Le passage relie bien ${fact.subject} à ${correct} dans la source du document.`,
+          `Cette proposition correspond à une autre relation d’innervation citée dans le document.`,
+          `Cette proposition est associée à un autre territoire dans la source du cours.`,
+          `Le cours attribue cette proposition à une structure différente de la cible demandée.`
+        ],
+        difficulty: 'application', format: 'single', sourceSectionId: fact.sectionId, sourceExcerpt: fact.evidence
+      }] }) } }), { status: 200 })
+    } catch (error) {
+      mockError = error
+      throw error
+    }
+  }
+  const ollama = createStudyProvider({ STUDY_AI_PROVIDER: 'ollama', OLLAMA_MODEL: 'qwen3:8b' }, {
+    remoteProvider: {
+      generateStudySummary() { remoteCalls++; throw new Error('Le distant ne doit pas être appelé') },
+      generateStudyQuestions() { remoteCalls++; throw new Error('Le distant ne doit pas être appelé') }
+    }, fetchImpl
+  })
+  const api = setupTestApi(dir, { provider: ollama })
+  try {
+    const registration = await api.call('/api/account/register', {
+      email: 'ollama-study@fac.fr', name: 'Noémie', password: 'mot-de-passe-securise-2026'
+    })
+    const cookie = registration.cookie
+    const pdf = makePdf([
+      'Chapitre : Innervation motrice.',
+      'Le nerf phrenique innerve le diaphragme.',
+      'Le nerf vague innerve les muscles du pharynx.',
+      'Le nerf hypoglosse innerve les muscles de la langue.',
+      'Le nerf facial innerve les muscles de la mimique.',
+      'SENTINELLE_PRIVEE_CONTENU_NON_STRUCTURE NE DOIT PAS QUITTER LE SERVEUR, elle est réservée à la vérification de confidentialité.'
+    ])
+    const upload = await api.uploadPdf(cookie, 'Innervation', 'innervation.pdf', pdf)
+    assert.equal(upload.status, 201)
+    const docId = upload.data.document.id
+
+    const db = new DatabaseSync(path.join(dir, 'mycorpus.sqlite'))
+    db.prepare('UPDATE study_quotas SET generations_used=100 WHERE user_id=(SELECT id FROM users WHERE email=?)').run('ollama-study@fac.fr')
+    db.close()
+
+    const summary = await api.call(`/api/study/documents/${docId}/summarize`, {}, cookie)
+    assert.equal(summary.status, 200)
+    assert.equal(summary.data.summary.chapters.length, 1)
+    assert.ok(summary.data.summary.chapters[0].sourceSectionId)
+    assert.ok(summary.data.summary.chapters[0].pages)
+    const qcm = await api.call(`/api/study/documents/${docId}/questions`, { count: 2 }, cookie)
+    assert.equal(qcm.status, 201)
+    assert.ok(qcm.data.questions.length >= 1)
+    assert.equal(mockError, null, mockError?.stack)
+
+    const quota = await api.call('/api/study/quotas', undefined, cookie)
+    assert.equal(quota.data.quota.generationsUsed, 100, 'Ollama ne doit ni consommer ni être bloqué par le quota payant')
+    assert.equal(capturedPrompts.some(prompt => prompt.includes('SENTINELLE_PRIVEE_CONTENU_NON_STRUCTURE')), false)
+    assert.ok(capturedPrompts.some(prompt => prompt.includes('Le nerf phrenique innerve le diaphragme.')))
+    assert.equal(remoteCalls, 0, 'le provider distant ne doit pas être appelé en mode Ollama')
+  } finally {
+    try { rmSync(dir, { recursive: true, force: true }) } catch { /* cleanup */ }
+  }
+})
+
+test('une sortie QCM Ollama invalide est rejetée et remplacée par le fallback local', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'mycorpus-ollama-invalid-qcm-'))
+  const ollama = new OllamaProvider({ OLLAMA_MODEL: 'invalid-qcm-test' }, {
+    fetchImpl: async (_url, options) => {
+      const payload = JSON.parse(options.body)
+      const prompt = payload.messages[1].content
+      const context = JSON.parse(prompt.slice(prompt.lastIndexOf('\n\n') + 2))
+      if (prompt.includes('"chapters"')) {
+        return new Response(JSON.stringify({ message: { content: JSON.stringify({ overview: 'trop court', chapters: [] }) } }), { status: 200 })
+      }
+      const fact = context.facts[0]
+      return new Response(JSON.stringify({ message: { content: JSON.stringify({ questions: [{
+        prompt: 'Quelle proposition correspond à la relation indiquée par le document source ?',
+        options: ['Proposition inventée', ...fact.distractors], correct: [0],
+        why: ['Cette proposition devrait être correcte selon la source fournie.', 'Distracteur plausible présent dans la source du cours.', 'Distracteur plausible présent ailleurs dans le document.', 'Distracteur issu du même ensemble de faits anatomiques.'],
+        sourceSectionId: fact.sectionId, sourceExcerpt: fact.evidence
+      }] }) } }), { status: 200 })
+    }
+  })
+  const api = setupTestApi(dir, { provider: ollama })
+  try {
+    const registration = await api.call('/api/account/register', {
+      email: 'ollama-invalid@fac.fr', name: 'Samir', password: 'mot-de-passe-securise-2026'
+    })
+    const pdf = makePdf([
+      'Chapitre : Innervation motrice.',
+      'Le nerf phrenique innerve le diaphragme.',
+      'Le nerf vague innerve les muscles du pharynx.',
+      'Le nerf hypoglosse innerve les muscles de la langue.',
+      'Le nerf facial innerve les muscles de la mimique.'
+    ])
+    const upload = await api.uploadPdf(registration.cookie, 'Innervation', 'innervation.pdf', pdf)
+    const summary = await api.call(`/api/study/documents/${upload.data.document.id}/summarize`, {}, registration.cookie)
+    assert.equal(summary.status, 200)
+    assert.ok(summary.data.summary.chapters.length >= 1, 'une synthèse non conforme doit utiliser le fallback local')
+    const result = await api.call(`/api/study/documents/${upload.data.document.id}/questions`, { count: 2 }, registration.cookie)
+    assert.equal(result.status, 201)
+    assert.ok(result.data.questions.length >= 1)
+    assert.ok(result.data.questions.every(question => question.options[question.correct[0]] !== 'Proposition inventée'))
+    const quota = await api.call('/api/study/quotas', undefined, registration.cookie)
+    assert.equal(quota.data.quota.generationsUsed, 0)
+  } finally {
+    try { rmSync(dir, { recursive: true, force: true }) } catch { /* cleanup */ }
+  }
+})
+
+test('une panne Ollama retombe sur la synthèse et les QCM locaux sans quota payant', async () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'mycorpus-ollama-offline-'))
+  const ollama = new OllamaProvider({}, { fetchImpl: async () => { throw new Error('connection refused') } })
+  const api = setupTestApi(dir, { provider: ollama })
+  try {
+    const registration = await api.call('/api/account/register', {
+      email: 'ollama-offline@fac.fr', name: 'Lina', password: 'mot-de-passe-securise-2026'
+    })
+    const pdf = makePdf([
+      'Chapitre : Innervation motrice.',
+      'Le nerf phrenique innerve le diaphragme.',
+      'Le nerf vague innerve les muscles du pharynx.',
+      'Le nerf hypoglosse innerve les muscles de la langue.',
+      'Le nerf facial innerve les muscles de la mimique.'
+    ])
+    const upload = await api.uploadPdf(registration.cookie, 'Innervation', 'innervation.pdf', pdf)
+    const docId = upload.data.document.id
+    const summary = await api.call(`/api/study/documents/${docId}/summarize`, {}, registration.cookie)
+    assert.equal(summary.status, 200)
+    const qcm = await api.call(`/api/study/documents/${docId}/questions`, { count: 2 }, registration.cookie)
+    assert.equal(qcm.status, 201)
+    const quota = await api.call('/api/study/quotas', undefined, registration.cookie)
+    assert.equal(quota.data.quota.generationsUsed, 0)
   } finally {
     try { rmSync(dir, { recursive: true, force: true }) } catch { /* cleanup */ }
   }

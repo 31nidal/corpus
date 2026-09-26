@@ -508,7 +508,7 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
           const hasRemoteProvider = Boolean(provider && typeof provider.generateStudySummary === 'function')
           let quotaReserved = false
 
-          if (hasRemoteProvider) {
+          if (hasRemoteProvider && provider.usesPaidQuota !== false) {
             reserveGenerationQuota(user.id, d)
             quotaReserved = true
           }
@@ -517,13 +517,21 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
           let summary = null
           if (hasRemoteProvider) {
             try {
+              const providerSections = provider.contextMode === 'structured-facts'
+                ? buildOllamaSummaryContext(sections)
+                : { sections: sections.map(s => ({ id: s.id, title: s.title, content: s.content, pages: `${s.startPage}-${s.endPage}` })) }
               summary = await provider.generateStudySummary({
                 documentTitle: doc.title,
-                sections: sections.map(s => ({ id: s.id, title: s.title, content: s.content, pages: `${s.startPage}-${s.endPage}` }))
+                ...providerSections
               })
             } catch (err) {
               console.warn('Provider summary generation failed, falling back to local extractor:', err.message)
             }
+          }
+
+          if (summary && provider?.requiresFactGrounding) {
+            summary = prepareGroundedStudySummary(summary, { documentTitle: doc.title, sections })
+            if (!summary) console.warn('Ollama summary rejected by server validation; using local extractor.')
           }
 
           if (!summary) {
@@ -601,7 +609,7 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
           const hasRemoteProvider = Boolean(provider && typeof provider.generateStudyQuestions === 'function')
           let quotaReserved = false
 
-          if (hasRemoteProvider) {
+          if (hasRemoteProvider && provider.usesPaidQuota !== false) {
             reserveGenerationQuota(user.id, d)
             quotaReserved = true
           }
@@ -609,14 +617,22 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
           let generatedQuestions = []
           if (hasRemoteProvider) {
             try {
+              const providerContext = provider.contextMode === 'structured-facts'
+                ? buildOllamaQuestionContext(doc.title, sections, count)
+                : { sections: sections.map(s => ({ id: s.id, title: s.title, content: s.content, startPage: s.startPage, endPage: s.endPage })) }
               generatedQuestions = await provider.generateStudyQuestions({
                 documentTitle: doc.title,
                 count,
-                sections: sections.map(s => ({ id: s.id, title: s.title, content: s.content, startPage: s.startPage, endPage: s.endPage }))
+                ...providerContext
               })
             } catch (err) {
               console.warn('Provider QCM generation failed, falling back to local grounded generator:', err.message)
             }
+          }
+
+          if (provider?.requiresFactGrounding && Array.isArray(generatedQuestions)) {
+            const sourceFacts = extractStudyFacts(sections)
+            generatedQuestions = generatedQuestions.filter(question => isQuestionGroundedInFacts(question, sourceFacts))
           }
 
           if (!generatedQuestions || !Array.isArray(generatedQuestions) || generatedQuestions.length === 0) {
@@ -968,6 +984,115 @@ function extractStudySentences(section) {
     .map(sentence => sentence.trim())
     .filter(sentence => sentence.length >= 35 && sentence.length <= 360 &&
       !/^(figure|tableau|schéma|source|référence|bibliographie)\b/i.test(sentence))
+}
+
+function buildOllamaSummaryContext(sections) {
+  const facts = extractStudyFacts(sections).slice(0, 28).map(fact => ({
+    sectionId: fact.section.id,
+    sectionTitle: fact.section.title,
+    pages: `${fact.section.startPage}-${fact.section.endPage}`,
+    kind: fact.kind,
+    subject: fact.subject,
+    relation: fact.relation,
+    answer: fact.answer,
+    evidence: fact.evidence
+  }))
+  const excerpts = []
+  let budget = facts.length ? 0 : 4200
+  for (const section of sections) {
+    if (budget <= 0) break
+    for (const text of extractStudySentences(section)) {
+      if (budget <= 0) break
+      const excerpt = text.slice(0, Math.min(360, budget))
+      if (excerpt.length < 35) continue
+      excerpts.push({ sectionId: section.id, text: excerpt })
+      budget -= excerpt.length
+      if (excerpts.length >= 14) break
+    }
+  }
+  return {
+    sections: sections.slice(0, 80).map(section => ({
+      id: section.id,
+      title: section.title,
+      pages: `${section.startPage}-${section.endPage}`
+    })),
+    facts,
+    excerpts
+  }
+}
+
+function buildOllamaQuestionContext(documentTitle, sections, count) {
+  const facts = extractStudyFacts(sections)
+  const candidates = facts.flatMap(fact => {
+    const alternatives = relatedFacts(fact, facts)
+    const distractors = [...new Set(alternatives.map(candidate => comparableStudyText(candidate.answer)))]
+      .map(key => alternatives.find(candidate => comparableStudyText(candidate.answer) === key)?.answer)
+      .filter(Boolean)
+      .filter(answer => comparableStudyText(answer) !== comparableStudyText(fact.answer))
+      .slice(0, 3)
+    if (distractors.length < 3) return []
+    return [{
+      sectionId: fact.section.id,
+      sectionTitle: fact.section.title,
+      pages: `${fact.section.startPage}-${fact.section.endPage}`,
+      kind: fact.kind,
+      subject: fact.subject,
+      relation: fact.relation,
+      answer: fact.answer,
+      distractors,
+      evidence: fact.evidence
+    }]
+  }).slice(0, Math.min(32, Math.max(6, count * 3)))
+  return {
+    facts: candidates,
+    documentTitle,
+    count,
+    sections: sections.map(section => ({ id: section.id, title: section.title, pages: `${section.startPage}-${section.endPage}` }))
+  }
+}
+
+function isQuestionGroundedInFacts(question, facts) {
+  if (!question || !Array.isArray(question.options) || !Array.isArray(question.correct) || question.correct.length !== 1) return false
+  const correctIndex = question.correct[0]
+  if (!Number.isInteger(correctIndex) || correctIndex < 0 || correctIndex >= question.options.length) return false
+  const correctAnswer = comparableStudyText(question.options[correctIndex])
+  const excerpt = comparableStudyText(question.sourceExcerpt)
+  const fact = facts.find(candidate => candidate.section.id === question.sourceSectionId &&
+    comparableStudyText(candidate.evidence) === excerpt && comparableStudyText(candidate.answer) === correctAnswer)
+  if (!fact) return false
+  const allowed = new Set(relatedFacts(fact, facts).map(candidate => comparableStudyText(candidate.answer)))
+  return question.options.every((option, index) => index === correctIndex || allowed.has(comparableStudyText(option)))
+}
+
+function prepareGroundedStudySummary(summary, { documentTitle, sections }) {
+  if (!summary || typeof summary !== 'object' || Array.isArray(summary)) return null
+  const overview = String(summary.overview || '').replace(/\s+/g, ' ').trim()
+  if (overview.length < 20 || overview.length > 5000 || !Array.isArray(summary.chapters) || !summary.chapters.length) return null
+  if (summary.chapters.length > sections.length) return null
+  const sectionsById = new Map(sections.map(section => [section.id, section]))
+  const seen = new Set()
+  const chapters = []
+  for (const chapter of summary.chapters) {
+    if (!chapter || typeof chapter !== 'object' || typeof chapter.sectionId !== 'string') return null
+    const source = sectionsById.get(chapter.sectionId)
+    const title = String(chapter.title || '').trim()
+    const text = String(chapter.summary || '').replace(/\s+/g, ' ').trim()
+    const points = Array.isArray(chapter.keyPoints)
+      ? chapter.keyPoints.map(point => String(point || '').replace(/\s+/g, ' ').trim())
+      : []
+    if (!source || seen.has(source.id) || !title || title.length > 180 || text.length < 20 || text.length > 1800 ||
+        !points.length || points.length > 12 || points.some(point => point.length < 10 || point.length > 360)) return null
+    seen.add(source.id)
+    chapters.push({
+      id: source.id,
+      sourceSectionId: source.id,
+      title,
+      pages: `${source.startPage}-${source.endPage}`,
+      summary: text,
+      keyPoints: points
+    })
+  }
+  return { title: documentTitle, overview, sectionCount: sections.length, chapters }
 }
 
 function trimEntity(value) {

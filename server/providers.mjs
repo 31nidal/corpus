@@ -5,6 +5,8 @@
 // UI and study logic never depend on any vendor SDK (OpenAI, Anthropic, Gemini).
 // Everything passes through the generic upstream HTTP provider contract.
 
+export { OllamaProvider, createStudyProvider } from './ollama-provider.mjs'
+
 export class HttpProvider {
   constructor(config) {
     this.url = config.CHAT_UPSTREAM_URL

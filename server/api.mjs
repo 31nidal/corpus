@@ -4,7 +4,7 @@ import {createFeedbackHandler} from './feedback.mjs'
 import {createStudyHandler} from './study.mjs'
 import {createFlashcardHandler} from './flashcards/handler.mjs'
 import path from 'node:path'
-import {createProvider} from './providers.mjs'
+import {createProvider, createStudyProvider} from './providers.mjs'
 import {validateAction} from '../shared/actions.mjs'
 const read=p=>JSON.parse(fs.readFileSync(path.resolve(process.cwd(),p.replace(/^\.\.\//,'')),'utf8'))
 const manifests={male:read('../public/models/manifest.json'),female:read('../public/models/female-regions/manifest.json')},labels={...read('../src/data/female-labels.json'),...read('../src/data/french-labels.json')},lessons=read('../src/data/learning.json'),profiles=read('../src/data/profiles.json')
@@ -44,7 +44,8 @@ export function createApiHandler(config=process.env){
  const account=createAccountHandler(config)
  const feedback=createFeedbackHandler(config)
  const provider=createProvider(config)
- const study=createStudyHandler(config,{provider})
+ const studyProvider=createStudyProvider(config,{remoteProvider:provider})
+ const study=createStudyHandler(config,{provider:studyProvider})
  const flashcards=createFlashcardHandler(config,{provider})
  return async(req,res,next)=>{
   const path=req.url?.split('?')[0]

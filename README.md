@@ -44,7 +44,7 @@ npm run build
 npm start
 ```
 
-Variables d’environnement disponibles : voir [`.env.example`](.env.example).
+Variables d’environnement disponibles : voir [`.env.example`](.env.example). Pour utiliser Ollama dans **Mes cours**, suivre le [guide de génération Study locale](docs/study-ollama.md).
 
 ## Commandes utiles
 
