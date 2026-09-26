@@ -89,7 +89,8 @@ export async function generateDocumentSummary(id: string): Promise<StudySummary>
 export async function generateDocumentQuestions(
   id: string,
   count = 5,
-  sectionId?: string
+  sectionId?: string,
+  replace = false
 ): Promise<StudyQuestion[]> {
   const res = await fetch(`/api/study/documents/${encodeURIComponent(id)}/questions`, {
     method: 'POST',
@@ -98,7 +99,7 @@ export async function generateDocumentQuestions(
       'x-mycorpus-request': '1'
     },
     credentials: 'same-origin',
-    body: JSON.stringify({ count, sectionId })
+    body: JSON.stringify({ count, sectionId, replace })
   })
   const body = await res.json()
   if (!res.ok) throw new Error(body.error || 'Échec de la génération du QCM.')
