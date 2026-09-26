@@ -56,6 +56,8 @@ export default function MyCoursesWorkspace(props: {
   const [generatingSummary, setGeneratingSummary] = useState(false)
   const [generatingQcm, setGeneratingQcm] = useState(false)
   const [targetPassage, setTargetPassage] = useState<{ title: string; pages: string; text: string } | null>(null)
+  const [questionAnswers, setQuestionAnswers] = useState<Record<string, number>>({})
+  const [revealedQuestions, setRevealedQuestions] = useState<Record<string, boolean>>({})
   const [flashGeneration,setFlashGeneration]=useState<GenerationSource|null>(null)
   const [visualCropDoc, setVisualCropDoc] = useState<StudyDocument | null>(null)
   const [cropResult, setCropResult] = useState<{
@@ -496,7 +498,7 @@ export default function MyCoursesWorkspace(props: {
                       </span>
                       <strong>{q.prompt}</strong>
                     </div>
-                    {q.sourceExcerpt && (
+                    {revealedQuestions[q.id] && q.sourceExcerpt && (
                       <button
                         className="mycourses-source-btn"
                         onClick={() => setTargetPassage({
@@ -509,30 +511,73 @@ export default function MyCoursesWorkspace(props: {
                       </button>
                     )}
                   </div>
+
                   <div className="answer-options" style={{ marginTop: '1rem' }}>
-                    {q.options.map((opt, oIdx) => (
-                      <div
-                        key={oIdx}
-                        className={q.correct.includes(oIdx) ? 'correct-option' : 'incorrect-option'}
-                        style={{
-                          padding: '0.65rem 1rem',
-                          borderRadius: '0.5rem',
-                          marginBottom: '0.4rem',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.75rem',
-                          fontSize: '0.92rem'
-                        }}
-                      >
-                        <strong>{String.fromCharCode(65 + oIdx)}</strong>
-                        <span style={{ flex: 1 }}>{opt}</span>
-                        {q.correct.includes(oIdx) && <Check size={16} color="#059669" />}
-                      </div>
-                    ))}
+                    {q.options.map((opt, oIdx) => {
+                      const revealed = Boolean(revealedQuestions[q.id])
+                      const selected = questionAnswers[q.id] === oIdx
+                      const correct = q.correct.includes(oIdx)
+                      const optionClass = revealed
+                        ? (correct ? 'correct-option' : (selected ? 'incorrect-option' : ''))
+                        : ''
+
+                      return (
+                        <button
+                          key={oIdx}
+                          type="button"
+                          className={optionClass}
+                          disabled={revealed}
+                          onClick={() => setQuestionAnswers(prev => ({ ...prev, [q.id]: oIdx }))}
+                          style={{
+                            width: '100%',
+                            padding: '0.7rem 1rem',
+                            borderRadius: '0.5rem',
+                            marginBottom: '0.45rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.75rem',
+                            fontSize: '0.92rem',
+                            textAlign: 'left',
+                            cursor: revealed ? 'default' : 'pointer',
+                            border: selected && !revealed ? '2px solid #0284c7' : undefined,
+                            background: selected && !revealed ? 'rgba(2, 132, 199, 0.06)' : undefined
+                          }}
+                        >
+                          <strong>{String.fromCharCode(65 + oIdx)}</strong>
+                          <span style={{ flex: 1 }}>{opt}</span>
+                          {revealed && correct && <Check size={16} color="#059669" />}
+                          {revealed && selected && !correct && <X size={16} color="#dc2626" />}
+                        </button>
+                      )
+                    })}
                   </div>
-                  <p style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '0.75rem' }}>
-                    <strong>Justification :</strong> {q.why[0] || 'Conforme au passage source.'}
-                  </p>
+
+                  {!revealedQuestions[q.id] ? (
+                    <button
+                      className="mycourses-action-btn mycourses-action-primary"
+                      disabled={questionAnswers[q.id] == null}
+                      onClick={() => setRevealedQuestions(prev => ({ ...prev, [q.id]: true }))}
+                      style={{ marginTop: '0.65rem' }}
+                    >
+                      <CheckCircle2 size={16} />
+                      Valider ma réponse
+                    </button>
+                  ) : (
+                    <div style={{ marginTop: '0.8rem' }}>
+                      <p style={{
+                        fontSize: '0.9rem',
+                        margin: 0,
+                        color: q.correct.includes(questionAnswers[q.id]) ? '#047857' : '#b91c1c',
+                        fontWeight: 700
+                      }}>
+                        {q.correct.includes(questionAnswers[q.id]) ? 'Bonne réponse.' : 'Réponse incorrecte.'}
+                      </p>
+                      <p style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '0.35rem' }}>
+                        <strong>Explication :</strong>{' '}
+                        {q.correct.map(correctIdx => q.why[correctIdx]).filter(Boolean).join(' ') || 'La réponse est justifiée par le passage source.'}
+                      </p>
+                    </div>
+                  )}
                 </article>
               ))
             )}
