@@ -33,6 +33,13 @@ export type StudySummaryChapter = {
   pages: string
   keyPoints: string[]
   excerpt: string
+  categories?: StudySummaryCategory[]
+}
+
+export type StudySummaryCategory = {
+  id: string
+  label: string
+  items: string[]
 }
 
 export type StudySummary = {
@@ -58,4 +65,3 @@ export type StudyQuota = {
   monthlyGenerations: number
   generationsUsed: number
 }
-

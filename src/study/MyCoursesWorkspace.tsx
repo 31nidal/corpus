@@ -426,11 +426,22 @@ export default function MyCoursesWorkspace(props: {
                       <span>{idx + 1}. {chap.title}</span>
                       <span>{chap.pages}</span>
                     </h3>
-                    <ul className="mycourses-summary-list">
-                      {chap.keyPoints.map((pt, pIdx) => (
-                        <li key={pIdx}>{pt}</li>
-                      ))}
-                    </ul>
+                    {chap.categories?.length ? (
+                      <div className="mycourses-summary-categories">
+                        {chap.categories.map(category => (
+                          <section key={category.id} className="mycourses-summary-category">
+                            <h4>{category.label}</h4>
+                            <ul className="mycourses-summary-list">
+                              {category.items.map((item, itemIndex) => <li key={itemIndex}>{item}</li>)}
+                            </ul>
+                          </section>
+                        ))}
+                      </div>
+                    ) : (
+                      <ul className="mycourses-summary-list">
+                        {chap.keyPoints.map((pt, pIdx) => <li key={pIdx}>{pt}</li>)}
+                      </ul>
+                    )}
                   </article>
                 ))}
               </div>

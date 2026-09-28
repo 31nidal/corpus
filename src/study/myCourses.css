@@ -509,6 +509,24 @@
   line-height: 1.6;
 }
 
+.mycourses-summary-categories {
+  display: grid;
+  gap: 1rem;
+}
+
+.mycourses-summary-category h4 {
+  margin: 0 0 0.35rem;
+  color: #0e7490;
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+}
+
+[data-theme='dark'] .mycourses-summary-category h4 {
+  color: #67e8f9;
+}
+
 .mycourses-summary-list li {
   margin-bottom: 0.5rem;
 }
@@ -634,4 +652,3 @@
   background: #152228;
   border-color: rgba(255, 255, 255, 0.08);
 }
-

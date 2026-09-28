@@ -11,7 +11,7 @@
     "start": "node --env-file-if-exists=.env server/index.mjs",
     "test:accounts": "node --test tests/accounts.test.mjs",
     "test:feedback": "node --test tests/feedback.test.mjs",
-    "test:study": "node --test tests/study.test.mjs tests/ollama-provider.test.mjs",
+    "test:study": "node --test tests/study.test.mjs tests/ollama-provider.test.mjs tests/study-symbolic.test.mjs",
     "test:security": "node --test tests/security.test.mjs",
     "test:taxonomy": "node --test tests/taxonomy.test.mjs",
     "test:catalog-content": "node --experimental-strip-types --experimental-loader=./scripts/ts-loader.mjs --test tests/canonical-content.test.mjs",

@@ -3,6 +3,8 @@ import { createHash, randomInt, randomUUID } from 'node:crypto'
 import { mkdirSync, existsSync, unlinkSync, writeFileSync, readFileSync, renameSync } from 'node:fs'
 import path from 'node:path'
 import { extractPdfPagesAndText, chunkIntoSections } from './pdfExtractor.mjs'
+import { extractTypedStudyFacts } from './study/symbolic-facts.mjs'
+import { buildSymbolicSummaryCategories, generateSymbolicStudyQuestions, POC_RELATIONS } from './study/symbolic-rules.mjs'
 
 const digest = value => createHash('sha256').update(value).digest('hex')
 
@@ -919,6 +921,7 @@ function prepareStudyQuestion(question, { documentId, validSectionIds, sectionsB
  * High-quality grounded summary generator derived strictly from parsed section contents
  */
 export function generateLocalSummary(title, sections) {
+  const typedFacts = extractTypedStudyFacts(sections)
   const normalize = value => String(value || '').replace(/\s+/g, ' ').trim()
   const stopLead = /^(figure|tableau|schéma|source|référence|bibliographie|objectif|introduction|conclusion)\b/i
 
@@ -972,11 +975,15 @@ export function generateLocalSummary(title, sections) {
       keyPoints.push(fallback || `Section couvrant les pages ${sec.startPage} à ${sec.endPage}.`)
     }
 
+    const categories = buildSymbolicSummaryCategories(typedFacts.filter(fact => fact.sectionId === sec.id))
+    if (keyPoints.length) categories.push({ id: 'essentials', label: 'Points essentiels', items: keyPoints })
+
     return {
       id: sec.id,
       title: sec.title,
       pages: `Pages ${sec.startPage}–${sec.endPage}`,
       keyPoints,
+      ...(categories.length ? { categories } : {}),
       excerpt: keyPoints.slice(0, 2).join(' ')
     }
   })
@@ -1232,7 +1239,16 @@ function factExplanation(fact, isCorrect, targetFact) {
  * supplies one source relation and three distinct, same-category alternatives.
  */
 export function generateLocalGroundedQuestions(doc, sections, count = 5, existingQuestions = []) {
-  const facts = extractStudyFacts(sections)
+  const symbolicQuestions = generateSymbolicStudyQuestions(doc, sections, count, existingQuestions)
+  const remaining = Math.max(0, count - symbolicQuestions.length)
+  if (!remaining) return symbolicQuestions
+  const previous = [...existingQuestions, ...symbolicQuestions]
+  const legacyFacts = extractStudyFacts(sections).filter(fact => !POC_RELATIONS.has(fact.kind))
+  const legacyQuestions = generateLegacyGroundedQuestions(doc, sections, remaining, previous, legacyFacts)
+  return [...symbolicQuestions, ...legacyQuestions].slice(0, Math.max(0, count))
+}
+
+function generateLegacyGroundedQuestions(doc, sections, count = 5, existingQuestions = [], facts = extractStudyFacts(sections)) {
   const candidates = []
   const emitted = new Set()
 

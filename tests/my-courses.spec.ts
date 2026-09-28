@@ -76,6 +76,8 @@ test('parcours complet Mes cours : connexion → upload PDF → extraction → s
   await expect(page.locator('.mycourses-summary-card')).toBeVisible({ timeout: 25000 })
   await expect(page.locator('.mycourses-workspace .intro-text')).toContainText('Chapitre 1')
   await expect(page.locator('.mycourses-summary-card h3')).toBeVisible()
+  await expect(page.locator('.mycourses-summary-category h4', { hasText: 'Innervation' })).toBeVisible()
+  await expect(page.locator('.mycourses-summary-category').filter({ has: page.getByRole('heading', { name: 'Innervation' }) }).locator('li')).not.toHaveCount(0)
 
   // 7. Génération de QCM
   await page.getByRole('button', { name: /Générer QCM/ }).click()
