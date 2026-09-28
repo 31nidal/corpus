@@ -499,7 +499,18 @@ test('Système de quota IA : non atteint, atteint, reset mensuel, isolation et a
 
 test('Le fallback local sans provider externe ne consomme pas le quota et n\'est pas bloqué', async () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'mycorpus-local-fallback-'))
-  const api = setupTestApi(dir) // aucun provider externe
+  let remoteCalls = 0
+  let ollamaCalls = 0
+  const remoteProvider = {
+    async generateStudySummary() { remoteCalls++; throw new Error('remote must not be called') },
+    async generateStudyQuestions() { remoteCalls++; throw new Error('remote must not be called') }
+  }
+  const provider = createStudyProvider({ STUDY_AI_PROVIDER: 'local' }, {
+    remoteProvider,
+    fetchImpl: async () => { ollamaCalls++; throw new Error('Ollama must not be called') }
+  })
+  assert.equal(provider, null, 'le mode local explicite ne doit activer aucun provider externe')
+  const api = setupTestApi(dir, { provider })
   const pw = 'mot-de-passe-securise-2026'
 
   try {
@@ -528,6 +539,8 @@ test('Le fallback local sans provider externe ne consomme pas le quota et n\'est
     // 2. QCM en fallback local
     const qcm = await api.call(`/api/study/documents/${docId}/questions`, { count: 3 }, cookie)
     assert.equal(qcm.status, 201)
+    assert.equal(remoteCalls, 0, 'le mode local ne doit pas appeler le provider distant')
+    assert.equal(ollamaCalls, 0, 'le mode local ne doit pas appeler Ollama')
 
     // 3. Vérifier que generations_used est resté à 0
     const quota = await api.call('/api/study/quotas', undefined, cookie)

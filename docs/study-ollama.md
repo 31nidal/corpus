@@ -1,6 +1,16 @@
 # Génération Study avec Ollama
 
-MyCorpus peut générer les synthèses et les QCM de **Mes cours** avec un Ollama contrôlé par l’utilisateur. En mode `ollama`, les appels Study ne passent jamais par `CHAT_UPSTREAM_URL` : une panne Ollama déclenche le fallback local, sans bascule vers le provider distant.
+MyCorpus peut générer les synthèses et les QCM de **Mes cours** avec le moteur local intégré, Ollama ou explicitement le provider distant. Le lancement recommandé est sans coût d’infrastructure IA : `local` n’utilise ni modèle, ni API, ni GPU, et ne consomme pas le quota payant. Ollama reste intégré au code mais désactivé par défaut.
+
+## Lancement initial (recommandé)
+
+Configure cette variable dans Railway ou dans `.env` :
+
+```dotenv
+STUDY_AI_PROVIDER=local
+```
+
+Ce mode ne lance aucun appel HTTP vers Ollama ou le fournisseur distant. Les synthèses et QCM utilisent les générateurs locaux existants, sans quota payant. Si `STUDY_AI_PROVIDER` est absent ou vide, Study choisit également `local` : une variable manquante ne peut donc pas réactiver par accident le provider distant. Aucun health check Ollama automatique n’est exécuté.
 
 ## Démarrage local
 
@@ -11,7 +21,7 @@ ollama pull qwen3:8b
 ollama serve
 ```
 
-Dans un autre terminal, configure le serveur MyCorpus dans `.env` :
+Dans un autre terminal, configure le serveur MyCorpus dans `.env` pour réactiver Ollama explicitement :
 
 ```dotenv
 STUDY_AI_PROVIDER=ollama
@@ -20,7 +30,7 @@ OLLAMA_MODEL=qwen3:8b
 OLLAMA_TIMEOUT_MS=120000
 ```
 
-Puis lance MyCorpus normalement avec `npm start` ou `npm run dev`. Le serveur vérifie l’installation par sa méthode interne `healthCheck()` ; aucune route publique ne révèle si Ollama ou un modèle est disponible. Pour faire un contrôle ponctuel côté serveur :
+Puis lance MyCorpus normalement avec `npm start` ou `npm run dev`. Aucun health check Ollama n’est lancé automatiquement. Pour faire un contrôle ponctuel, déclenche manuellement cette commande côté serveur ; aucune route publique ne révèle la disponibilité d’Ollama ou du modèle :
 
 ```sh
 node --env-file-if-exists=.env --input-type=module -e "import {OllamaProvider} from './server/ollama-provider.mjs'; console.log(await new OllamaProvider(process.env).healthCheck())"
@@ -28,11 +38,13 @@ node --env-file-if-exists=.env --input-type=module -e "import {OllamaProvider} f
 
 ## Choix du provider Study
 
-- `STUDY_AI_PROVIDER=ollama` : Ollama local, sans quota de génération payant ; échec → fallback local.
-- `STUDY_AI_PROVIDER=remote` : provider existant `CHAT_UPSTREAM_URL` ; le quota payant s’applique comme avant.
 - `STUDY_AI_PROVIDER=local` : synthèse et QCM heuristiques locaux, sans appel IA ni quota.
-- variable absente : comportement compatible avec l’existant ; provider distant si `CHAT_UPSTREAM_URL` est configuré, sinon mode local.
+- `STUDY_AI_PROVIDER=ollama` : Ollama, sans quota de génération payant ; échec → fallback local. Le contenu des PDF Study n’est jamais envoyé à `CHAT_UPSTREAM_URL`.
+- `STUDY_AI_PROVIDER=remote` : provider existant `CHAT_UPSTREAM_URL` ; le quota payant s’applique. Ce mode doit être demandé explicitement.
+- variable absente ou vide : mode `local`.
 - valeur inconnue : avertissement serveur sans secret ni texte de cours, puis mode local.
+
+Chat et flashcards continuent d’utiliser le provider commun du projet ; `STUDY_AI_PROVIDER` ne modifie que **Mes cours**.
 
 ## Données transmises à Ollama
 

@@ -74,13 +74,16 @@ test('Ollama signale un modèle absent et refuse une réponse JSON invalide', as
   await assert.rejects(invalid.generateStudyQuestions({}), { message: 'ollama_invalid_json' })
 })
 
-test('le choix Study préserve le provider distant, Ollama et le mode local', () => {
+test('Study est local par défaut ; le distant et Ollama nécessitent un choix explicite', () => {
   const remote = new HttpProvider({ CHAT_UPSTREAM_URL: 'http://provider.test' })
-  assert.equal(createStudyProvider({}, { remoteProvider: remote }), remote)
+  let ollamaCalls = 0
+  assert.equal(createStudyProvider({}, { remoteProvider: remote, fetchImpl: async () => { ollamaCalls++; throw new Error('unexpected ollama request') } }), null)
+  assert.equal(createStudyProvider({ STUDY_AI_PROVIDER: '' }, { remoteProvider: remote }), null)
   assert.equal(createStudyProvider({ STUDY_AI_PROVIDER: 'remote' }, { remoteProvider: remote }), remote)
   assert.equal(createStudyProvider({ STUDY_AI_PROVIDER: 'local' }, { remoteProvider: remote }), null)
   const ollama = createStudyProvider({ STUDY_AI_PROVIDER: 'ollama', OLLAMA_MODEL: 'qwen3:8b' }, { remoteProvider: remote })
   assert.ok(ollama instanceof OllamaProvider)
   assert.equal(ollama.usesPaidQuota, false)
   assert.equal(createStudyProvider({ STUDY_AI_PROVIDER: 'unsupported' }, { remoteProvider: remote }), null)
+  assert.equal(ollamaCalls, 0, 'la sélection locale ne doit instancier ni appeler Ollama')
 })

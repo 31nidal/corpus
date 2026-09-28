@@ -174,7 +174,9 @@ export class OllamaProvider {
 
 export function createStudyProvider(config = process.env, { remoteProvider = null, fetchImpl } = {}) {
   const requested = String(config.STUDY_AI_PROVIDER || '').trim().toLowerCase()
-  if (!requested) return remoteProvider
+  // Fail closed: Study must not opt into a paid provider simply because
+  // deployment configuration is missing. Chat and flashcards keep their own provider.
+  if (!requested) return null
   if (requested === 'local' || requested === 'fallback' || requested === 'none') return null
   if (requested === 'remote') return remoteProvider
   if (requested === 'ollama') return new OllamaProvider(config, { fetchImpl })
