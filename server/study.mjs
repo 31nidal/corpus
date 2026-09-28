@@ -632,7 +632,27 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
 
           if (provider?.requiresFactGrounding && Array.isArray(generatedQuestions)) {
             const sourceFacts = extractStudyFacts(sections)
-            generatedQuestions = generatedQuestions.filter(question => isQuestionGroundedInFacts(question, sourceFacts))
+            generatedQuestions = generatedQuestions
+              .filter(question => isQuestionGroundedInFacts(question, sourceFacts))
+              .map(question => {
+                const correctIndex = question.correct[0]
+                const correctAnswer = comparableStudyText(question.options[correctIndex])
+                const sourceFact = sourceFacts.find(fact => fact.section.id === question.sourceSectionId &&
+                  comparableStudyText(fact.evidence) === comparableStudyText(question.sourceExcerpt) &&
+                  comparableStudyText(fact.answer) === correctAnswer)
+                if (!sourceFact) return question
+                const alternatives = relatedFacts(sourceFact, sourceFacts)
+                return {
+                  ...question,
+                  why: question.options.map((option, index) => {
+                    if (index === correctIndex) return factExplanation(sourceFact, true, sourceFact)
+                    const optionFact = alternatives.find(fact => comparableStudyText(fact.answer) === comparableStudyText(option))
+                    return optionFact
+                      ? factExplanation(optionFact, false, sourceFact)
+                      : 'Cette proposition ne correspond pas à la relation explicitement indiquée dans l’extrait source.'
+                  })
+                }
+              })
           }
 
           if (!generatedQuestions || !Array.isArray(generatedQuestions) || generatedQuestions.length === 0) {

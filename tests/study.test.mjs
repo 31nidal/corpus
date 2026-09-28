@@ -626,9 +626,9 @@ test('Ollama Study utilise uniquement des faits du PDF, ne consomme pas le quota
         correct: [0],
         why: [
           `Le passage relie bien ${fact.subject} à ${correct} dans la source du document.`,
-          `Cette proposition correspond à une autre relation d’innervation citée dans le document.`,
-          `Cette proposition est associée à un autre territoire dans la source du cours.`,
-          `Le cours attribue cette proposition à une structure différente de la cible demandée.`
+          `Le nerf phrenique possède une relation inventée avec le cœur et modifie sa fréquence.`,
+          `Une autre proposition anatomique prétendument décrite dans le cours.`,
+          `Le modèle ajoute ici une explication non étayée par la source.`
         ],
         difficulty: 'application', format: 'single', sourceSectionId: fact.sectionId, sourceExcerpt: fact.evidence
       }] }) } }), { status: 200 })
@@ -673,6 +673,7 @@ test('Ollama Study utilise uniquement des faits du PDF, ne consomme pas le quota
     const qcm = await api.call(`/api/study/documents/${docId}/questions`, { count: 2 }, cookie)
     assert.equal(qcm.status, 201)
     assert.ok(qcm.data.questions.length >= 1)
+    assert.ok(qcm.data.questions.every(question => question.why.every(reason => !/relation inventée|fréquence|prétendument|non étayée/i.test(reason))), 'les explications doivent être régénérées à partir des faits validés')
     assert.equal(mockError, null, mockError?.stack)
 
     const quota = await api.call('/api/study/quotas', undefined, cookie)
