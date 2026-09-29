@@ -105,3 +105,4 @@ La taxonomie canonique est versionnée dans le dépôt sous une structure modula
    npm run build
    ```
    Build TypeScript & Vite réussi sans aucune erreur.
+

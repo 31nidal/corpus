@@ -207,6 +207,7 @@ def main():
         "changes": ["Selection and semantic assembly of original anatomical OBJ elements", "Quadric-error mesh simplification for Web delivery", "Shared coordinate rotation (x,y,z) to (x,z,-y), centering and uniform scaling to 3.6 units height", "Smooth normals and new display materials", "Conversion from OBJ to indexed GLB with stable selectable mesh IDs"],
     }
     manifest = {
+        "version": 1, "groups": groups, "structures": structures,
         "version": 1,
         "atlasRevision": "bp3d-overview-v1",
         "groups": groups, "structures": structures,

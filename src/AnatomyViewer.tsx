@@ -225,7 +225,6 @@ export default function AnatomyViewer(props: Props) {
         const isHovered = !isReview && structureId === hoveredId
         const material = mesh.material
         material.color.copy(baseColors.get(mesh)!)
-
         if (isReview) {
           if (isTarget && isRevealed) {
             material.color.lerp(highlightColor, 0.3)
@@ -446,6 +445,8 @@ export default function AnatomyViewer(props: Props) {
     }
     const handlePointerUp = (event: PointerEvent) => {
       if (activePointers.size === 1 && pointerDown && !pointerDown.moved && Math.hypot(event.clientX - pointerDown.x, event.clientY - pointerDown.y) < 7 && performance.now() - pointerDown.time < 650) {
+        const id = pick(event.clientX, event.clientY)
+        if (id) latest.current.onSelect(id)
         if (latest.current.interactionMode !== 'review') {
           const id = pick(event.clientX, event.clientY)
           if (id) latest.current.onSelect(id)
@@ -707,12 +708,14 @@ export default function AnatomyViewer(props: Props) {
   }, [props.manifest, props.apiRef])
 
   useEffect(() => { runtimeRef.current?.setVisibility(props.visibility) }, [props.visibility])
+  useEffect(() => { runtimeRef.current?.select(props.selectedId) }, [props.selectedId])
   useEffect(() => {
     if (props.interactionMode !== 'review') {
       runtimeRef.current?.select(props.selectedId)
     }
   }, [props.selectedId, props.interactionMode])
   useEffect(() => { runtimeRef.current?.restore() }, [props.cameraRestore])
+  useEffect(() => { runtimeRef.current?.refresh() }, [props.isolated, props.hiddenIds, props.opacity, props.cut, props.labels, props.cameraRestore, props.animation])
   useEffect(() => { runtimeRef.current?.refresh() }, [
     props.isolated,
     props.isolationStructureId,
