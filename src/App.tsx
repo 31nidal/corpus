@@ -1,7 +1,7 @@
 import AccountPanel from './account/AccountPanel'
 import {storageScope,profileRequested} from './account/store'
 import { useCallback, useEffect, useRef, useState, lazy, Suspense } from 'react'
-import { BookOpen, Box, Brain, GraduationCap, ArrowLeft, ArrowRight, ArrowUpRight, Bone, Copy, SlidersHorizontal, Moon, Sun, ChevronDown, CircleHelp, Eye, Heart, Layers3, Minus, MoveUpRight, Plus, Rotate3D, RotateCcw, Search, ShieldCheck, Sparkles, UserRound, X, FileText } from 'lucide-react'
+import { BookOpen, Box, Brain, GraduationCap, ArrowLeft, ArrowRight, ArrowUpRight, Bone, Copy, SlidersHorizontal, Moon, Sun, ChevronDown, CircleHelp, Eye, Heart, Layers3, Minus, Plus, Rotate3D, RotateCcw, Search, ShieldCheck, Sparkles, UserRound, X, FileText } from 'lucide-react'
 import {breastMeshIds} from './data/female-regions'
 import ChatAssistant from './ChatAssistant'
 import CoursesWorkspace from './study/CoursesWorkspace'
@@ -62,7 +62,7 @@ function readRoute() {
 export default function App() {
   const [accountStorage]=useState(storageScope)
   const [dark, setDark] = useState(() => { try { return accountStorage.getItem('corpus-theme') === 'dark' } catch { return false } })
-  const [atlasOpen, setAtlasOpen] = useState(() => new URLSearchParams(location.hash.slice(1)).get('tab') === 'atlas')
+  const [atlasOpen, setAtlasOpen] = useState(() => { const params = new URLSearchParams(location.hash.slice(1)); return params.get('tab') === 'atlas' && Boolean(params.get('sub')) })
   const [atlasSub, setAtlasSub] = useState<AtlasId | null>(() => (new URLSearchParams(location.hash.slice(1)).get('sub') as AtlasId) || null)
   const [atlasMode, setAtlasMode] = useState<AtlasMode>(() => (new URLSearchParams(location.hash.slice(1)).get('mode') as AtlasMode) || 'explore')
   const [atlasView, setAtlasView] = useState<string | null>(() => new URLSearchParams(location.hash.slice(1)).get('view'))
@@ -121,6 +121,7 @@ export default function App() {
   const [layersOpen, setLayersOpen] = useState(false)
   const [orientation, setOrientation] = useState<'front' | 'back'>('front')
   const pendingIsolation = useRef<string | null>(null)
+  const pendingRegionFocus = useRef<{ id: string; group: GroupId } | null>(null)
   const apiRef = useRef<ViewerApi | null>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const searchBox = useRef<HTMLDivElement>(null)
@@ -175,7 +176,9 @@ export default function App() {
     const restore = () => {
       const params=new URLSearchParams(location.hash.slice(1))
       const tab = params.get('tab')
-      const isAtlas = tab === 'atlas'
+      // The bare Atlas route now opens the main 3D atlas; specialized atlases
+      // keep their shareable tab=atlas&sub=... routes.
+      const isAtlas = tab === 'atlas' && Boolean(params.get('sub'))
       setAtlasOpen(isAtlas)
       setAtlasSub((params.get('sub') as AtlasId) || null)
       setAtlasMode((params.get('mode') as AtlasMode) || 'explore')
@@ -299,13 +302,26 @@ export default function App() {
     setVisibility(v => ({ ...v, [id]: !v[id] }))
     if (selected?.group === id && visibility[id]) { setSelectedId(null); setResetKey(k => k + 1);writeRoute(null) }
   }
-  const onLoad = useCallback((state: LoadState) => setLoad(state), [])
+  const onLoad = useCallback((state: LoadState) => {
+    setLoad(state)
+    const pending = pendingRegionFocus.current
+    if (pending && state.ready.includes(pending.group)) {
+      pendingRegionFocus.current = null
+      requestAnimationFrame(() => apiRef.current?.frame(pending.id))
+    }
+  }, [])
   const nextStructure = (direction: number) => {
     if (!selected) return
     const siblings = structures.filter(s => s.group === selected.group)
     selectStructure(siblings[(siblings.findIndex(s => s.id === selectedId) + direction + siblings.length) % siblings.length].id)
   }
-  const quickFind = (term: string) => structures.find(s => s.id === ({'Cœur':'FMA7088','Cerveau':'FMA50801','Poumon':'FMA7309'} as Record<string,string>)[term])
+  const openAtlasRegion = (id: string) => {
+    const target = structures.find(structure => structure.id === id)
+    if (!target || quiz) return
+    pendingRegionFocus.current = load.ready.includes(target.group) ? null : { id, group: target.group }
+    selectStructure(id)
+    if (load.ready.includes(target.group)) requestAnimationFrame(() => apiRef.current?.frame(id))
+  }
   const hiddenMeshes = new Set(hiddenIds.flatMap(id => structures.find(s => s.id === id)?.meshNames ?? []))
   const visibleCount = structures.filter(s => !s.aggregate && (!s.detailOnly || (selectedId===s.id&&!selected?.aggregate)) && visibility[s.group] && opacity[s.group]>0 && load.ready.includes(s.group) && s.meshNames.some(name => !hiddenMeshes.has(name) && (!isolated || !selected || selected.meshNames.includes(name)))).length
   const catalog = structures.filter(s => catalogGroup === 'all' || s.group === catalogGroup)
@@ -340,24 +356,6 @@ export default function App() {
     setVisibility(Object.fromEntries(Object.keys(initialVisibility).map(id=>[id,id==='skin'||members.some(s=>s.group===id)])) as Visibility)
     setOpacity(defaultOpacity);setCut(defaultCut);setCameraRestore(null);setResetKey(k=>k+1)
   }
-  const openAtlas = (sub?: AtlasId | null) => {
-    setAnimation(null);
-    setChatOpen(false);
-    setAtlasOpen(true);
-    setAtlasSub(sub || null);
-    setLearningOpen(false);
-    setPracticeOpen(false);
-    setMyCoursesOpen(false);
-    setFlashcardsOpen(false);
-    setToolsOpen(false);
-    setProfileOpen(false);
-    setQuiz(null);
-    setCatalogOpen(false);
-    const params = new URLSearchParams();
-    params.set('tab', 'atlas');
-    if (sub) params.set('sub', sub);
-    history.pushState(null, '', '#' + params.toString());
-  };
   const openStudy=(tab:'cours'|'entrainement',id:string|null=null,section?:string|null)=>{setAnimation(null);setChatOpen(false);setAtlasOpen(false);setLearningOpen(tab==='cours');setPracticeOpen(tab==='entrainement');setMyCoursesOpen(false);setFlashcardsOpen(false);setCourseToOpen(id);setPracticeCourse(tab==='entrainement'?id:null);setToolsOpen(false);setProfileOpen(false);setQuiz(null);setCatalogOpen(false);const params=new URLSearchParams(location.hash.slice(1));params.delete('view');params.set('tab',tab);if(id)params.set('cours',id);else params.delete('cours');if(section)params.set('section',section);else params.delete('section');history.pushState(null,'','#'+params.toString())}
   const openMyCourses=(docId:string|null=null,sectionId:string|null=null)=>{setAnimation(null);setChatOpen(false);setAtlasOpen(false);setLearningOpen(false);setPracticeOpen(false);setMyCoursesOpen(true);setFlashcardsOpen(false);setMyCourseDocId(docId);setMyCourseSectionId(sectionId);setToolsOpen(false);setProfileOpen(false);setQuiz(null);setCatalogOpen(false);const params=new URLSearchParams(location.hash.slice(1));params.delete('view');params.set('tab','mes-cours');if(docId)params.set('doc',docId);else params.delete('doc');if(sectionId)params.set('section',sectionId);else params.delete('section');history.pushState(null,'','#'+params.toString())}
   const openFlashcards=()=>{setAnimation(null);setChatOpen(false);setAtlasOpen(false);setLearningOpen(false);setPracticeOpen(false);setMyCoursesOpen(false);setFlashcardsOpen(true);setToolsOpen(false);setProfileOpen(false);setQuiz(null);setCatalogOpen(false);history.pushState(null,'','#tab=flashcards')}
@@ -407,7 +405,6 @@ export default function App() {
     <header className="topbar">
       <Brand />
       <nav aria-label="Navigation principale">
-        <button className={atlasOpen ? "nav-active" : ""} onClick={() => openAtlas(null)} aria-pressed={atlasOpen}><Sparkles size={15}/>Atlas</button>
         <button className={!atlasOpen && !learningOpen && !practiceOpen && !myCoursesOpen && !flashcardsOpen ? "nav-active" : ""} onClick={() => { setChatOpen(false); setAtlasOpen(false); setLearningOpen(false); setPracticeOpen(false); setMyCoursesOpen(false); setFlashcardsOpen(false); setToolsOpen(false); setQuiz(null); setProfileOpen(false); writeRoute(selectedId); }}><Box size={15}/>Atlas 3D</button>
         <button onClick={() => openStudy('cours')} aria-pressed={learningOpen}><BookOpen size={15}/>Cours</button>
         <button onClick={() => openMyCourses()} aria-pressed={myCoursesOpen}><FileText size={15}/>Mes cours</button>
@@ -429,7 +426,7 @@ export default function App() {
       </div>
     </header>
     {(atlasOpen||learningOpen||practiceOpen||myCoursesOpen||flashcardsOpen)&&<nav className="mobile-study-nav" aria-label="Navigation pédagogique mobile">
-      <button aria-pressed={atlasOpen} onClick={()=>openAtlas(null)}><Sparkles size={17}/><span>Atlas</span></button>
+      <button aria-pressed={!atlasOpen&&!learningOpen&&!myCoursesOpen&&!flashcardsOpen&&!practiceOpen} onClick={()=>{setAtlasOpen(false);setLearningOpen(false);setPracticeOpen(false);setMyCoursesOpen(false);setFlashcardsOpen(false);writeRoute(selectedId)}}><Box size={17}/><span>Atlas 3D</span></button>
       <button aria-pressed={learningOpen} onClick={()=>openStudy('cours')}><BookOpen size={17}/><span>Cours</span></button>
       <button aria-pressed={myCoursesOpen} onClick={()=>openMyCourses()}><FileText size={17}/><span>Mes cours</span></button>
       <button aria-pressed={flashcardsOpen} onClick={openFlashcards}><Brain size={17}/><span>Flashcards</span></button>
@@ -450,7 +447,7 @@ export default function App() {
       {name:'Organes',groups:['skin','skeleton','organs']},
       {name:'Squelette',groups:['skin','skeleton']},
       ...(detailMode ? [{name:'Muscles',groups:['skin','skeleton','organs','muscles']}] : [])
-    ] as {name:string;groups:GroupId[]}[]).map(preset=><button key={preset.name} aria-label={`Vue ${preset.name.toLowerCase()}`} aria-pressed={Object.entries(visibility).every(([id,on])=>on===preset.groups.includes(id as GroupId))} onClick={()=>applyPreset(preset.groups)}>{preset.name}</button>)}<button aria-label="Vue cerveau" aria-pressed={selectedId==='FMA50801'} disabled={!manifest||Boolean(quiz)} onClick={()=>{setCut(defaultCut);executeAction({action:'isolate_structure',structure:'FMA50801'});apiRef.current?.frame('FMA50801')}}>Cerveau</button></div>}
+    ] as {name:string;groups:GroupId[]}[]).map(preset=><button key={preset.name} aria-label={`Vue ${preset.name.toLowerCase()}`} aria-pressed={Object.entries(visibility).every(([id,on])=>on===preset.groups.includes(id as GroupId))} onClick={()=>applyPreset(preset.groups)}>{preset.name}</button>)}</div>}
     {body==='female'&&<div className="female-study-links"><button onClick={()=>openStudy('cours',femaleCourse)}><BookOpen size={14}/>Cours de la région</button><button onClick={()=>openStudy('entrainement',femaleCourse)}><GraduationCap size={14}/>Quiz de la région</button></div>}
     {routeError && <div className="route-notice" role="status">{routeError}<button onClick={()=>writeRoute(null)} aria-label="Fermer le message"><X size={16}/></button></div>}
     <section className={`stage ${selected ? 'has-selection' : ''}`} aria-label="Corps humain en trois dimensions">
@@ -471,7 +468,7 @@ export default function App() {
       </div>
     </aside>
 
-    {!selected && !catalogOpen && !toolsOpen && !quiz && !learningOpen && !profileOpen && <aside className="discovery"><span className="discovery-index">VOTRE EXPLORATION</span><div className="discovery-line" /><h2>Un point de départ.</h2><p>Choisissez une structure, puis isolez-la pour découvrir ses détails.</p><span className="discovery-arrow"><MoveUpRight size={27} strokeWidth={1} /></span><button className="browse-atlas" onClick={() => setCatalogOpen(true)}>Parcourir l’atlas <ArrowUpRight size={15} /></button><button className="start-tour" onClick={()=>visitStep(0)}>Visite guidée <span>5 étapes</span><ArrowRight size={14}/></button><div className="quick-links">{['Cœur', 'Cerveau', 'Poumon'].map(term => { const s = quickFind(term); return s ? <button key={term} onClick={() => selectStructure(s.id)} disabled={!load.ready.includes(s.group)}>{term === 'Poumon' ? 'Poumons' : term}<ArrowUpRight size={12} /></button> : null })}</div></aside>}
+    {!selected && !catalogOpen && !toolsOpen && !quiz && !learningOpen && !profileOpen && <aside className="discovery" aria-label="Choisir une région anatomique"><span className="discovery-index">ATLAS 3D · EXPLORER PAR RÉGION</span><h2>Une région à la fois.</h2><p>Choisissez une zone pour la voir de près et ouvrir sa fiche anatomique.</p><div className="region-blocks">{[{id:'FMA7088',name:'Cœur',description:'Cavités et vaisseaux',icon:Heart,group:'organs' as GroupId},{id:'FMA50801',name:'Cerveau',description:'Encéphale et structures',icon:Brain,group:'organs' as GroupId},{id:'BP3D_SKULL',name:'Tête',description:'Crâne et face',icon:Bone,group:'skeleton' as GroupId}].map(region=>{const Icon=region.icon;return <button key={region.id} className={`region-block region-${region.id.toLowerCase()}`} onClick={()=>openAtlasRegion(region.id)} disabled={!manifest||Boolean(quiz)} aria-label={`Explorer ${region.name} en 3D`}><span className="region-block-icon"><Icon size={19} strokeWidth={1.6}/></span><span className="region-block-copy"><strong>{region.name}</strong><small>{region.description}</small></span><ArrowRight size={15} className="region-block-arrow"/></button>})}</div><div className="discovery-secondary"><button className="browse-atlas" onClick={() => setCatalogOpen(true)}>Parcourir toutes les structures <ArrowUpRight size={14} /></button><button className="start-tour" onClick={()=>visitStep(0)}>Visite guidée <span>5 étapes</span><ArrowRight size={14}/></button></div></aside>}
 
     {catalogOpen && !selected && !toolsOpen && !quiz && !learningOpen && !profileOpen && <aside className="detail-panel catalog-panel" aria-label="Index anatomique"><div className="detail-heading"><span className="eyebrow">INDEX ANATOMIQUE</span><button className="icon-button" aria-label="Fermer l’index" onClick={() => setCatalogOpen(false)}><X size={18}/></button></div><div className="catalog-filter"><select aria-label="Filtrer l’index par système" value={catalogGroup} onChange={e=>{setCatalogGroup(e.target.value);setCatalogLimit(60)}}><option value="all">Tous les systèmes</option>{manifest?.groups.map(g=><option key={g.id} value={g.id}>{groupMeta[g.id].name}</option>)}</select><small>{catalog.length} entrées · utilisez aussi la recherche</small></div><div className="catalog-list">{catalog.slice(0,catalogLimit).map(s=><button key={s.id} onClick={()=>selectStructure(s.id)}><span style={{background:groupMeta[s.group].color}}/><span>{describeStructure(s.name,s.group).name}<small>{s.id}{s.aggregate?' · ensemble':''}</small></span><ArrowUpRight size={12}/></button>)}{catalogLimit<catalog.length&&<button className="catalog-more" onClick={()=>setCatalogLimit(n=>n+60)}>Afficher la suite ({catalog.length-catalogLimit})</button>}</div></aside>}
     {selected && description && !toolsOpen && !quiz && !learningOpen && !profileOpen && <aside className="detail-panel" aria-label={`Fiche : ${description.name}`} data-testid="structure-detail">

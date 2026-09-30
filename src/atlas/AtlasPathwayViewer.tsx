@@ -49,29 +49,20 @@ export const AtlasPathwayViewer: React.FC<AtlasPathwayViewerProps> = ({
 
   return (
     <div className="atlas-pathway-viewer" aria-label="Trajet anatomique et physiologique" data-testid="atlas-pathway-viewer">
-      {/* Pathways List Pills */}
-      <div className="pathway-selector-bar">
-        <span className="selector-title">Circuits disponibles :</span>
-        <div className="pathway-pills">
-          {pathways.map(p => (
-            <button
-              key={p.id}
-              type="button"
-              className={`pathway-pill ${p.id === currentPathway.id ? 'active' : ''}`}
-              onClick={() => {
-                onSelectPathway(p.id)
-                onSelectStep(0)
-                if (p.steps[0]) {
-                  onFocusStructure(p.steps[0].structureId, p.steps[0].viewId)
-                }
-              }}
-            >
-              <GitBranch size={14} />
-              <span>{p.name}</span>
-            </button>
-          ))}
-        </div>
-      </div>
+      <label className="atlas-context-select-row">
+        <GitBranch size={14} aria-hidden="true" />
+        <span className="sr-only">Parcours anatomique</span>
+        <select aria-label="Parcours anatomique" value={currentPathway.id} onChange={(event) => {
+          const pathway = pathways.find(item => item.id === event.target.value)
+          if (!pathway) return
+          onSelectPathway(pathway.id)
+          onSelectStep(0)
+          if (pathway.steps[0]) onFocusStructure(pathway.steps[0].structureId, pathway.steps[0].viewId)
+        }}>
+          {pathways.map(pathway => <option key={pathway.id} value={pathway.id}>{pathway.name}</option>)}
+        </select>
+        <ChevronRight size={14} aria-hidden="true" />
+      </label>
 
       {/* Pathway Overview Header */}
       <div className="pathway-header-card">

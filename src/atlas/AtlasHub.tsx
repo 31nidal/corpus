@@ -1,17 +1,14 @@
-import { useState, useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { AtlasDefinition } from './types'
 import {
+  Activity,
+  ArrowDownRight,
+  ArrowRight,
   Brain,
   Heart,
   Rotate3D,
   Search,
-  ArrowRight,
-  Sparkles,
-  Layers,
-  Activity,
-  Award,
-  BookOpen,
-  CheckCircle2,
+  X,
 } from 'lucide-react'
 
 interface Props {
@@ -21,17 +18,15 @@ interface Props {
   onNavigateCourse?: (courseId: string) => void
 }
 
-export default function AtlasHub({
-  atlases,
-  onSelectAtlas,
-  onOpen3DAtlas,
-}: Props) {
+const normalize = (value: string) => value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+
+export default function AtlasHub({ atlases, onSelectAtlas, onOpen3DAtlas }: Props) {
   const [searchQuery, setSearchQuery] = useState('')
 
   const searchResults = useMemo(() => {
-    if (!searchQuery.trim() || searchQuery.length < 2) return []
+    const query = normalize(searchQuery.trim())
+    if (query.length < 2) return []
 
-    const query = searchQuery.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     const results: {
       atlasId: string
       atlasName: string
@@ -40,28 +35,22 @@ export default function AtlasHub({
       structureId: string
       structureName: string
       latinName?: string
-      category: string
     }[] = []
 
     for (const atlas of atlases) {
-      const allStructures = atlas.views.flatMap((v) => v.structures)
-      for (const structure of allStructures) {
-        const nameNorm = structure.name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-        const latinNorm = (structure.latinName || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-        const catNorm = structure.category.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-
-        if (nameNorm.includes(query) || latinNorm.includes(query) || catNorm.includes(query)) {
-          const view = atlas.views.find((v) => v.id === structure.viewId)
-          results.push({
-            atlasId: atlas.id,
-            atlasName: atlas.title,
-            viewId: structure.viewId,
-            viewName: view?.name || structure.viewId,
-            structureId: structure.id,
-            structureName: structure.name,
-            latinName: structure.latinName,
-            category: structure.category,
-          })
+      for (const view of atlas.views) {
+        for (const structure of view.structures) {
+          if ([structure.name, structure.latinName ?? '', structure.category].some((value) => normalize(value).includes(query))) {
+            results.push({
+              atlasId: atlas.id,
+              atlasName: atlas.title,
+              viewId: structure.viewId,
+              viewName: atlas.views.find((item) => item.id === structure.viewId)?.name ?? structure.viewId,
+              structureId: structure.id,
+              structureName: structure.name,
+              latinName: structure.latinName,
+            })
+          }
         }
       }
     }
@@ -69,297 +58,100 @@ export default function AtlasHub({
     return results.slice(0, 8)
   }, [atlases, searchQuery])
 
-  const brainAtlas = atlases.find((a) => a.id === 'brain')
-  const heartAtlas = atlases.find((a) => a.id === 'heart')
+  const brainAtlas = atlases.find((atlas) => atlas.id === 'brain')
+  const heartAtlas = atlases.find((atlas) => atlas.id === 'heart')
+  const structureCount = atlases.reduce((sum, atlas) => sum + atlas.views.reduce((viewSum, view) => viewSum + view.structures.length, 0), 0)
 
   return (
-    <div className="atlas-hub-container" data-testid="atlas-hub">
-      {/* Hero section */}
-      <section className="atlas-hub-hero">
-        <div className="hero-badge">
-          <Sparkles size={16} />
-          <span>MyCorpus Anatomie & Physiologie</span>
-        </div>
-        <h1 className="hero-title">Atlas Médicaux Haute Fidélité</h1>
-        <p className="hero-description">
-          Explorez l'anatomie descriptive, les voies fonctionnelles et les corrélations
-          électriques et cliniques à travers des planches médicales interactives, reliées
-          à vos cours et flashcards FSRS.
-        </p>
-
-        {/* Global Search */}
-        <div className="atlas-hub-search-box">
-          <Search size={20} className="search-icon" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Rechercher une structure (ex: Gyrus précentral, Tronc cœliaque, Faisceau de His)..."
-            className="atlas-hub-search-input"
-            aria-label="Rechercher une structure dans tous les atlas"
-          />
-          {searchQuery && (
-            <button
-              className="search-clear-btn"
-              onClick={() => setSearchQuery('')}
-              aria-label="Effacer la recherche"
-            >
-              ✕
-            </button>
-          )}
-        </div>
-
-        {/* Live Search Results */}
-        {searchResults.length > 0 && (
-          <div className="search-results-dropdown" data-testid="atlas-search-results">
-            <div className="search-results-header">
-              <span>{searchResults.length} structure(s) trouvée(s)</span>
-            </div>
-            <div className="search-results-list">
-              {searchResults.map((res) => (
-                <button
-                  key={`${res.atlasId}-${res.structureId}`}
-                  className="search-result-item"
-                  onClick={() => onSelectAtlas(res.atlasId, res.viewId, 'explore')}
-                >
-                  <div className="result-main">
-                    <strong>{res.structureName}</strong>
-                    {res.latinName && <span className="result-latin">({res.latinName})</span>}
-                  </div>
-                  <div className="result-meta">
-                    <span className="atlas-pill">{res.atlasName}</span>
-                    <span className="view-pill">{res.viewName}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-      </section>
-
-      {/* Quick stats banner */}
-      <section className="atlas-stats-banner">
-        <div className="stat-card">
-          <div className="stat-number">10+</div>
-          <div className="stat-label">Vues Médicales HD</div>
-        </div>
-        <div className="stat-divider" />
-        <div className="stat-card">
-          <div className="stat-number">60+</div>
-          <div className="stat-label">Structures Annotées</div>
-        </div>
-        <div className="stat-divider" />
-        <div className="stat-card">
-          <div className="stat-number">5</div>
-          <div className="stat-label">Trajets Physiologiques</div>
-        </div>
-        <div className="stat-divider" />
-        <div className="stat-card">
-          <div className="stat-number">100%</div>
-          <div className="stat-label">FSRS & ECN Connecté</div>
-        </div>
-      </section>
-
-      {/* Primary Atlases Grid */}
-      <section className="atlas-cards-grid">
-        {/* Brain Atlas */}
-        {brainAtlas && (
-          <div className="atlas-feature-card brain-card" data-testid="card-atlas-brain">
-            <div className="card-top-glow" />
-            <div className="card-header">
-              <div className="card-icon-badge brain-badge">
-                <Brain size={28} />
-              </div>
-              <div className="card-labels">
-                <span className="status-tag">Prioritaire ECN</span>
-                <span className="views-count-tag">5 Vues HD</span>
-              </div>
-            </div>
-
-            <h2 className="card-title">Atlas Neuroanatomie & Cerveau</h2>
-            <p className="card-summary">
-              Cartographie complète du cortex, des noyaux gris centraux, du tronc cérébral et
-              des nerfs crâniens I à XII. Tracé dynamique des voies corticospinale, visuelle et
-              du liquide cérébrospinal.
-            </p>
-
-            <div className="card-features-list">
-              <div className="feature-item">
-                <CheckCircle2 size={16} className="feature-check" />
-                <span>5 Vues : Latérale, Sagittale, Charcot, Base & Willis</span>
-              </div>
-              <div className="feature-item">
-                <CheckCircle2 size={16} className="feature-check" />
-                <span>Trajets animés : Voie pyramidale & Circulation du LCR</span>
-              </div>
-              <div className="feature-item">
-                <CheckCircle2 size={16} className="feature-check" />
-                <span>Neuro-Explorer fonctionnel (Motricité, Langage, Mémoire)</span>
-              </div>
-              <div className="feature-item">
-                <CheckCircle2 size={16} className="feature-check" />
-                <span>Cas cliniques : AVC Sylvien / ACM & Hydrocéphalie</span>
-              </div>
-            </div>
-
-            <div className="card-actions">
-              <button
-                className="btn-card-primary"
-                onClick={() => onSelectAtlas('brain', 'lateral', 'explore')}
-              >
-                <span>Explorer le Cerveau</span>
-                <ArrowRight size={18} />
-              </button>
-              <div className="quick-sub-links">
-                <button
-                  className="btn-card-sub"
-                  onClick={() => onSelectAtlas('brain', 'sagittal', 'pathway')}
-                >
-                  <Activity size={14} /> Trajets & Voies
-                </button>
-                <button
-                  className="btn-card-sub"
-                  onClick={() => onSelectAtlas('brain', 'cranial_nerves', 'test')}
-                >
-                  <Award size={14} /> Quiz Neuro
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Heart Atlas */}
-        {heartAtlas && (
-          <div className="atlas-feature-card heart-card" data-testid="card-atlas-heart">
-            <div className="card-top-glow" />
-            <div className="card-header">
-              <div className="card-icon-badge heart-badge">
-                <Heart size={28} />
-              </div>
-              <div className="card-labels">
-                <span className="status-tag">Prioritaire ECN</span>
-                <span className="views-count-tag">5 Vues HD</span>
-              </div>
-            </div>
-
-            <h2 className="card-title">Atlas Cardiologie & Cœur</h2>
-            <p className="card-summary">
-              Anatomie descriptive du myocarde, 4 cavités et valves, vascularisation coronarienne
-              complète, système cardionecteur avec corrélation ECG et foyers d'auscultation
-              thoracique.
-            </p>
-
-            <div className="card-features-list">
-              <div className="feature-item">
-                <CheckCircle2 size={16} className="feature-check" />
-                <span>5 Vues : Morphologie, Cavités/Valves, Coronaires, ECG, Auscultation</span>
-              </div>
-              <div className="feature-item">
-                <CheckCircle2 size={16} className="feature-check" />
-                <span>Système de conduction & Synchronisation onde P-QRS-T</span>
-              </div>
-              <div className="feature-item">
-                <CheckCircle2 size={16} className="feature-check" />
-                <span>Circuit complet grande & petite circulation sanguine</span>
-              </div>
-              <div className="feature-item">
-                <CheckCircle2 size={16} className="feature-check" />
-                <span>Cas cliniques : Infarctus STEMI antérieur & Rétrécissement aortique</span>
-              </div>
-            </div>
-
-            <div className="card-actions">
-              <button
-                className="btn-card-primary"
-                onClick={() => onSelectAtlas('heart', 'morphology', 'explore')}
-              >
-                <span>Explorer le Cœur</span>
-                <ArrowRight size={18} />
-              </button>
-              <div className="quick-sub-links">
-                <button
-                  className="btn-card-sub"
-                  onClick={() => onSelectAtlas('heart', 'conduction', 'pathway')}
-                >
-                  <Activity size={14} /> Conduction & ECG
-                </button>
-                <button
-                  className="btn-card-sub"
-                  onClick={() => onSelectAtlas('heart', 'coronary', 'test')}
-                >
-                  <Award size={14} /> Quiz Cardio
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 3D Human Body Atlas */}
-        <div className="atlas-feature-card body3d-card" data-testid="card-atlas-3d">
-          <div className="card-top-glow" />
-          <div className="card-header">
-            <div className="card-icon-badge body3d-badge">
-              <Rotate3D size={28} />
-            </div>
-            <div className="card-labels">
-              <span className="status-tag tag-3d">3D Temps Réel</span>
-              <span className="views-count-tag">8 Systèmes</span>
-            </div>
-          </div>
-
-          <h2 className="card-title">Atlas 3D du Corps Humain</h2>
-          <p className="card-summary">
-            Exploration spatiale temps réel du modèle masculin (DBCLS BodyParts3D) et féminin
-            (HuBMAP HRA). Contrôle multicouche des organes, muscles, squelette, vaisseaux et nerfs.
+    <main className="atlas-hub-container" data-testid="atlas-hub">
+      <section className="atlas-hub-stage" aria-labelledby="atlas-hub-title">
+        <div className="atlas-hub-copy">
+          <div className="atlas-hub-eyebrow"><span className="atlas-eyebrow-dot" /> ATLAS ANATOMIQUE · MYCORPUS</div>
+          <h1 className="hero-title" id="atlas-hub-title">Le corps, <em>en profondeur.</em></h1>
+          <p className="hero-description">
+            Parcourez les structures, comprenez leurs rapports et reliez chaque repère anatomique à sa fonction.
           </p>
 
-          <div className="card-features-list">
-            <div className="feature-item">
-              <CheckCircle2 size={16} className="feature-check" />
-              <span>Modèles masculins et féminins validés scientifiquement</span>
+          <div className="atlas-hub-search-wrap">
+            <div className="atlas-hub-search-box">
+              <Search size={18} className="search-icon" aria-hidden="true" />
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Rechercher un organe, un os, une structure…"
+                className="atlas-hub-search-input"
+                aria-label="Rechercher une structure dans tous les atlas"
+              />
+              {searchQuery && <button className="search-clear-btn" onClick={() => setSearchQuery('')} aria-label="Effacer la recherche"><X size={16} /></button>}
+              {!searchQuery && <kbd className="atlas-search-hint">⌘ K</kbd>}
             </div>
-            <div className="feature-item">
-              <CheckCircle2 size={16} className="feature-check" />
-              <span>Coupes anatomiques sagittales, coronales et axiales</span>
-            </div>
-            <div className="feature-item">
-              <CheckCircle2 size={16} className="feature-check" />
-              <span>Isolation de structures et réglage d'opacité en temps réel</span>
-            </div>
+            {searchResults.length > 0 && (
+              <div className="search-results-dropdown" data-testid="atlas-search-results">
+                <div className="search-results-header">{searchResults.length} structure{searchResults.length > 1 ? 's' : ''} trouvée{searchResults.length > 1 ? 's' : ''}</div>
+                <div className="search-results-list">
+                  {searchResults.map((result) => (
+                    <button key={`${result.atlasId}-${result.structureId}`} className="search-result-item" onClick={() => onSelectAtlas(result.atlasId, result.viewId, 'explore')}>
+                      <span className="result-main"><strong>{result.structureName}</strong>{result.latinName && <span className="result-latin">{result.latinName}</span>}</span>
+                      <span className="result-meta"><span>{result.atlasName}</span><span>{result.viewName}</span></span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
-          <div className="card-actions">
-            <button className="btn-card-primary" onClick={onOpen3DAtlas}>
-              <span>Ouvrir l'Atlas 3D</span>
-              <Rotate3D size={18} />
+          <div className="atlas-hub-primary-actions">
+            <button className="atlas-open-3d" data-testid="card-atlas-3d" onClick={onOpen3DAtlas}>
+              <span className="atlas-open-icon"><Rotate3D size={19} /></span>
+              <span className="atlas-open-copy"><strong>Explorer le corps en 3D</strong><small>Tourner, zoomer et isoler chaque système</small></span>
+              <ArrowRight className="atlas-open-arrow" size={18} />
             </button>
+            <div className="atlas-hub-stat"><strong>{structureCount.toLocaleString('fr-FR')}</strong><span>repères anatomiques</span></div>
           </div>
         </div>
+
+        <button className="atlas-hub-visual" onClick={onOpen3DAtlas} aria-label="Ouvrir l’atlas 3D du corps humain">
+          <div className="atlas-visual-orbit atlas-visual-orbit-one" />
+          <div className="atlas-visual-orbit atlas-visual-orbit-two" />
+          <div className="atlas-visual-grid" />
+          <div className="atlas-visual-glow" />
+          <svg className="atlas-human-outline" viewBox="0 0 360 470" fill="none" aria-hidden="true">
+            <defs>
+              <linearGradient id="atlas-body-gradient" x1="76" y1="44" x2="285" y2="428" gradientUnits="userSpaceOnUse"><stop stopColor="#d9efec"/><stop offset=".48" stopColor="#85bcb9"/><stop offset="1" stopColor="#4e9293"/></linearGradient>
+              <linearGradient id="atlas-line-gradient" x1="100" y1="86" x2="250" y2="396" gradientUnits="userSpaceOnUse"><stop stopColor="#faffff" stopOpacity=".92"/><stop offset="1" stopColor="#b8e4df" stopOpacity=".34"/></linearGradient>
+              <filter id="atlas-body-shadow" x="38" y="10" width="284" height="452" colorInterpolationFilters="sRGB" filterUnits="userSpaceOnUse"><feGaussianBlur stdDeviation="15"/></filter>
+            </defs>
+            <ellipse cx="180" cy="435" rx="91" ry="13" fill="#6eaaa8" opacity=".22" filter="url(#atlas-body-shadow)"/>
+            <path d="M158 49c0-17 10-29 22-29s22 12 22 29v18c0 15-10 26-22 26s-22-11-22-26V49Z" fill="url(#atlas-body-gradient)" stroke="url(#atlas-line-gradient)" strokeWidth="2"/>
+            <path d="M158 98c-17 5-36 13-49 24-12 10-18 24-22 43l-20 94c-3 13 3 22 12 24 9 1 15-5 18-16l20-73 6 67-10 91c-2 14 5 23 14 23 9 0 14-7 16-19l14-76 4 73-2 70c0 13 6 21 15 21 10 0 15-8 15-20l3-81 3 81c0 12 5 20 15 20 9 0 15-8 15-21l-2-70 4-73 14 76c2 12 7 19 16 19 9 0 16-9 14-23l-10-91-6-67 20 73c3 11 9 17 18 16 9-2 15-11 12-24l-20-94c-4-19-10-33-22-43-13-11-32-19-49-24-9 9-19 13-30 13s-21-4-30-13Z" fill="url(#atlas-body-gradient)" fillOpacity=".82" stroke="url(#atlas-line-gradient)" strokeWidth="2" strokeLinejoin="round"/>
+            <path d="M180 111v189m-29-113 29 31 29-31m-28 113-22 68m22-68 22 68M124 135l28 13m84-13-28 13" stroke="url(#atlas-line-gradient)" strokeWidth="2" strokeLinecap="round" opacity=".72"/>
+            <circle cx="180" cy="166" r="12" fill="#c7f1e7" fillOpacity=".65" stroke="#f5fffc" strokeOpacity=".88"/>
+            <circle cx="180" cy="166" r="4" fill="#fff"/>
+            <circle cx="180" cy="225" r="7" fill="#b7e6db" fillOpacity=".62" stroke="#f5fffc" strokeOpacity=".8"/>
+            <path d="M167 252c8-6 18-6 26 0" stroke="#f5fffc" strokeOpacity=".62" strokeWidth="2" strokeLinecap="round"/>
+          </svg>
+          <span className="atlas-visual-label atlas-visual-label-head"><i /> SYSTÈME NERVEUX</span>
+          <span className="atlas-visual-label atlas-visual-label-heart"><i /> CIRCULATION</span>
+          <span className="atlas-visual-caption"><span>01 / 03</span><strong>Une vision d’ensemble, jusque dans le détail.</strong><ArrowDownRight size={17} /></span>
+        </button>
       </section>
 
-      {/* Educational integrations footer */}
-      <section className="atlas-hub-footer-info">
-        <div className="info-block">
-          <BookOpen size={20} className="info-icon" />
-          <div>
-            <h4>Connecté à vos cours</h4>
-            <p>
-              Chaque planche anatomique est directement liée aux fiches de cours MyCorpus
-              pour une révision active en contexte.
-            </p>
-          </div>
-        </div>
-        <div className="info-block">
-          <Layers size={20} className="info-icon" />
-          <div>
-            <h4>Flashcards FSRS en 1 Clic</h4>
-            <p>
-              Convertissez n'importe quelle structure ou planche en flashcard avec
-              occlusion ou révision espacée immédiate.
-            </p>
-          </div>
+      <section className="atlas-hub-explore" aria-label="Explorer par région anatomique">
+        <div className="atlas-section-heading"><div><span>POUR COMMENCER</span><h2>Explorer par région</h2></div><span className="atlas-section-note">Choisissez un atlas pour entrer dans le détail</span></div>
+        <div className="atlas-region-list">
+          {brainAtlas && <button className="atlas-region-row brain-region" data-testid="card-atlas-brain" onClick={() => onSelectAtlas('brain', 'lateral', 'explore')}>
+            <span className="atlas-region-symbol"><Brain size={22} strokeWidth={1.6} /></span><span className="atlas-region-content"><strong>Le cerveau</strong><small>Neuroanatomie · voies · fonctions</small></span><span className="atlas-region-count">{brainAtlas.views.length} planches</span><span className="atlas-region-action">Explorer <ArrowRight size={15} /></span>
+          </button>}
+          {heartAtlas && <button className="atlas-region-row heart-region" data-testid="card-atlas-heart" onClick={() => onSelectAtlas('heart', 'morphology', 'explore')}>
+            <span className="atlas-region-symbol"><Heart size={22} strokeWidth={1.6} /></span><span className="atlas-region-content"><strong>Le cœur</strong><small>Anatomie · conduction · circulation</small></span><span className="atlas-region-count">{heartAtlas.views.length} planches</span><span className="atlas-region-action">Explorer <ArrowRight size={15} /></span>
+          </button>}
+          <button className="atlas-region-row body-region" onClick={onOpen3DAtlas}>
+            <span className="atlas-region-symbol"><Activity size={22} strokeWidth={1.6} /></span><span className="atlas-region-content"><strong>Le corps humain</strong><small>Systèmes anatomiques en trois dimensions</small></span><span className="atlas-region-count">Atlas 3D</span><span className="atlas-region-action">Explorer <ArrowRight size={15} /></span>
+          </button>
         </div>
       </section>
-    </div>
+      <footer className="atlas-hub-note"><span>Un atlas pour apprendre, observer et comprendre.</span><span>Contenu pédagogique · ne remplace pas un avis médical</span></footer>
+    </main>
   )
 }

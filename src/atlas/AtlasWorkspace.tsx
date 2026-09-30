@@ -15,9 +15,9 @@ import {
   Brain,
   Heart,
   Rotate3D,
-  Home,
   Layers,
   ChevronRight,
+  Search,
 } from 'lucide-react'
 
 interface Props {
@@ -210,19 +210,23 @@ export function AtlasWorkspace({
 
   return (
     <div className="atlas-workspace-container" data-testid="atlas-workspace">
-      {/* Top Header Bar */}
       <header className="atlas-topbar">
         <div className="atlas-topbar-left">
           <button
             className="atlas-nav-hub-btn"
-            onClick={() => handleSelectAtlas('')}
-            title="Retour au portail des atlas"
+            onClick={onOpen3DAtlas}
+            title="Retour au corps humain en 3D"
+            aria-label="Retour au corps humain en 3D"
           >
-            <Home size={16} />
-            <span>Atlas Hub</span>
+            <Rotate3D size={16} />
+            <span>Corps 3D</span>
           </button>
           <ChevronRight size={16} className="breadcrumbs-separator" />
-          <div className="atlas-pills-selector" role="tablist">
+          <div className="atlas-page-title">
+            <span className={`atlas-organ-mark ${activeAtlasId}`} aria-hidden="true">{activeAtlasId === 'brain' ? <Brain size={17} /> : <Heart size={17} />}</span>
+            <div><h1>{activeAtlasId === 'brain' ? 'Neuroanatomie' : 'Cardio-anatomie'}</h1><span>{activeAtlas.title}</span></div>
+          </div>
+          <div className="atlas-pills-selector" role="tablist" aria-label="Choisir un atlas">
             <button
               role="tab"
               aria-selected={activeAtlasId === 'brain'}
@@ -253,45 +257,33 @@ export function AtlasWorkspace({
             </button>
           </div>
         </div>
-
-        <div className="atlas-topbar-right">
-          {/* Mode selector tab pills */}
-          <AtlasModeSelector
-            atlasId={activeAtlasId}
-            activeMode={activeMode}
-            onSelectMode={handleSelectMode}
-          />
-        </div>
+        <AtlasModeSelector atlasId={activeAtlasId} activeMode={activeMode} onSelectMode={handleSelectMode} />
       </header>
 
-      {/* Subheader: View Switcher */}
       <div className="atlas-views-bar">
-        <div className="views-label">
-          <Layers size={14} />
-          <span>Planches & Vues :</span>
-        </div>
-        <div className="views-pills-row" role="tablist">
-          {activeAtlas.views.map((view) => {
-            const isCurrent = view.id === currentView.id
-            return (
-              <button
-                key={view.id}
-                role="tab"
-                aria-selected={isCurrent}
-                className={`view-pill-btn ${isCurrent ? 'is-active' : ''}`}
-                onClick={() => handleSelectView(view.id)}
-              >
-                <span>{view.name}</span>
-              </button>
-            )
-          })}
-        </div>
+        <label className="atlas-view-select-wrap">
+          <Layers size={14} aria-hidden="true" />
+          <span className="sr-only">Planche anatomique</span>
+          <select aria-label="Planche anatomique" value={currentView.id} onChange={(event) => handleSelectView(event.target.value)}>
+            {activeAtlas.views.map(view => <option key={view.id} value={view.id}>{view.name}</option>)}
+          </select>
+          <ChevronRight size={14} aria-hidden="true" />
+        </label>
+        <span className="atlas-current-caption">{activeMode === 'explore' ? 'Sélectionnez une structure sur la planche' : 'Mode pédagogique actif'}</span>
       </div>
 
-      {/* Main Canvas & Side Panel Split */}
-      <div className="atlas-main-content">
-        {/* Left / Center: Interactive SVG Canvas */}
+      <div className="atlas-main-content" data-mode={activeMode}>
         <div className="atlas-canvas-column">
+          <details className="atlas-structure-menu">
+            <summary><Search size={15} /><span>Structures</span><span className="structure-count">{structuresForCurrentView.length}</span></summary>
+            <div className="atlas-structure-menu-list">
+              {structuresForCurrentView.map(structure => (
+                <button key={structure.id} aria-current={selectedStructureId === structure.id ? 'true' : undefined} onClick={() => handleSelectStructure(structure.id)}>
+                  <span>{structure.name}</span><small>{structure.category}</small>
+                </button>
+              ))}
+            </div>
+          </details>
           <AtlasViewer
             atlas={activeAtlas}
             currentViewId={currentView.id}
@@ -303,34 +295,9 @@ export function AtlasWorkspace({
             clinicalAffectedIds={clinicalAffectedIds}
             isTestMode={activeMode === 'test'}
           />
-
-          {/* Quick interactive structure strip below diagram */}
-          {structuresForCurrentView.length > 0 && activeMode === 'explore' && (
-            <div className="atlas-structures-strip" aria-label="Structures de la vue actuelle">
-              <span className="strip-title">Repères de la vue :</span>
-              <div className="strip-chips">
-                {structuresForCurrentView.map((st) => {
-                  const isSel = st.id === selectedStructureId
-                  const isHov = st.id === hoveredStructureId
-                  return (
-                    <button
-                      key={st.id}
-                      className={`strip-chip ${isSel ? 'is-selected' : ''} ${isHov ? 'is-hovered' : ''}`}
-                      onClick={() => handleSelectStructure(st.id)}
-                      onMouseEnter={() => setHoveredStructureId(st.id)}
-                      onMouseLeave={() => setHoveredStructureId(null)}
-                    >
-                      {st.name}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* Right Sidebar: Contextual Medical Panels */}
-        <aside className="atlas-sidebar-column">
+        {(activeMode !== 'explore' || activeStructure) && <aside className="atlas-sidebar-column atlas-context-panel" aria-label={activeStructure ? `Informations sur ${activeStructure.name}` : 'Outils pédagogiques'}>
           {activeMode === 'explore' && (
             <AtlasInfoPanel
               structure={activeStructure}
@@ -420,7 +387,7 @@ export function AtlasWorkspace({
               onNavigateCourse={onNavigateCourse}
             />
           )}
-        </aside>
+        </aside>}
       </div>
 
       {/* 1-Click Flashcard Modal */}

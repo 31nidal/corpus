@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Stethoscope, AlertTriangle, Activity, CheckCircle, XCircle, FileText } from 'lucide-react'
+import { Stethoscope, AlertTriangle, Activity, CheckCircle, XCircle, FileText, ChevronDown, ChevronRight } from 'lucide-react'
 import type { ClinicalScenario } from './types'
 
 interface AtlasClinicalOverlayProps {
@@ -38,23 +38,17 @@ export const AtlasClinicalOverlay: React.FC<AtlasClinicalOverlayProps> = ({
 
   return (
     <div className="atlas-clinical-overlay" aria-label="Cas cliniques et corrélations pathologiques" data-testid="atlas-clinical-overlay">
-      {/* Scenario Pills Switcher */}
-      <div className="scenario-selector-bar">
-        <span className="selector-title">Cas d’urgence & Pathologies :</span>
-        <div className="scenario-pills">
-          {scenarios.map(s => (
-            <button
-              key={s.id}
-              type="button"
-              className={`scenario-pill ${s.id === currentScenario.id ? 'active' : ''}`}
-              onClick={() => handleScenarioChange(s)}
-            >
-              <Stethoscope size={14} />
-              <span>{s.title}</span>
-            </button>
-          ))}
-        </div>
-      </div>
+      <label className="atlas-context-select-row">
+        <Stethoscope size={14} aria-hidden="true" />
+        <span className="sr-only">Cas clinique</span>
+        <select aria-label="Cas clinique" value={currentScenario.id} onChange={(event) => {
+          const scenario = scenarios.find(item => item.id === event.target.value)
+          if (scenario) handleScenarioChange(scenario)
+        }}>
+          {scenarios.map(scenario => <option key={scenario.id} value={scenario.id}>{scenario.title}</option>)}
+        </select>
+        <ChevronRight size={14} aria-hidden="true" />
+      </label>
 
       {/* Scenario Header Card */}
       <div className="clinical-header-card">
@@ -67,53 +61,34 @@ export const AtlasClinicalOverlay: React.FC<AtlasClinicalOverlayProps> = ({
         <h3 className="clinical-title-badge">{currentScenario.title}</h3>
       </div>
 
-      {/* Clinical Vignette Box */}
       <div className="clinical-vignette-box">
         <div className="vignette-title">
           <FileText size={16} />
-          <strong>Présentation clinique & Anamnèse</strong>
+          <strong>Situation clinique</strong>
         </div>
         <p className="vignette-text">{currentScenario.vignette}</p>
       </div>
 
-      {/* Pathophysiology & Signs Grid */}
-      <div className="clinical-grid">
-        <div className="clinical-col">
-          <h4>
-            <Activity size={16} />
-            <span>Physiopathologie</span>
-          </h4>
-          <p>{currentScenario.pathophysiology}</p>
+      <details className="atlas-clinical-details">
+        <summary>Physiopathologie et signes <ChevronDown size={15} /></summary>
+        <div className="clinical-grid">
+          <div className="clinical-col">
+            <h4><Activity size={16} /><span>Physiopathologie</span></h4>
+            <p>{currentScenario.pathophysiology}</p>
+          </div>
+          <div className="clinical-col">
+            <h4><AlertTriangle size={16} /><span>Signes et sémiologie</span></h4>
+            <ul className="clinical-signs-list">{currentScenario.clinicalSigns.map((sign, idx) => <li key={idx}>{sign}</li>)}</ul>
+          </div>
         </div>
+      </details>
 
-        <div className="clinical-col">
-          <h4>
-            <AlertTriangle size={16} />
-            <span>Signes cardinaux & Sémiologie</span>
-          </h4>
-          <ul className="clinical-signs-list">
-            {currentScenario.clinicalSigns.map((sign, idx) => (
-              <li key={idx}>{sign}</li>
-            ))}
-          </ul>
-        </div>
-      </div>
-
-      {/* ECG or Imaging Findings */}
-      {currentScenario.ecgOrImagingFindings && (
-        <div className="clinical-findings-box">
-          <strong>Imagerie / ECG :</strong> {currentScenario.ecgOrImagingFindings}
-        </div>
-      )}
-
-      {/* Therapeutic Management Key */}
-      <div className="clinical-management-box">
-        <strong>Prise en charge & Traitement :</strong> {currentScenario.managementKey}
-      </div>
-
-      {/* Integrated Clinical Mini-Quiz */}
-      {currentScenario.quizQuestion && (
-        <div className="clinical-quiz-card">
+      <details className="atlas-clinical-details">
+        <summary>Prise en charge et QCM <ChevronDown size={15} /></summary>
+        <div className="clinical-details-content">
+          {currentScenario.ecgOrImagingFindings && <p className="clinical-findings-box"><strong>Imagerie / ECG :</strong> {currentScenario.ecgOrImagingFindings}</p>}
+          <p className="clinical-management-box"><strong>Prise en charge :</strong> {currentScenario.managementKey}</p>
+          {currentScenario.quizQuestion && <div className="clinical-quiz-card">
           <h4>Question d’évaluation clinique</h4>
           <p className="quiz-question-prompt">{currentScenario.quizQuestion.question}</p>
 
@@ -152,8 +127,9 @@ export const AtlasClinicalOverlay: React.FC<AtlasClinicalOverlayProps> = ({
               <strong>Explication :</strong> {currentScenario.quizQuestion.explanation}
             </div>
           )}
+          </div>}
         </div>
-      )}
+      </details>
     </div>
   )
 }

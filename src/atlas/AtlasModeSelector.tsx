@@ -13,16 +13,16 @@ export const AtlasModeSelector: React.FC<AtlasModeSelectorProps> = ({
   activeMode,
   onSelectMode
 }) => {
-  const modes: { id: AtlasMode; label: string; icon: React.FC<{ size?: number }> }[] = [
-    { id: 'explore', label: 'Exploration libre', icon: Compass },
-    { id: 'pathway', label: 'Voies & Circuits', icon: GitBranch },
-    { id: 'test', label: 'Test & Quiz', icon: HelpCircle },
-    { id: 'clinical', label: 'Cas Cliniques', icon: Stethoscope },
-    ...(atlasId === 'brain' ? [{ id: 'neuro' as AtlasMode, label: 'Neuro Explorer', icon: Sparkles }] : [])
+  const modes: { id: AtlasMode; label: string; shortLabel: string; icon: React.FC<{ size?: number }> }[] = [
+    { id: 'explore', label: 'Explorer', shortLabel: 'Explorer', icon: Compass },
+    { id: 'pathway', label: 'Parcours anatomiques', shortLabel: 'Parcours', icon: GitBranch },
+    { id: 'test', label: 'Quiz anatomique', shortLabel: 'Quiz', icon: HelpCircle },
+    { id: 'clinical', label: 'Cas cliniques', shortLabel: 'Clinique', icon: Stethoscope },
+    ...(atlasId === 'brain' ? [{ id: 'neuro' as AtlasMode, label: 'Fonctions cérébrales', shortLabel: 'Fonctions', icon: Sparkles }] : [])
   ]
 
   return (
-    <nav className="atlas-mode-selector" aria-label="Modes de l’atlas">
+    <nav className="atlas-mode-selector" aria-label="Modes de l’atlas" role="tablist">
       <div className="atlas-mode-tabs">
         {modes.map(mode => {
           const Icon = mode.icon
@@ -31,12 +31,15 @@ export const AtlasModeSelector: React.FC<AtlasModeSelectorProps> = ({
             <button
               key={mode.id}
               type="button"
+              role="tab"
               className={`atlas-mode-tab ${isActive ? 'active' : ''}`}
               onClick={() => onSelectMode(mode.id)}
               aria-pressed={isActive}
+              aria-selected={isActive}
+              title={mode.label}
             >
               <Icon size={16} />
-              <span>{mode.label}</span>
+              <span>{mode.shortLabel}</span>
             </button>
           )
         })}

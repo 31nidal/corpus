@@ -1,31 +1,27 @@
 import { test, expect } from '@playwright/test'
 
-test.describe('Atlas Médicaux Haute Fidélité - Cerveau & Cœur', () => {
+test.describe('Atlas anatomique - Cerveau & Cœur', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/#tab=atlas')
+    await page.goto('/')
     await page.waitForLoadState('domcontentloaded')
   })
 
-  test('1. Hub principal des atlas : affichage et recherche', async ({ page }) => {
-    // Check Hub Hero and Cards
-    const hub = page.locator('[data-testid="atlas-hub"]')
-    await expect(hub).toBeVisible()
+  test('1. Les trois blocs sélectionnent une structure du modèle 3D et ouvrent sa fiche', async ({ page }) => {
+    await page.getByRole('button', { name: 'Atlas 3D', exact: true }).click()
+    const regions = page.locator('.region-blocks')
+    await expect(regions.locator('.region-block')).toHaveCount(3)
+    const detail = page.locator('[data-testid="structure-detail"]')
 
-    await expect(page.locator('h1.hero-title')).toContainText('Atlas Médicaux Haute Fidélité')
-    await expect(page.locator('[data-testid="card-atlas-brain"]')).toBeVisible()
-    await expect(page.locator('[data-testid="card-atlas-heart"]')).toBeVisible()
-    await expect(page.locator('[data-testid="card-atlas-3d"]')).toBeVisible()
+    await regions.getByRole('button', { name: 'Explorer Cœur en 3D' }).click()
+    await expect(detail.locator('h2')).toHaveText('Cœur')
+    await page.getByRole('button', { name: 'Fermer la fiche' }).click()
 
-    // Test search filter
-    const searchInput = page.locator('.atlas-hub-search-input')
-    await searchInput.fill('Lobe frontal')
-    const searchResults = page.locator('[data-testid="atlas-search-results"]')
-    await expect(searchResults).toBeVisible()
-    await expect(searchResults).toContainText('Lobe frontal')
+    await regions.getByRole('button', { name: 'Explorer Cerveau en 3D' }).click()
+    await expect(detail.locator('h2')).toHaveText('Cerveau')
+    await page.getByRole('button', { name: 'Fermer la fiche' }).click()
 
-    // Click search result to navigate directly
-    await searchResults.locator('button.search-result-item').first().click()
-    await expect(page.locator('[data-testid="atlas-workspace"]')).toBeVisible()
+    await regions.getByRole('button', { name: 'Explorer Tête en 3D' }).click()
+    await expect(detail.locator('h2')).toHaveText('Crâne')
   })
 
   test('2. Atlas Neuroanatomie & Cerveau : exploration et 5 vues', async ({ page }) => {
@@ -35,35 +31,30 @@ test.describe('Atlas Médicaux Haute Fidélité - Cerveau & Cœur', () => {
     const workspace = page.locator('[data-testid="atlas-workspace"]')
     await expect(workspace).toBeVisible()
 
-    // Verify 5 view tabs exist
-    const viewsRow = page.locator('.views-pills-row')
-    await expect(viewsRow).toContainText('Vue latérale')
-    await expect(viewsRow).toContainText('Vue sagittale')
-    await expect(viewsRow).toContainText('Coupe frontale de Charcot')
-    await expect(viewsRow).toContainText('Base du crâne')
-    await expect(viewsRow).toContainText('Polygone de Willis')
+    const viewSelect = page.getByRole('combobox', { name: 'Planche anatomique' })
+    await expect(viewSelect.locator('option')).toHaveCount(5)
+    await expect(viewSelect).toContainText('Vue latérale')
+    await expect(page.locator('[data-testid="atlas-info-panel"]')).toHaveCount(0)
 
-    // Click on a structure (e.g. Lobe frontal chip)
-    const structureChip = page.locator('.strip-chip', { hasText: 'Lobe frontal' }).first()
-    if (await structureChip.isVisible()) {
-      await structureChip.click()
-    }
+    await page.locator('.atlas-structure-menu > summary').click()
+    await page.locator('.atlas-structure-menu-list button', { hasText: 'Lobe frontal' }).first().click()
 
     // Verify Info Panel appears with medical details
     const infoPanel = page.locator('[data-testid="atlas-info-panel"]')
     await expect(infoPanel).toBeVisible()
-    await expect(infoPanel).toContainText('Localisation')
+    await expect(infoPanel.locator('.atlas-more-details').first()).toBeVisible()
+    await infoPanel.locator('.atlas-more-details').first().locator('summary').click()
+    await expect(infoPanel).toContainText('Repère')
+    await expect(infoPanel).toContainText('Rapports')
     await expect(infoPanel).toContainText('Vascularisation')
-    await expect(infoPanel).toContainText('Fonction')
-    await expect(infoPanel).toContainText('Perle clinique')
+    await expect(infoPanel).toContainText('Rôle')
+    await expect(infoPanel).toContainText('À retenir en clinique')
     await expect(infoPanel).toContainText('Point clé pour les examens')
 
-    // Switch to Sagittal view
-    await page.locator('.view-pill-btn', { hasText: 'Vue sagittale' }).click()
+    await viewSelect.selectOption('sagittal')
     await expect(page.locator('.viewer-title')).toContainText('Vue sagittale')
 
-    // Switch to Cranial Nerves view
-    await page.locator('.view-pill-btn', { hasText: 'Base du crâne' }).click()
+    await viewSelect.selectOption('base_cranial')
     await expect(page.locator('.viewer-title')).toContainText('Base du crâne')
   })
 
@@ -106,26 +97,17 @@ test.describe('Atlas Médicaux Haute Fidélité - Cerveau & Cœur', () => {
     const workspace = page.locator('[data-testid="atlas-workspace"]')
     await expect(workspace).toBeVisible()
 
-    // Verify Heart Views
-    const viewsRow = page.locator('.views-pills-row')
-    await expect(viewsRow).toContainText('Vue antérieure externe')
-    await expect(viewsRow).toContainText('Coupe 4 cavités')
-    await expect(viewsRow).toContainText('Réseau coronaire')
-    await expect(viewsRow).toContainText('Tissu nodal & Conduction ECG')
-    await expect(viewsRow).toContainText('Foyers d’Auscultation')
+    const viewSelect = page.getByRole('combobox', { name: 'Planche anatomique' })
+    await expect(viewSelect.locator('option')).toHaveCount(5)
+    await expect(viewSelect).toContainText('Vue antérieure externe')
 
-    // Select structure
-    const leftVentricleChip = page.locator('.strip-chip', { hasText: 'Ventricule gauche' }).first()
-    if (await leftVentricleChip.isVisible()) {
-      await leftVentricleChip.click()
-    }
+    await page.locator('.atlas-structure-menu > summary').click()
+    await page.locator('.atlas-structure-menu-list button', { hasText: 'Ventricule gauche' }).first().click()
 
-    // Switch to Conduction & ECG view
-    await page.locator('.view-pill-btn', { hasText: 'Tissu nodal & Conduction ECG' }).click()
+    await viewSelect.selectOption('conduction_ecg')
     await expect(page.locator('.viewer-title')).toContainText('Tissu nodal & Conduction ECG')
 
-    // Switch to Auscultation view
-    await page.locator('.view-pill-btn', { hasText: 'Foyers d’Auscultation' }).click()
+    await viewSelect.selectOption('auscultation')
     await expect(page.locator('.viewer-title')).toContainText('Foyers d’Auscultation')
   })
 
@@ -133,11 +115,9 @@ test.describe('Atlas Médicaux Haute Fidélité - Cerveau & Cœur', () => {
     await page.goto('/#tab=atlas&sub=brain&view=lateral')
     await page.waitForLoadState('domcontentloaded')
 
-    // Select a structure to open Info Panel
-    const chip = page.locator('.strip-chip').first()
-    if (await chip.isVisible()) {
-      await chip.click()
-    }
+    await page.locator('.atlas-structure-menu > summary').click()
+    await page.locator('.atlas-structure-menu-list button').first().click()
+    await page.locator('[data-testid="atlas-info-panel"]').getByText('Actions d’apprentissage').click()
 
     const createFlashcardBtn = page.locator('button', { hasText: 'Créer une Flashcard FSRS' }).first()
     if (await createFlashcardBtn.isVisible()) {
@@ -163,9 +143,26 @@ test.describe('Atlas Médicaux Haute Fidélité - Cerveau & Cœur', () => {
 
     const workspace = page.locator('[data-testid="atlas-workspace"]')
     await expect(workspace).toBeVisible()
+    await expect(page.locator('.atlas-info-panel')).toHaveCount(0)
+    const geometry = await page.locator('.atlas-viewer-container').boundingBox()
+    expect(geometry?.height).toBeGreaterThan(450)
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)
+    expect(overflow).toBe(false)
 
-    // Hub button works
+    // The specialized atlas returns directly to the 3D body.
     await page.locator('.atlas-nav-hub-btn').click()
-    await expect(page.locator('[data-testid="atlas-hub"]')).toBeVisible()
+    await expect(page.locator('.region-blocks .region-block')).toHaveCount(3)
+  })
+
+  test('7. Le shell des atlas respecte le thème sombre MyCorpus', async ({ page }) => {
+    await page.goto('/#tab=atlas&sub=heart&view=morphology_anterior')
+    await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'))
+    await expect(page.locator('.atlas-workspace-container')).toBeVisible()
+    const background = await page.locator('.atlas-workspace-container').evaluate(element => getComputedStyle(element).backgroundColor)
+    expect(background).toBe('rgb(16, 29, 34)')
+    await page.locator('.atlas-structure-menu > summary').click()
+    await page.locator('.atlas-structure-menu-list button').first().click()
+    const panelBackground = await page.locator('.atlas-context-panel').evaluate(element => getComputedStyle(element).backgroundColor)
+    expect(panelBackground).toContain('23, 41, 46')
   })
 })
