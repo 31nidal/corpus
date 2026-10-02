@@ -28,19 +28,19 @@ test.describe('Atlas anatomique - Cerveau & Cœur', () => {
     await page.goto('/#tab=atlas&sub=brain&view=lateral')
     await page.waitForLoadState('domcontentloaded')
 
-    const workspace = page.locator('[data-testid="atlas-workspace"]')
+    const workspace = page.getByTestId('atlas-workspace')
     await expect(workspace).toBeVisible()
 
     const viewSelect = page.getByRole('combobox', { name: 'Planche anatomique' })
     await expect(viewSelect.locator('option')).toHaveCount(5)
     await expect(viewSelect).toContainText('Vue latérale')
-    await expect(page.locator('[data-testid="atlas-info-panel"]')).toHaveCount(0)
+    await expect(page.getByTestId('atlas-info-panel')).toHaveCount(0)
 
     await page.locator('.atlas-structure-menu > summary').click()
     await page.locator('.atlas-structure-menu-list button', { hasText: 'Lobe frontal' }).first().click()
 
     // Verify Info Panel appears with medical details
-    const infoPanel = page.locator('[data-testid="atlas-info-panel"]')
+    const infoPanel = page.getByTestId('atlas-info-panel')
     await expect(infoPanel).toBeVisible()
     await expect(infoPanel.locator('.atlas-more-details').first()).toBeVisible()
     await infoPanel.locator('.atlas-more-details').first().locator('summary').click()
@@ -56,6 +56,11 @@ test.describe('Atlas anatomique - Cerveau & Cœur', () => {
 
     await viewSelect.selectOption('base_cranial')
     await expect(page.locator('.viewer-title')).toContainText('Base du crâne')
+
+    await viewSelect.selectOption('coronal_charcot')
+    await expect(page.locator('.viewer-title')).toContainText('Coupe frontale de Charcot')
+    await viewSelect.selectOption('vascular_willis')
+    await expect(page.locator('.viewer-title')).toContainText('Polygone de Willis')
   })
 
   test('3. Atlas Cerveau : Modes Trajets, Quiz, Clinique et Neuro-Explorer', async ({ page }) => {
@@ -94,7 +99,7 @@ test.describe('Atlas anatomique - Cerveau & Cœur', () => {
     await page.goto('/#tab=atlas&sub=heart&view=morphology')
     await page.waitForLoadState('domcontentloaded')
 
-    const workspace = page.locator('[data-testid="atlas-workspace"]')
+    const workspace = page.getByTestId('atlas-workspace')
     await expect(workspace).toBeVisible()
 
     const viewSelect = page.getByRole('combobox', { name: 'Planche anatomique' })
@@ -109,6 +114,11 @@ test.describe('Atlas anatomique - Cerveau & Cœur', () => {
 
     await viewSelect.selectOption('auscultation')
     await expect(page.locator('.viewer-title')).toContainText('Foyers d’Auscultation')
+
+    await viewSelect.selectOption('chambers_valves')
+    await expect(page.locator('.viewer-title')).toContainText('Coupe 4 cavités')
+    await viewSelect.selectOption('coronary_tree')
+    await expect(page.locator('.viewer-title')).toContainText('Réseau coronaire')
   })
 
   test('5. Modal de création Flashcard FSRS en 1 Clic', async ({ page }) => {
@@ -117,23 +127,20 @@ test.describe('Atlas anatomique - Cerveau & Cœur', () => {
 
     await page.locator('.atlas-structure-menu > summary').click()
     await page.locator('.atlas-structure-menu-list button').first().click()
-    await page.locator('[data-testid="atlas-info-panel"]').getByText('Actions d’apprentissage').click()
+    await page.getByTestId('atlas-info-panel').getByText('Actions d’apprentissage').click()
 
-    const createFlashcardBtn = page.locator('button', { hasText: 'Créer une Flashcard FSRS' }).first()
-    if (await createFlashcardBtn.isVisible()) {
-      await createFlashcardBtn.click()
+    const createFlashcardBtn = page.getByTestId('atlas-info-panel').getByRole('button', { name: 'Créer une flashcard', exact: true })
+    await expect(createFlashcardBtn).toBeVisible()
+    await createFlashcardBtn.click()
 
-      // Modal should open
-      const modal = page.locator('[data-testid="atlas-flashcard-modal"]')
-      await expect(modal).toBeVisible()
-      await expect(modal).toContainText('Créer une Flashcard FSRS')
-      await expect(modal).toContainText('Recto de la carte')
-      await expect(modal).toContainText('Verso de la carte')
+    const modal = page.getByTestId('atlas-flashcard-modal')
+    await expect(modal).toBeVisible()
+    await expect(modal).toContainText('Créer une Flashcard FSRS')
+    await expect(modal.getByLabel('Recto de la carte (Question / Invite) :')).not.toHaveValue('')
+    await expect(modal.getByLabel('Verso de la carte (Réponse / Définition médicale) :')).not.toHaveValue('')
 
-      // Close modal
-      await page.locator('.atlas-modal-close').click()
-      await expect(modal).not.toBeVisible()
-    }
+    await modal.getByRole('button', { name: 'Fermer la boîte de dialogue' }).click()
+    await expect(modal).not.toBeVisible()
   })
 
   test('6. Responsive mobile : navigation et affichage', async ({ page }) => {
@@ -141,7 +148,7 @@ test.describe('Atlas anatomique - Cerveau & Cœur', () => {
     await page.goto('/#tab=atlas&sub=brain')
     await page.waitForLoadState('domcontentloaded')
 
-    const workspace = page.locator('[data-testid="atlas-workspace"]')
+    const workspace = page.getByTestId('atlas-workspace')
     await expect(workspace).toBeVisible()
     await expect(page.locator('.atlas-info-panel')).toHaveCount(0)
     const geometry = await page.locator('.atlas-viewer-container').boundingBox()
@@ -165,4 +172,112 @@ test.describe('Atlas anatomique - Cerveau & Cœur', () => {
     const panelBackground = await page.locator('.atlas-context-panel').evaluate(element => getComputedStyle(element).backgroundColor)
     expect(panelBackground).toContain('23, 41, 46')
   })
+})
+
+for (const width of [1440, 900, 390]) {
+  test(`Atlas : fiches, routes et accès aux régions à ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto('/#tab=atlas&sub=brain&view=lateral&structure=frontal_lobe')
+    const panel = page.getByTestId('atlas-info-panel')
+    await expect(panel.getByRole('heading', { name: 'Lobe frontal', exact: true })).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width)
+    const modeBounds = await page.getByRole('tablist', { name: 'Modes de l’atlas' }).boundingBox()
+    const viewBounds = await page.locator('.atlas-views-bar').boundingBox()
+    expect(modeBounds!.y + modeBounds!.height).toBeLessThanOrEqual(viewBounds!.y)
+    for (const button of await page.getByRole('navigation', { name: 'Navigation principale', exact: true }).getByRole('button').all()) {
+      if (await button.isVisible()) {
+        expect(await button.evaluate(element => {
+          const bounds = element.getBoundingClientRect()
+          const hit = document.elementFromPoint(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)
+          return hit !== null && element.contains(hit)
+        })).toBe(true)
+      }
+    }
+    if (width <= 900) {
+      const navigation = page.getByRole('navigation', { name: 'Navigation pédagogique mobile' })
+      const panelBounds = await panel.boundingBox()
+      const navigationBounds = await navigation.boundingBox()
+      expect(panelBounds!.y + panelBounds!.height).toBeLessThanOrEqual(navigationBounds!.y)
+    }
+    await page.screenshot({ path: `tests/artifacts/atlas-brain-${width}.png` })
+    await panel.getByRole('button', { name: 'Fermer la fiche', exact: true }).click()
+    await expect(panel).toHaveCount(0)
+    await expect(page).not.toHaveURL(/structure=/)
+    await page.reload()
+    await expect(page.getByTestId('atlas-workspace')).toBeVisible()
+    await expect(panel).toHaveCount(0)
+    await page.getByRole('button', { name: 'Retour au corps humain en 3D', exact: true }).click()
+    await page.getByRole('button', { name: 'Explorer Cœur en 3D', exact: true }).click()
+    await expect(page.getByTestId('structure-detail').getByRole('heading', { name: 'Cœur', exact: true })).toBeVisible()
+    await page.getByRole('button', { name: 'Explorer l’atlas du cœur', exact: true }).click()
+    await expect(page.getByTestId('atlas-workspace').getByRole('heading', { name: 'Cardio-anatomie', exact: true })).toBeVisible()
+    await expect(page).toHaveURL(/tab=atlas&sub=heart/)
+  })
+}
+
+test('Atlas 3D : une région ouvre sa fiche pendant le chargement puis cadre le modèle', async ({ page }) => {
+  let release!: () => void
+  const blocked = new Promise<void>(resolve => { release = resolve })
+  await page.route('**/models/organs.glb', async route => {
+    await blocked
+    await route.continue()
+  })
+  try {
+    await page.goto('/')
+    await page.getByRole('button', { name: 'Explorer Cœur en 3D', exact: true }).click()
+    await expect(page.getByTestId('structure-detail').getByRole('heading', { name: 'Cœur', exact: true })).toBeVisible()
+    const state = () => page.evaluate(() => (window as any).__CORPUS_TEST__?.state())
+    await expect.poll(async () => (await state())?.ready ?? []).toContain('skin')
+    expect((await state()).ready).not.toContain('organs')
+    const initialTarget = (await state()).target
+    release()
+    await expect(page.locator('main')).toHaveAttribute('data-loaded', 'true', { timeout: 90000 })
+    await expect.poll(async () => (await state()).selectedId).toBe('FMA7088')
+    await expect.poll(async () => (await state()).target).not.toEqual(initialTarget)
+    expect((await state()).ready).toContain('organs')
+  } finally {
+    release()
+  }
+})
+
+test('Atlas : création réelle d’une flashcard depuis la fiche médicale', async ({ page }) => {
+  const headers = { 'x-mycorpus-request': '1' }
+  const password = 'Atlas-flashcards-test-2026'
+  const account = await page.request.post('/api/account/register', {
+    headers,
+    data: { name: 'Atlas Test', email: `atlas-${crypto.randomUUID()}@example.test`, password },
+  })
+  expect(account.status()).toBe(201)
+  try {
+    const deckResponse = await page.request.post('/api/flashcards/decks', { headers, data: { name: 'Atlas Neuro Test' } })
+    expect(deckResponse.status()).toBe(201)
+    const { deck } = await deckResponse.json()
+    await page.goto('/#tab=atlas&sub=brain&view=lateral&structure=frontal_lobe')
+    const panel = page.getByTestId('atlas-info-panel')
+    await panel.getByText('Actions d’apprentissage', { exact: true }).click()
+    await panel.getByRole('button', { name: 'Créer une flashcard', exact: true }).click()
+    const modal = page.getByTestId('atlas-flashcard-modal')
+    await modal.getByLabel('Paquet de destination :').selectOption(deck.id)
+    const creation = page.waitForResponse(response => response.url().endsWith('/api/flashcards/cards') && response.request().method() === 'POST')
+    await modal.getByRole('button', { name: 'Enregistrer la Flashcard', exact: true }).click()
+    const response = await creation
+    expect(response.status()).toBe(201)
+    const { card } = await response.json()
+    expect(card.deckId).toBe(deck.id)
+    expect(card.front).toContain('Lobe frontal')
+    expect(card.back).toContain('Vascularisation')
+    expect(card.tags).toContain('brain')
+    expect(card.source).toMatchObject({
+      type: 'manual', courseId: 'physio-neuro',
+      locator: { route: '#tab=atlas&sub=brain&view=lateral&structure=frontal_lobe', structureId: 'frontal_lobe' },
+    })
+    const saved = await page.request.get(`/api/flashcards/cards?deckId=${encodeURIComponent(deck.id)}`)
+    expect(saved.status()).toBe(200)
+    const persisted = (await saved.json()).cards.find((item: { id: string }) => item.id === card.id)
+    expect(persisted).toBeTruthy()
+    expect(persisted.source).toEqual(card.source)
+  } finally {
+    const removed = await page.request.post('/api/account/delete', { headers, data: { password } })
+    expect(removed.status()).toBe(200)
+  }
 })

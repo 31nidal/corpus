@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import type { AtlasDefinition, AtlasStructure } from './types'
 import { listDecks, createCard, createDeck } from '../flashcards/flashcardsApi'
 import type { FlashcardDeck } from '../flashcards/flashcardsTypes'
+import { atlasFlashcardSource } from './navigation'
 import {
   X,
   CreditCard,
@@ -27,6 +28,7 @@ export default function AtlasFlashcardModal({
   onClose,
   structure,
   atlas,
+  currentViewId,
   mode = 'basic',
 }: Props) {
   const [decks, setDecks] = useState<FlashcardDeck[]>([])
@@ -131,6 +133,7 @@ export default function AtlasFlashcardModal({
         front: front.trim(),
         back: back.trim(),
         tags: tags,
+        source: atlasFlashcardSource(atlas.id, currentViewId, structure),
       })
 
       setSuccess(true)

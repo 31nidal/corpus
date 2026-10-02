@@ -102,7 +102,7 @@ test('tous les systèmes, sélection d’ensemble puis état vide',async({page})
 
 test('index navigable et retour à la vue d’ensemble 48 structures',async({page})=>{
   await ready(page)
-  await page.getByRole('button',{name:'Parcourir l’atlas'}).click()
+  await page.getByRole('button',{name:'Parcourir toutes les structures',exact:true}).click()
   await page.getByLabel('Filtrer l’index par système').selectOption('nerves')
   await expect(page.locator('.catalog-filter small')).toContainText('34 entrées')
   await page.locator('.catalog-list>button').first().click();await loaded(page)

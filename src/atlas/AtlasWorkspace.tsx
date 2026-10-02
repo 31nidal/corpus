@@ -303,7 +303,10 @@ export function AtlasWorkspace({
               structure={activeStructure}
               siblingStructures={structuresForCurrentView}
               onSelectStructure={handleSelectStructure}
-              onClose={() => setSelectedStructureId(null)}
+              onClose={() => {
+                setSelectedStructureId(null)
+                updateHash(activeAtlasId, activeViewId, activeMode, null)
+              }}
               onNavigateCourse={onNavigateCourse}
               onNavigatePractice={onNavigatePractice}
               onCreateFlashcard={(s) => handleOpenFlashcard(s, 'basic')}

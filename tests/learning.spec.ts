@@ -97,7 +97,7 @@ test('mobile : apprentissage et outils gardent une scène visible sans débordem
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(375)
  await page.waitForTimeout(1400)
  await page.screenshot({path:'tests/artifacts/study-mobile-learning.png'})
- await page.getByRole('button',{name:'Atlas 3D',exact:true}).click()
+ await page.getByRole('navigation',{name:'Navigation pédagogique mobile'}).getByRole('button',{name:'Atlas 3D',exact:true}).click()
  await page.getByRole('button',{name:'Outils d’exploration',exact:true}).click()
  await expect(page.locator('.tools-panel')).toBeVisible()
  expect((await page.locator('.stage').boundingBox())!.height).toBeGreaterThan(70)
