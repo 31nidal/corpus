@@ -166,11 +166,11 @@ test.describe('Atlas anatomique - Cerveau & Cœur', () => {
     await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'))
     await expect(page.locator('.atlas-workspace-container')).toBeVisible()
     const background = await page.locator('.atlas-workspace-container').evaluate(element => getComputedStyle(element).backgroundColor)
-    expect(background).toBe('rgb(16, 29, 34)')
+    expect(background).toBe('rgb(16, 27, 29)')
     await page.locator('.atlas-structure-menu > summary').click()
     await page.locator('.atlas-structure-menu-list button').first().click()
     const panelBackground = await page.locator('.atlas-context-panel').evaluate(element => getComputedStyle(element).backgroundColor)
-    expect(panelBackground).toContain('23, 41, 46')
+    expect(panelBackground).toContain('23, 38, 41')
   })
 })
 

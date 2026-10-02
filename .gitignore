@@ -20,3 +20,4 @@ playwright-report/
 
 # Generated visual validation output
 tests/artifacts/*.png
+tests/artifacts/design/
