@@ -4,8 +4,8 @@ import { useCallback, useEffect, useRef, useState, lazy, Suspense } from 'react'
 import { BookOpen, Box, Brain, GraduationCap, ArrowLeft, ArrowRight, ArrowUpRight, Bone, Copy, SlidersHorizontal, Moon, Sun, ChevronDown, CircleHelp, Eye, Heart, Layers3, Minus, Plus, Rotate3D, RotateCcw, Search, ShieldCheck, Sparkles, UserRound, X, FileText } from 'lucide-react'
 import {breastMeshIds} from './data/female-regions'
 import ChatAssistant from './ChatAssistant'
-import CoursesWorkspace from './study/CoursesWorkspace'
-import PracticeWorkspace from './study/PracticeWorkspace'
+const CoursesWorkspace = lazy(() => import('./study/CoursesWorkspace'))
+const PracticeWorkspace = lazy(() => import('./study/PracticeWorkspace'))
 const MyCoursesWorkspace = lazy(() => import('./study/MyCoursesWorkspace'))
 const FlashcardsWorkspace = lazy(() => import('./flashcards/FlashcardsWorkspace'))
 import {courses} from './study/curriculum'
@@ -24,7 +24,7 @@ import { describeStructure } from './data/anatomy'
 import type { CameraPose, LabelMode, SharedView, GroupId, LoadState, Manifest, ViewerApi, Visibility } from './types'
 import { Atlas3DNoteModal } from './flashcards/Atlas3DNoteModal'
 import type { Atlas3DScene } from './flashcards/flashcardsTypes'
-import { AtlasWorkspace } from './atlas/AtlasWorkspace'
+const AtlasWorkspace = lazy(() => import('./atlas/AtlasWorkspace'))
 import type { AtlasId, AtlasMode } from './atlas/types'
 import './atlas/atlas.css'
 
@@ -516,18 +516,20 @@ export default function App() {
     )}
     {flashcardsOpen&&<Suspense fallback={<div className="study-workspace flash-loading">Chargement des flashcards…</div>}><FlashcardsWorkspace openCourse={(id,section)=>openStudy('cours',id,section)} openDocument={(id,section)=>openMyCourses(id,section)}/></Suspense>}
     {atlasOpen && (
-      <AtlasWorkspace
-        initialAtlasId={atlasSub}
-        initialMode={atlasMode}
-        initialViewId={atlasView}
-        initialStructureId={atlasStructure}
-        onOpen3DAtlas={() => {
-          setAtlasOpen(false)
-          writeRoute(null)
-        }}
-        onNavigateCourse={(courseId: string) => openStudy('cours', courseId)}
-        onNavigatePractice={(courseId: string) => openStudy('entrainement', courseId)}
-      />
+      <Suspense fallback={<div className="study-workspace" style={{padding:'4rem 1rem',textAlign:'center',color:'#64748b'}}>Chargement de l’atlas…</div>}>
+        <AtlasWorkspace
+          initialAtlasId={atlasSub}
+          initialMode={atlasMode}
+          initialViewId={atlasView}
+          initialStructureId={atlasStructure}
+          onOpen3DAtlas={() => {
+            setAtlasOpen(false)
+            writeRoute(null)
+          }}
+          onNavigateCourse={(courseId: string) => openStudy('cours', courseId)}
+          onNavigatePractice={(courseId: string) => openStudy('entrainement', courseId)}
+        />
+      </Suspense>
     )}
     <dialog ref={dialogRef} className="info-dialog" onCancel={() => setModal(null)} onClick={e => { if (e.target === dialogRef.current) setModal(null) }}><div className="dialog-inner"><button className="dialog-close icon-button" aria-label="Fermer" onClick={() => setModal(null)}><X size={20} /></button><span className="eyebrow">MYCORPUS · ATLAS OUVERT</span><h2>{modal === 'help' ? 'Prenez le corps en main.' : 'Le vivant appartient à tous.'}</h2>{modal === 'help' ? <><p>Un espace pour observer, explorer et comprendre, à votre rythme.</p><div className="help-row"><Rotate3D /><div><strong>Changer de perspective</strong><p>Glissez avec la souris ou un doigt pour tourner. Pointez la zone à explorer puis utilisez la molette pour zoomer dessus. Glissez avec le bouton droit pour déplacer le corps. Sur téléphone, pincez autour de la zone souhaitée ; glissez avec deux doigts pour la déplacer.</p></div></div><div className="help-row"><Search /><div><strong>Suivre votre curiosité</strong><p>Survolez une structure pour connaître son nom. Cliquez, touchez ou utilisez la recherche pour ouvrir sa fiche. La recherche accepte les accents ou leur absence.</p></div></div><div className="help-row"><Layers3 /><div><strong>Voir sous la surface</strong><p>Activez les couches anatomiques. Sur téléphone, ouvrez « Couches anatomiques ». Masquer le squelette facilite l’exploration des organes.</p></div></div><div className="help-row"><RotateCcw /><div><strong>Retrouver vos repères</strong><p>Le bouton de réinitialisation retrouve la vue de face. Les réglages de couches sont conservés.</p></div></div></> : <><p>MyCorpus est une invitation à explorer l’anatomie humaine grâce à de véritables maillages 3D, indépendants et sélectionnables.</p><h3>Des modèles scientifiques ouverts</h3><p>BodyParts3D, © The Database Center for Life Science (DBCLS), sous licence Creative Commons Attribution 4.0 International.</p><p>Modèles issus de l’archive officielle BodyParts3D 4.0, complétés par les cinq surfaces lobaires pulmonaires de l’archive officielle 3.0 dans le même repère. Ils sont simplifiés, regroupés, orientés et convertis en GLB pour le Web. Les couleurs sont des choix de visualisation. La page actuelle indique CC BY 4.0 (27 février 2025), mais les fichiers OBJ téléchargés portent CC BY-SA 2.1 Japon. Nos GLB conservent cette dernière licence : attribution et partage des adaptations sous les mêmes conditions.</p><div className="dialog-links"><a href="https://dbarchive.biosciencedbc.jp/en/bodyparts3d/download.html" target="_blank" rel="noreferrer">Modèles d’origine <ArrowUpRight size={14} /></a><a href="https://dbarchive.biosciencedbc.jp/en/bodyparts3d/lic.html" target="_blank" rel="noreferrer">Licence de la source <ArrowUpRight size={14} /></a><a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">CC BY 4.0 <ArrowUpRight size={14} /></a><a href={`${import.meta.env.BASE_URL}SOURCES.md`} target="_blank">Sources pédagogiques <ArrowUpRight size={14} /></a></div><p>Attribution des fichiers : BodyParts3D, © The Database Center for Life Science (DBCLS), sous licence Creative Commons Attribution – Partage dans les mêmes conditions 2.1 Japon.</p><div className="dialog-links"><a href="https://creativecommons.org/licenses/by-sa/2.1/jp/" target="_blank" rel="noreferrer">Licence des GLB : CC BY-SA 2.1 Japon <ArrowUpRight size={14} /></a><a href={`${import.meta.env.BASE_URL}licenses/detailed-provenance.json`} target="_blank">Provenance des fichiers <ArrowUpRight size={14} /></a></div><div className="dialog-links"><a href={`${import.meta.env.BASE_URL}licenses/lung-surfaces-provenance.json`} target="_blank">Provenance des lobes pulmonaires <ArrowUpRight size={14} /></a><a href={`${import.meta.env.BASE_URL}models/LICENSE.txt`} target="_blank">Notice de redistribution <ArrowUpRight size={14} /></a></div><h3>Référence féminine Human Reference Atlas</h3><p>Modèle United Female v1.5, Kristen Browne et Heidi Schlehlein, HuBMAP, à partir du Visible Human Female de la National Library of Medicine. Licence CC BY 4.0. Maillages simplifiés et répartis en couches pour le Web. Le squelette et les muscles sont partiels ; cette référence composite ne remplace pas un corps féminin exhaustif.</p><a href={import.meta.env.BASE_URL+'licenses/female-provenance.json'} target="_blank" rel="noreferrer">Provenance et transformations du modèle féminin ↗</a><a href={import.meta.env.BASE_URL+'models/female-regions/LICENSE.txt'} target="_blank" rel="noreferrer">Crédits et licence du modèle féminin ↗</a><h3>Un atlas étendu, pas une anatomie exhaustive</h3><p>Le mode détaillé utilise les éléments nommés de l’archive ISA 4.0 : os, dents, muscles, vaisseaux, nerfs, organes et tissus de soutien. Les fichiers sans identification sont exclus. Ce corps de référence masculin ne couvre ni toutes les variantes anatomiques ni les détails microscopiques. Certaines fiches donnent uniquement des repères de groupe.</p><p>La nomenclature française provient de Z-Anatomy (TA2.csv), sous CC BY-SA 4.0. Les noms sont complétés par des traductions descriptives des portions, côtés et branches. Les noms sources restent conservés dans les données de provenance ; les libellés français ne constituent pas une nouvelle nomenclature officielle.</p><a href={`${import.meta.env.BASE_URL}licenses/terminology-LICENSE.txt`} target="_blank">Crédits de la nomenclature</a><h3>Apprendre avec des repères fiables</h3><p>Les fiches sont rédigées en français à partir de ressources pédagogiques du NIH et d’OpenStax. Chaque fiche renvoie à sa source.</p><div className="educational-box"><ShieldCheck size={22} /><p>Un outil pédagogique, pas un outil de diagnostic. Ce modèle représente une anatomie de référence ; les formes et les proportions varient d’une personne à l’autre. Il ne constitue pas un atlas exhaustif.</p></div></>}<button className="dialog-action" onClick={() => setModal(null)}>Revenir à l’exploration <ArrowRight size={16} /></button></div></dialog>
     <span className="sr-only" aria-live="polite">{description ? `Structure sélectionnée : ${description.name}. ${description.role}` : ''}</span>
