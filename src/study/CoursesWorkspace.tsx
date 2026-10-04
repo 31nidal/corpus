@@ -77,25 +77,47 @@ export default function CoursesWorkspace(p:{initial:string|null;completed:string
  const [query,setQuery]=useState(''),[category,setCategory]=useState(()=>new URLSearchParams(location.hash.slice(1)).get('matiere')??''),[group,setGroup]=useState(()=>new URLSearchParams(location.hash.slice(1)).get('module')??''),[filter,setFilter]=useState('all'),[saved,setSaved]=useState(readSaved),[reveal,setReveal]=useState(false),[pathology,setPathology]=useState<string|null>(null),[progress,setProgress]=useState(0)
  const [generation,setGeneration]=useState<GenerationSource|null>(null),[selectedPassage,setSelectedPassage]=useState(''),[toast,setToast]=useState('')
  useEffect(()=>{if(!toast)return;const t=setTimeout(()=>setToast(''),4000);return()=>clearTimeout(t)},[toast])
+ const [activeSection,setActiveSection]=useState(''),[tocOpen,setTocOpen]=useState(()=>window.innerWidth>700)
  const workspace=useRef<HTMLElement>(null)
+ const scrollToSection=(id:string)=>{
+  if(window.innerWidth<=700)setTocOpen(false)
+  requestAnimationFrame(()=>{
+   document.getElementById('section-'+id)?.scrollIntoView({behavior:'instant',block:'start'})
+   setActiveSection(id)
+  })
+ }
+ const updateReading=(element:HTMLElement)=>{
+  setProgress(Math.min(100,Math.round(element.scrollTop/Math.max(1,element.scrollHeight-element.clientHeight)*100)))
+  const sections=[...element.querySelectorAll<HTMLElement>('.course-section')]
+  const limit=element.getBoundingClientRect().top+100
+  const current=sections.filter(section=>section.getBoundingClientRect().top<=limit).at(-1)??sections[0]
+  if(current)setActiveSection(current.id.slice('section-'.length))
+ }
+ useEffect(()=>{
+  const query=window.matchMedia('(max-width:700px)')
+  const sync=()=>setTocOpen(!query.matches)
+  query.addEventListener('change',sync)
+  return()=>query.removeEventListener('change',sync)
+ },[])
  const routeResolution=resolveCourseRoute(p.initial)
  const course=routeResolution.kind==='legacy-hub'?undefined:courses.find(c=>c.id===p.initial)
- useEffect(()=>{setReveal(false);setPathology(null);setProgress(0);workspace.current?.scrollTo(0,0)},[p.initial])
+ useEffect(()=>{setReveal(false);setPathology(null);setProgress(0);setActiveSection('');setTocOpen(window.innerWidth>700);workspace.current?.scrollTo(0,0)},[p.initial])
  useEffect(()=>{if(!course)return;const section=new URLSearchParams(location.hash.slice(1)).get('section');if(section)requestAnimationFrame(()=>document.getElementById('section-'+section)?.scrollIntoView({behavior:'smooth',block:'start'}))},[course?.id])
  const browse=(subject:string,module='')=>{setCategory(subject);setGroup(module);const params=new URLSearchParams(location.hash.slice(1));if(subject)params.set('matiere',subject);else params.delete('matiere');if(module)params.set('module',module);else params.delete('module');history.pushState(null,'','#'+params.toString());workspace.current?.scrollTo(0,0)}
  useEffect(()=>{const sync=()=>{const params=new URLSearchParams(location.hash.slice(1));setCategory(params.get('matiere')??'');setGroup(params.get('module')??'')};window.addEventListener('popstate',sync);window.addEventListener('hashchange',sync);return()=>{window.removeEventListener('popstate',sync);window.removeEventListener('hashchange',sync)}},[])
  const disease=diseases.find(d=>d.id===pathology),siblings=course?courses.filter(c=>c.category===course.category):[],nextCourse=course?siblings[siblings.indexOf(course)+1]:null
  const returnToLibrary=(subject='')=>{setQuery('');setFilter('all');browse(subject);p.navigate(null)}
- const toggleSave=(id:string)=>{const next=saved.includes(id)?saved.filter(x=>x!==id):[...saved,id];setSaved(next);try{accountStorage.setItem('corpus-saved-courses',JSON.stringify(next))}catch{/* optional */}}
+ const toggleSave=(id:string)=>{const next=saved.includes(id)?saved.filter(x=>x!==id):[...saved,id];setSaved(next);try{accountStorage.setItem('corpus-saved-courses',JSON.stringify(next));setToast(next.includes(id)?'Cours enregistré':'Cours retiré des favoris')}catch{setToast('Enregistrement indisponible. Réessayez.')}}
  const questionCount=(id:string)=>questions.filter(q=>q.course===id).length
  const exportPdf=()=>{if(!course)return;const previous=document.title;document.title=`MyCorpus - ${course.title}`;window.addEventListener('afterprint',()=>{document.title=previous},{once:true});window.print()}
- return <section ref={workspace} onScroll={e=>{const el=e.currentTarget;setProgress(Math.round(el.scrollTop/Math.max(1,el.scrollHeight-el.clientHeight)*100))}} className="study-workspace courses-workspace" aria-label="Cours de première année">
+ return <section ref={workspace} onScroll={e=>updateReading(e.currentTarget)} className="study-workspace courses-workspace" aria-label="Cours de première année">
  {routeResolution.kind==='legacy-hub'?<LegacyHubView hub={routeResolution.hub} children={routeResolution.children} completed={p.completed} saved={saved} toggleSave={toggleSave} returnToLibrary={returnToLibrary} navigate={p.navigate} practice={p.practice}/>:course?<>
-  <div className="reading-progress"><span style={{width:progress+'%'}}/></div>
-  <div className="study-breadcrumb"><button onClick={()=>returnToLibrary()}><ArrowLeft size={16}/>Tous les cours</button><span>/</span><button onClick={()=>returnToLibrary(subjectFor(course).id)}>{course.category}</button><span>/</span><span>{course.tag}</span><div className="course-document-actions"><button className="study-primary" onClick={()=>setGeneration({kind:'catalog',title:course.title,courseId:course.id,subject:course.category,chapter:course.title,sections:course.sections.map((section,index)=>({id:sectionSlug(section.title,index),title:section.title,text:[section.text,...(section.bullets||[])].join(' ')}))})}><Sparkles size={15}/>Générer des flashcards</button><button className="export-course" onClick={exportPdf}><FileDown size={15}/>Exporter en PDF</button><AnkiExportMenu course={course} storage={accountStorage}/><button className="bookmark-course" aria-pressed={saved.includes(course.id)} onClick={()=>toggleSave(course.id)}><Bookmark size={15}/>{saved.includes(course.id)?'Enregistré':'Garder pour plus tard'}</button></div></div>
+  <div className="reading-progress" role="progressbar" aria-label="Progression de lecture" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}><span style={{width:progress+'%'}}/></div>
+  <div className="study-breadcrumb"><button onClick={()=>returnToLibrary()}><ArrowLeft size={16}/>Tous les cours</button><span>/</span><button onClick={()=>returnToLibrary(subjectFor(course).id)}>{course.category}</button><span>/</span><span>{course.tag}</span><div className="course-document-actions"><button className="study-secondary" onClick={()=>setGeneration({kind:'catalog',title:course.title,courseId:course.id,subject:course.category,chapter:course.title,sections:course.sections.map((section,index)=>({id:sectionSlug(section.title,index),title:section.title,text:[section.text,...(section.bullets||[])].join(' ')}))})}><Sparkles size={15}/>Générer des flashcards</button><button className="export-course" onClick={exportPdf}><FileDown size={15}/>Exporter en PDF</button><AnkiExportMenu course={course} storage={accountStorage}/><button className="bookmark-course" aria-pressed={saved.includes(course.id)} onClick={()=>toggleSave(course.id)}><Bookmark size={15}/>{saved.includes(course.id)?'Enregistré':'Garder pour plus tard'}</button></div></div>
   <div className="reading-layout"><article className="course-article" onMouseUp={()=>{const text=window.getSelection()?.toString().trim()||'';setSelectedPassage(text.length>=20&&text.length<=8000?text:'')}}>
    <div className="study-eyebrow">{course.category} · {course.caseStudy?'COURS & APPLICATIONS':'REPÈRES ANATOMIQUES'}</div><h1>{course.title}</h1>
    <div className="course-meta"><span><BookOpen size={14}/>{course.readingMinutes?`${course.readingMinutes} min de lecture · exercices en plus`:`${course.minutes} min avec exercices`}</span><span><GraduationCap size={15}/>Première année</span><span>{questionCount(course.id)} questions associées</span>{p.completed.includes(course.id)&&<span><CheckCircle2 size={15}/>Terminé</span>}</div>
+   {course.structure&&<button className="study-secondary course-atlas-shortcut" onClick={()=>p.explore(course.structure!)}><Box size={18}/>Explorer dans l’Atlas 3D<ArrowRight size={16}/></button>}
    <ReviewNotice course={course}/>
    <div className="objectives"><h2>À la fin de ce cours</h2>{course.objectives.map(o=><p key={o}><Check size={16}/>{o}</p>)}</div>
    {course.prerequisites&&<aside className="course-prerequisites"><strong>Avant de commencer</strong><p>{course.prerequisites.join(' · ')}</p><small>Durée de lecture indicative, calculée à 180 mots/minute. Prenez le temps de refaire les exemples.</small></aside>}
@@ -119,11 +141,10 @@ export default function CoursesWorkspace(p:{initial:string|null;completed:string
    <footer className="course-source"><h2>Pour vérifier et approfondir</h2>{(course.sources||[{label:'Source pédagogique du cours',url:course.source}]).map(s=><a key={s.url} href={s.url} target="_blank" rel="noreferrer">{s.label} ↗</a>)}<p>Synthèse pédagogique en français. Complétez-la avec les supports et les attendus de votre faculté.</p></footer>
    <div className="course-completion"><button className="study-secondary" onClick={()=>p.complete(course.id)} disabled={p.completed.includes(course.id)}><CheckCircle2 size={17}/>{p.completed.includes(course.id)?'Cours terminé':'Marquer ce cours terminé'}</button><button className="study-primary" onClick={()=>p.practice(course.id)}>M’entraîner sur ce cours<ArrowRight size={17}/></button></div>
    {nextCourse&&<button className="next-chapter" onClick={()=>p.navigate(nextCourse.id)}><span>CHAPITRE SUIVANT · {course.category.toLocaleUpperCase('fr')}<strong>{nextCourse.title}</strong></span><ArrowRight size={21}/></button>}
-  </article><aside className="reading-sidebar"><span className="study-eyebrow">DANS CE COURS · {progress}% LU</span>{course.sections.map((s,i)=>{const id=sectionSlug(s.title,i);return <a key={s.title} href={'#section-'+id} onClick={e=>{e.preventDefault();document.getElementById('section-'+id)?.scrollIntoView({behavior:'smooth',block:'start'})}}><span>{String(i+1).padStart(2,'0')}</span>{s.title}</a>})}{course.structure&&<button className="anatomy-link" onClick={()=>p.explore(course.structure!)}><Box size={27}/><strong>Donnez du relief au cours.</strong><span>Explorer un repère du chapitre dans l’atlas 3D</span><ArrowRight size={19}/></button>}<button className="study-secondary sidebar-practice" onClick={()=>p.practice(course.id)}>Tester ce chapitre · {questionCount(course.id)} questions<ArrowRight size={15}/></button><div className="study-note">Lire → reformuler → résoudre.<br/>Le défilement mesure la lecture, pas l’acquisition.</div></aside></div>
+  </article><aside className="reading-sidebar"><details className="course-toc" open={tocOpen} onToggle={event=>setTocOpen(event.currentTarget.open)}><summary>Sommaire <small>{progress}% lu</small></summary><nav aria-label="Sommaire du cours">{course.sections.map((s,i)=>{const id=sectionSlug(s.title,i);return <a key={s.title} aria-current={(activeSection||sectionSlug(course.sections[0].title,0))===id?'location':undefined} href={'#section-'+id} onClick={e=>{e.preventDefault();scrollToSection(id)}}><span>{String(i+1).padStart(2,'0')}</span>{s.title}</a>})}</nav></details>{course.structure&&<button className="anatomy-link" onClick={()=>p.explore(course.structure!)}><Box size={27}/><strong>Donnez du relief au cours.</strong><span>Explorer un repère du chapitre dans l’atlas 3D</span><ArrowRight size={19}/></button>}<button className="study-secondary sidebar-practice" onClick={()=>p.practice(course.id)}>Tester ce chapitre · {questionCount(course.id)} questions<ArrowRight size={15}/></button><div className="study-note">Lire → reformuler → résoudre.<br/>Le défilement mesure la lecture, pas l’acquisition.</div></aside></div>
  </>:routeResolution.kind==='canonical'?<CanonicalPlaceholderView course={routeResolution.course} completed={p.completed} saved={saved} toggleSave={toggleSave} returnToLibrary={returnToLibrary} navigate={p.navigate} practice={p.practice}/>:<>
   <CourseLibrary subjectId={category} group={group} query={query} filter={filter} saved={saved} completed={p.completed} browse={browse} search={setQuery} setFilter={setFilter} open={p.navigate}/>
  </>}
  {generation&&<GenerationDialog source={generation} onClose={()=>setGeneration(null)} onSaved={info=>info&&setToast(`${info.count} carte${info.count>1?'s':''} enregistrée${info.count>1?'s':''} dans le deck « ${info.deckName} »`)}/>}
  {toast&&<div className="flash-toast" role="status"><Check size={16}/><span>{toast}</span></div>}</section>
 }
-

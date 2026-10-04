@@ -59,9 +59,9 @@ export const AtlasInfoPanel: React.FC<AtlasInfoPanelProps> = ({
       </header>
 
       <div className="atlas-sheet-scrollable">
+        {structure.function && <p className="atlas-function-text"><span>Fonction</span>{structure.function}</p>}
+        {structure.location && <p className="atlas-location-line"><span>Localisation</span>{structure.location}</p>}
         <p className="atlas-description-text">{structure.description}</p>
-        {structure.function && <p className="atlas-function-text"><span>Rôle</span>{structure.function}</p>}
-        {structure.location && <p className="atlas-location-line"><span>Repère</span>{structure.location}</p>}
         {structure.clinicalPearl && <div className="atlas-section-callout clinical"><div className="callout-title"><ShieldAlert size={15} /><span>À retenir en clinique</span></div><p>{structure.clinicalPearl}</p></div>}
         <details className="atlas-more-details">
           <summary>Voir les détails anatomiques <ChevronDown size={15} /></summary>
@@ -71,17 +71,18 @@ export const AtlasInfoPanel: React.FC<AtlasInfoPanelProps> = ({
             {structure.examHighYield && <div className="atlas-section-callout exam"><div className="callout-title"><Sparkles size={15} /><span>Point clé pour les examens</span></div><p>{structure.examHighYield}</p></div>}
           </div>
         </details>
-        <details className="atlas-more-details atlas-learning-actions">
-          <summary>Actions d’apprentissage <ChevronDown size={15} /></summary>
+
+      </div>
+
+        <section className="atlas-learning-actions" aria-label="Actions d’apprentissage">
+          <h3>Actions d’apprentissage</h3>
           <div className="atlas-details-content action-buttons-grid">
             {structure.relatedCourseId && <button type="button" className="action-pill primary" onClick={() => onNavigateCourse(structure.relatedCourseId!)}><BookOpen size={15} /><span>Voir le cours</span></button>}
             {structure.relatedCourseId && <button type="button" className="action-pill secondary" onClick={() => onNavigatePractice(structure.relatedCourseId!)}><GraduationCap size={15} /><span>S’entraîner</span></button>}
             <button type="button" className="action-pill flashcard" onClick={() => onCreateFlashcard(structure)}><Brain size={15} /><span>Créer une flashcard</span></button>
             <button type="button" className="action-pill occlusion" onClick={() => onCreateImageOcclusion(structure)}><Activity size={15} /><span>Masque d’occlusion</span></button>
           </div>
-        </details>
-      </div>
-
+        </section>
       {/* Footer / Sibling structure switcher */}
       <footer className="atlas-sheet-footer">
         <button

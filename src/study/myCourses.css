@@ -660,3 +660,24 @@
 .mycourses-quota-badge { background: var(--mc-brand-soft); color: var(--mc-brand); border-color: var(--mc-border); border-radius: var(--mc-radius-sm); }
 .mycourses-upload-card { background: var(--mc-surface); border-color: var(--mc-border); border-radius: var(--mc-radius-lg); box-shadow: var(--mc-shadow-sm); }
 [data-theme=dark] .mycourses-upload-card { border-color: var(--mc-border); box-shadow: var(--mc-shadow-sm); }
+
+/* G — the import explains the next steps and reports real extraction status. */
+.mycourses-workflow { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: 8px; list-style: none; padding: 0; margin: 0 0 24px; }
+.mycourses-workflow li { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--mc-text-secondary); }
+.mycourses-workflow li span { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--mc-brand-soft); color: var(--mc-brand); flex-shrink: 0; }
+.mycourses-upload-card { padding: 28px; }
+.mycourses-import-benefits { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px 24px; padding: 0; margin: 18px 0; list-style: none; }
+.mycourses-import-benefits li { display: flex; gap: 6px; align-items: center; font-size: 13px; color: var(--mc-text-secondary); }
+.mycourses-import-benefits svg { color: var(--mc-brand); }
+.mycourses-upload-status { display: grid; gap: 8px; max-width: 500px; margin: 16px auto; padding: 16px; background: var(--mc-surface-soft); border-radius: var(--mc-radius-md); font-size: 13px; overflow-wrap: anywhere; }
+.mycourses-upload-status progress { width: 100%; accent-color: var(--mc-brand); }
+.mycourses-upload-status small { color: var(--mc-text-secondary); }
+.mycourses-detail .mycourses-alert { align-items: center; }
+.mycourses-detail .mycourses-alert p { flex: 1; }
+.mycourses-alert button { min-height: 40px; }
+@media(max-width:700px) {
+ .mycourses-workflow { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; }
+ .mycourses-upload-card { padding: 24px 18px; }
+ .mycourses-upload-card { display: flex; flex-direction: column; align-items: center; }
+ .mycourses-import-benefits { order: 1; flex-direction: column; align-items: center; gap: 10px; }
+}

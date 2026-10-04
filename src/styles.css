@@ -269,3 +269,60 @@ button, input, textarea, select { font-family: var(--mc-font-body); }
 .experience:has(.account-panel) > .topbar nav button:last-child { color: var(--mc-brand); background: var(--mc-brand-soft); box-shadow: inset 0 -2px var(--mc-brand); font-weight: 700; }
 .experience .account-panel { background: var(--mc-surface); color: var(--mc-text); border-color: var(--mc-border); border-radius: var(--mc-radius-lg); box-shadow: var(--mc-shadow-md); }
 .experience .account-content h2 { font-family: var(--mc-font-display); font-size: var(--mc-section-size); }
+
+/* B — one mobile navigation, with a persistent location label. */
+.mobile-current-space { display: none; }
+.topbar nav button[aria-current="page"] { color: var(--mc-brand); background: var(--mc-brand-soft); box-shadow: inset 0 -2px var(--mc-brand); }
+@media(max-width:700px) {
+  .topbar nav { display: none; }
+  .mobile-current-space { display: block; position: absolute; bottom: 14px; left: 0; font: 650 14px var(--mc-font-display); color: var(--mc-text); }
+  .mobile-study-nav { display: grid; grid-template-columns: repeat(6,minmax(0,1fr)); gap: 2px; padding: 6px; }
+  .mobile-study-nav button { min-height: 48px; padding: 6px 1px; font-size: 9px; }
+  .mobile-study-nav button[aria-current="page"] { color: var(--mc-brand); background: var(--mc-brand-soft); }
+  .atlas-workspace { bottom: 76px; }
+}
+
+/* C — anatomical search and quieter viewer chrome. */
+.search-results button small { overflow-wrap: anywhere; }
+.search-results [role="status"] { padding: 8px 16px; color: var(--mc-text-secondary); font-size: 12px; }
+.empty-search button { display: block; margin-top: 12px; min-height: 40px; color: var(--mc-brand); }
+.detail-content .detail-section-label { margin: 18px 0 4px; }
+.detail-content .detail-role { margin: 0 0 18px; color: var(--mc-text); font-size: 16px; }
+.learning-actions h3 { margin: 0 0 8px; }
+.detail-content .profile-facts summary { cursor: pointer; min-height: 40px; display: flex; align-items: center; color: var(--mc-brand); }
+.stage-zoom { box-shadow: none; }
+.viewer-controls>button:is([aria-label="Zoom arrière"],[aria-label="Zoom avant"]) { display: none; }
+.search-index-error button { min-height: 40px; color: var(--mc-brand); }
+@media(max-width:700px) {
+ .viewer-controls>button:is([aria-label="Zoom arrière"],[aria-label="Zoom avant"]) { display: inline-flex; }
+ .detail-content .learning-actions { gap: 6px; }
+}
+
+/* I/J — mobile chrome and consistent feedback, using the existing tokens. */
+@media(min-width:701px) { .experience>.mobile-study-nav { display: none; } }
+@media(max-width:700px) {
+ .experience .mobile-study-nav button { min-width: 0; min-height: 48px; font-size: 9px; padding: 6px 1px; }
+ .experience .mobile-study-nav { grid-template-columns: repeat(6,minmax(0,1fr)); }
+ .search-input input { font-size: 12px; }
+ .search-results { max-height: 60svh; overflow-y: auto; }
+ .stage-zoom { display: none; }
+ .layer-row { min-height: 48px; }
+}
+.mc-loading,.flash-loading { display: flex; align-items: center; justify-content: center; gap: 12px; min-height: 100px; color: var(--mc-text-secondary); font-size: 14px; }
+.mc-loading::before,.flash-loading::before { content: ''; width: 18px; height: 18px; border: 2px solid var(--mc-border); border-top-color: var(--mc-brand); border-radius: 50%; animation: mc-loading-spin 900ms linear infinite; }
+@keyframes mc-loading-spin { to { transform: rotate(360deg); } }
+@media(prefers-reduced-motion:reduce) { .mc-loading::before,.flash-loading::before { animation: none!important; } }
+
+.experience .flash-toast { background: var(--mc-brand); color: var(--mc-on-brand); border-radius: var(--mc-radius-md); box-shadow: var(--mc-shadow-md); }
+.experience .account-panel :is(input,button,a) { font-family: var(--mc-font-body); }
+.experience .account-panel :is(.account-tabs button,.account-actions button) { min-height: 40px; }
+@media(max-width:700px) { .experience .flash-toast { bottom: 88px; } }
+
+@media(max-width:700px) { .experience>.topbar nav { display: none; } }
+@media(max-width:700px) {
+ .experience .atlas-workspace { bottom: 76px; }
+ .experience:has(.detail-panel) .stage-zoom { display: flex; }
+ .experience:has(.detail-panel) .stage-zoom button { min-width: 40px; min-height: 40px; }
+ .experience:has(.detail-panel) .stage-zoom>span { display: none; }
+ .experience .account-panel { bottom: 86px; }
+}

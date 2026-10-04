@@ -44,10 +44,10 @@ test.describe('Atlas anatomique - Cerveau & Cœur', () => {
     await expect(infoPanel).toBeVisible()
     await expect(infoPanel.locator('.atlas-more-details').first()).toBeVisible()
     await infoPanel.locator('.atlas-more-details').first().locator('summary').click()
-    await expect(infoPanel).toContainText('Repère')
+    await expect(infoPanel).toContainText('Localisation')
     await expect(infoPanel).toContainText('Rapports')
     await expect(infoPanel).toContainText('Vascularisation')
-    await expect(infoPanel).toContainText('Rôle')
+    await expect(infoPanel).toContainText('Fonction')
     await expect(infoPanel).toContainText('À retenir en clinique')
     await expect(infoPanel).toContainText('Point clé pour les examens')
 
@@ -127,7 +127,7 @@ test.describe('Atlas anatomique - Cerveau & Cœur', () => {
 
     await page.locator('.atlas-structure-menu > summary').click()
     await page.locator('.atlas-structure-menu-list button').first().click()
-    await page.getByTestId('atlas-info-panel').getByText('Actions d’apprentissage').click()
+    await expect(page.getByTestId('atlas-info-panel').getByRole('heading', {name:'Actions d’apprentissage'})).toBeVisible()
 
     const createFlashcardBtn = page.getByTestId('atlas-info-panel').getByRole('button', { name: 'Créer une flashcard', exact: true })
     await expect(createFlashcardBtn).toBeVisible()
@@ -184,7 +184,7 @@ for (const width of [1440, 900, 390]) {
     const modeBounds = await page.getByRole('tablist', { name: 'Modes de l’atlas' }).boundingBox()
     const viewBounds = await page.locator('.atlas-views-bar').boundingBox()
     expect(modeBounds!.y + modeBounds!.height).toBeLessThanOrEqual(viewBounds!.y)
-    for (const button of await page.getByRole('navigation', { name: 'Navigation principale', exact: true }).getByRole('button').all()) {
+    for (const button of await page.getByRole('navigation', { name: width <= 700 ? 'Navigation pédagogique mobile' : 'Navigation principale', exact: true }).getByRole('button').all()) {
       if (await button.isVisible()) {
         expect(await button.evaluate(element => {
           const bounds = element.getBoundingClientRect()
@@ -193,7 +193,7 @@ for (const width of [1440, 900, 390]) {
         })).toBe(true)
       }
     }
-    if (width <= 900) {
+    if (width <= 700) {
       const navigation = page.getByRole('navigation', { name: 'Navigation pédagogique mobile' })
       const panelBounds = await panel.boundingBox()
       const navigationBounds = await navigation.boundingBox()
@@ -254,7 +254,7 @@ test('Atlas : création réelle d’une flashcard depuis la fiche médicale', as
     const { deck } = await deckResponse.json()
     await page.goto('/#tab=atlas&sub=brain&view=lateral&structure=frontal_lobe')
     const panel = page.getByTestId('atlas-info-panel')
-    await panel.getByText('Actions d’apprentissage', { exact: true }).click()
+    await expect(panel.getByRole('heading', {name:'Actions d’apprentissage'})).toBeVisible()
     await panel.getByRole('button', { name: 'Créer une flashcard', exact: true }).click()
     const modal = page.getByTestId('atlas-flashcard-modal')
     await modal.getByLabel('Paquet de destination :').selectOption(deck.id)

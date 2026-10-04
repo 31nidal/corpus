@@ -44,7 +44,7 @@ for (const width of [1440, 1024, 768, 390]) {
         expect(contrast(tokens.brand, tokens['brand-soft'])).toBeGreaterThanOrEqual(4.5)
         expect(contrast(tokens['on-brand'], tokens.brand)).toBeGreaterThanOrEqual(4.5)
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-        for (const button of await page.getByRole('navigation', { name: 'Navigation principale', exact: true }).getByRole('button').all()) {
+        for (const button of await page.getByRole('navigation', { name: width <= 700 ? 'Navigation pédagogique mobile' : 'Navigation principale', exact: true }).getByRole('button').all()) {
           expect(await button.evaluate(element => {
             const rect = element.getBoundingClientRect()
             return rect.height >= 38 && rect.left >= 0 && rect.right <= innerWidth &&
@@ -68,7 +68,7 @@ for (const width of [1440, 1024, 768, 390]) {
         }
       }
       await page.emulateMedia({ reducedMotion: 'reduce' })
-      expect(await page.getByRole('navigation', { name: 'Navigation principale', exact: true }).getByRole('button').first()
+      expect(await page.getByRole('navigation', { name: width <= 700 ? 'Navigation pédagogique mobile' : 'Navigation principale', exact: true }).getByRole('button').first()
         .evaluate(element => parseFloat(getComputedStyle(element).transitionDuration))).toBeLessThanOrEqual(.01)
     })
   }

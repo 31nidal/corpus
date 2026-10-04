@@ -269,7 +269,7 @@ export function AtlasWorkspace({
           </select>
           <ChevronRight size={14} aria-hidden="true" />
         </label>
-        <span className="atlas-current-caption">{activeMode === 'explore' ? 'Sélectionnez une structure sur la planche' : 'Mode pédagogique actif'}</span>
+        <span className="atlas-current-caption">{{learn:'Lisez les repères et reliez-les à la planche',explore:'Sélectionnez une structure sur la planche',pathway:'Suivez un trajet anatomique, étape par étape',test:'Retrouvez la structure demandée sur la planche',clinical:'Reliez les signes cliniques aux repères anatomiques',neuro:'Explorez les fonctions et réseaux cérébraux'}[activeMode]}</span>
       </div>
 
       <div className="atlas-main-content" data-mode={activeMode}>

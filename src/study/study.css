@@ -117,3 +117,58 @@
 [data-theme=dark] .sidebar-child-link{color:#90aab9}
 [data-theme=dark] .sidebar-child-link:hover{color:var(--mc-brand)}
 
+
+/* D — reading navigation follows the actual scroll container. */
+.course-toc { background: var(--mc-surface); border: 1px solid var(--mc-border); border-radius: var(--mc-radius-md); padding: 8px; }
+.course-toc summary { cursor: pointer; min-height: 44px; padding: 10px; font: 650 15px var(--mc-font-display); color: var(--mc-text); }
+.course-toc summary small { float: right; font: 400 12px var(--mc-font-body); color: var(--mc-text-secondary); }
+.course-toc nav a { display: flex; gap: 10px; align-items: center; min-height: 44px; padding: 10px; border-radius: var(--mc-radius-sm); color: var(--mc-text-secondary); font-size: 13px; line-height: 1.5; text-decoration: none; }
+.course-toc nav a[aria-current="location"] { background: var(--mc-brand-soft); color: var(--mc-brand); box-shadow: inset 2px 0 var(--mc-brand); font-weight: 650; }
+.course-toc nav a span { font-size: 11px; }
+.course-atlas-shortcut { margin: 16px 0; }
+.course-section { scroll-margin-top: 24px; }
+.reading-sidebar { max-height: calc(100svh - var(--mc-header-height) - 70px); overflow-y: auto; padding-bottom: 12px; }
+@media(max-width:700px) {
+ .reading-sidebar { max-height: none; overflow: visible; }
+ .course-toc nav { max-height: 40svh; overflow-y: auto; }
+ .course-toc summary { min-height: 44px; }
+ .course-document-actions { gap: 8px; }
+ .course-document-actions button { min-height: 40px; }
+ .reading-sidebar .sidebar-practice { margin-top: 12px; }
+}
+
+/* E — immediate feedback and a quieter exam use the same scoring. */
+.question-layout { max-width: 860px; margin-inline: auto; }
+.question-layout[data-mode="exam"] { background: var(--mc-surface); padding: 24px; border: 1px solid var(--mc-border); border-radius: var(--mc-radius-lg); }
+.question-layout[data-mode="exam"] .question-topline>span { font-weight: 650; color: var(--mc-text); }
+.question-kicker { font-size: 13px; }
+.question-layout h1 { font-family: var(--mc-font-display); font-size: clamp(23px,2.5vw,32px); line-height: 1.45; }
+.answer-options button { min-height: 56px; transition: background 180ms, border-color 180ms; }
+.answer-options button[aria-pressed="true"] { background: var(--mc-brand-soft); border-color: var(--mc-brand); color: var(--mc-text); box-shadow: inset 3px 0 var(--mc-brand); }
+.question-feedback { background: var(--mc-surface); border: 1px solid var(--mc-border); }
+.question-feedback[data-correct="true"] { border-color: var(--mc-success); }
+.question-feedback[data-correct="true"]>h2 { color: var(--mc-success); }
+.correction-heading { font: 650 17px var(--mc-font-display); margin: 12px 0 20px; color: var(--mc-text); }
+.correction-kind { display: block; font-size: 12px; color: var(--mc-text-secondary); margin-bottom: 6px; }
+.source-passage-note { padding: 12px; background: var(--mc-brand-soft); border-left: 3px solid var(--mc-brand); border-radius: var(--mc-radius-sm); font-size: 13px; line-height: 1.65; }
+.exam-navigation { display: flex; flex-wrap: wrap; gap: 6px; }
+.exam-navigation button { min-height: 40px; min-width: 40px; }
+.exam-navigation button[aria-current="step"] { background: var(--mc-brand); color: var(--mc-on-brand); }
+.study-empty button { display: block; margin: 16px auto 0; }
+@media(max-width:700px) {
+ .question-layout[data-mode="exam"] { padding: 16px; }
+ .question-topline { gap: 12px; font-size: 12px; }
+ .answer-correction strong,.answer-correction p { font-size: 13px; line-height: 1.7; }
+ .question-actions button { min-height: 44px; }
+}
+
+@media(max-width:700px) {
+ .reading-layout>.reading-sidebar:has(.course-toc) { position: sticky; top: 0; z-index: 12; background: var(--mc-bg); padding: 4px 0; }
+ .reading-sidebar:has(.course-toc)>.anatomy-link,.reading-sidebar:has(.course-toc)>.sidebar-practice { display: none; }
+}
+
+@media(max-width:700px) {
+ .course-toc { position: relative; }
+ .course-toc nav { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: var(--mc-surface); padding: 8px; border: 1px solid var(--mc-border); border-radius: var(--mc-radius-md); box-shadow: var(--mc-shadow-md); }
+ .course-section { scroll-margin-top: 72px; }
+}

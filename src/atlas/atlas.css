@@ -2031,3 +2031,29 @@
   .experience .atlas-mode-tabs { width: 100%; justify-content: space-between; }
 }
 @media(max-width:700px) { .experience .atlas-topbar { min-height: 104px; flex: 0 0 104px; } }
+
+/* H — learning actions remain visible beside the selected structure. */
+.atlas-learning-actions { flex-shrink: 0; padding: 12px 18px; border-top: 1px solid var(--mc-border); background: var(--mc-surface); }
+.atlas-learning-actions h3 { font: 650 12px var(--mc-font-display); color: var(--mc-text-secondary); margin: 0 0 8px; }
+.atlas-learning-actions .action-buttons-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 0; padding: 0; }
+.atlas-learning-actions .action-pill { padding: 8px; min-height: 40px; font-size: 11px; }
+.atlas-sheet-scrollable { min-height: 0; }
+.atlas-more-details summary { min-height: 40px; }
+@media(max-width:700px) {
+ .atlas-learning-actions { padding: 10px 14px; }
+ .atlas-info-sheet .icon-close-btn { min-width: 40px; min-height: 40px; }
+}
+
+.atlas-context-panel:has(.atlas-info-sheet) { overflow: hidden; }
+.atlas-info-sheet { height: 100%; min-height: 0; }
+
+.experience .atlas-learning-actions .action-pill:not(.primary) { color: var(--mc-brand); background: var(--mc-brand-soft); border-color: var(--mc-border); }
+@media(max-width:700px) {
+ .atlas-structure-menu:not([open]) { width: fit-content; }
+ .atlas-main-content:has(.atlas-info-sheet) .atlas-canvas-viewport { bottom: min(48dvh,390px); }
+ .atlas-main-content:has(.atlas-info-sheet) .atlas-svg-container { padding: 48px 8px 8px; }
+ .atlas-main-content:has(.atlas-info-sheet) .atlas-viewer-controls { top: 12px; bottom: auto; }
+ .atlas-main-content:has(.atlas-info-sheet) .atlas-viewer-controls .zoom-badge { display: none; }
+ .atlas-main-content:has(.atlas-info-sheet) .atlas-viewer-controls { gap: 0; padding: 2px; right: 8px; }
+ .atlas-main-content:has(.atlas-info-sheet) .atlas-viewer-controls .control-group + .control-group { padding-left: 0; margin-left: 0; }
+}
