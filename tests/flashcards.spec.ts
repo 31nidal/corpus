@@ -810,7 +810,8 @@ test('phase 3B : atlas 3D (création note 3D, badges, révision recto/verso, vue
   await page.getByRole('button', { name: 'Réviser maintenant' }).click()
 
   // RECTO
-  await expect(page.getByText('QUESTION', {exact:true})).toBeVisible()
+  // Software WebGL initialization can delay the first review render.
+  await expect(page.getByText('QUESTION', {exact:true})).toBeVisible({ timeout: 15000 })
   await expect(page.getByText('Identifier l’organe ciblé')).toBeVisible()
   await expect(page.locator('.study-eyebrow').getByText('Atlas 3D', { exact: true })).toBeVisible()
   await expect(page.getByText('Structure masquée')).toBeVisible()
