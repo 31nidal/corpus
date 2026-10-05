@@ -5,7 +5,7 @@ import crypto from 'node:crypto'
 test('atlas principal et explorations féminines régionales avec cours et quiz',async({page})=>{
  const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message))
  await page.goto('/')
- await expect(page.locator('header').getByRole('link',{name:'MyCorpus, accueil'})).toBeVisible()
+ await expect(page.locator('header').getByRole('link',{name:'MyCorpus3D, accueil'})).toBeVisible()
  await expect(page).toHaveTitle(/MyCorpus/)
  await expect(page.locator('main')).toHaveAttribute('data-loaded','true',{timeout:90000})
  await expect(page.getByRole('button',{name:'Femme',exact:true})).toHaveCount(0)
