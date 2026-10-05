@@ -21,7 +21,7 @@ for (const width of [320,375,390,430]) {
           const cta=page.getByRole('button',{name:'Parcourir toutes les structures',exact:true})
           await expect(cta).toBeVisible()
           const cb=(await cta.boundingBox())!,fb=(await footer.boundingBox())!
-          const toolbar=page.locator('.atlas-workspace > .viewer-bottom')
+          const toolbar=page.locator('.atlas-workspace .viewer-bottom')
           const tb=(await toolbar.boundingBox())!,nb=(await page.locator('.mobile-study-nav').boundingBox())!
           expect(cb.y).toBeGreaterThanOrEqual(118)
           expect(cb.y+cb.height).toBeLessThanOrEqual(fb.y)

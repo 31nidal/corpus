@@ -2108,7 +2108,7 @@
   .experience[data-workspace=atlas] .atlas-workspace:has(.detail-panel) > .bottombar {
     position: absolute; left: 12px; right: 12px; bottom: 0;
   }
-  .experience[data-workspace=atlas] .atlas-workspace > .viewer-bottom {
+  .experience[data-workspace=atlas] .atlas-workspace .viewer-bottom {
     position: fixed; left: 12px; right: 12px; bottom: calc(var(--atlas-mobile-nav-space) + var(--atlas-mobile-gap));
     transform: none; width: auto; gap: 0; justify-content: center; z-index: 35;
   }
@@ -2125,4 +2125,20 @@
 @media(max-width:350px) {
   .experience[data-workspace=atlas] .viewer-bottom .orientation-button svg { display: none; }
   .experience[data-workspace=atlas] .viewer-bottom .control-separator { margin-inline: 2px; }
+}
+
+
+/* The desktop controls belong to the 3D stage, not the outer Atlas shell. */
+@media(min-width:701px) {
+  .experience .atlas-workspace .stage > .viewer-bottom {
+    position: absolute; left: auto; right: var(--atlas-gap); bottom: var(--atlas-gap);
+    transform: none; width: auto; gap: 0;
+  }
+}
+@media(min-width:1101px) {
+  .experience .atlas-workspace > .discovery {
+    bottom: auto; height: max-content;
+    max-height: calc(78% - var(--atlas-footer-height) - var(--atlas-controls-space) - var(--atlas-gap));
+    padding: 16px;
+  }
 }
