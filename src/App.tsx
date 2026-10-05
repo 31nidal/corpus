@@ -43,7 +43,7 @@ const groupMeta = {
 
 
 function Brand() {
- return <a className="brand mycorpus-brand" href="./" aria-label="MyCorpus, accueil"><img src={import.meta.env.BASE_URL+'mycorpus-mark.svg'} alt="" width="40" height="40"/><span><span className="brand-my">my</span>corpus<span className="brand-dot">.</span></span></a>
+ return <a className="brand mycorpus-brand" href="./" aria-label="MyCorpus, accueil"><img src={import.meta.env.BASE_URL+'mycorpus-logo.png'} alt="" width="48" height="48" fetchPriority="high"/><span><span className="brand-my">my</span>corpus<span className="brand-dot">.</span></span></a>
 }
 
 const tourSteps = [
