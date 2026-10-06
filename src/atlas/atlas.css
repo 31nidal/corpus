@@ -2031,3 +2031,114 @@
   .experience .atlas-mode-tabs { width: 100%; justify-content: space-between; }
 }
 @media(max-width:700px) { .experience .atlas-topbar { min-height: 104px; flex: 0 0 104px; } }
+
+/* H — learning actions remain visible beside the selected structure. */
+.atlas-learning-actions { flex-shrink: 0; padding: 12px 18px; border-top: 1px solid var(--mc-border); background: var(--mc-surface); }
+.atlas-learning-actions h3 { font: 650 12px var(--mc-font-display); color: var(--mc-text-secondary); margin: 0 0 8px; }
+.atlas-learning-actions .action-buttons-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 0; padding: 0; }
+.atlas-learning-actions .action-pill { padding: 8px; min-height: 40px; font-size: 11px; }
+.atlas-sheet-scrollable { min-height: 0; }
+.atlas-more-details summary { min-height: 40px; }
+@media(max-width:700px) {
+ .atlas-learning-actions { padding: 10px 14px; }
+ .atlas-info-sheet .icon-close-btn { min-width: 40px; min-height: 40px; }
+}
+
+.atlas-context-panel:has(.atlas-info-sheet) { overflow: hidden; }
+.atlas-info-sheet { height: 100%; min-height: 0; }
+
+.experience .atlas-learning-actions .action-pill:not(.primary) { color: var(--mc-brand); background: var(--mc-brand-soft); border-color: var(--mc-border); }
+@media(max-width:700px) {
+ .atlas-structure-menu:not([open]) { width: fit-content; }
+ .atlas-main-content:has(.atlas-info-sheet) .atlas-canvas-viewport { bottom: min(48dvh,390px); }
+ .atlas-main-content:has(.atlas-info-sheet) .atlas-svg-container { padding: 48px 8px 8px; }
+ .atlas-main-content:has(.atlas-info-sheet) .atlas-viewer-controls { top: 12px; bottom: auto; }
+ .atlas-main-content:has(.atlas-info-sheet) .atlas-viewer-controls .zoom-badge { display: none; }
+ .atlas-main-content:has(.atlas-info-sheet) .atlas-viewer-controls { gap: 0; padding: 2px; right: 8px; }
+ .atlas-main-content:has(.atlas-info-sheet) .atlas-viewer-controls .control-group + .control-group { padding-left: 0; margin-left: 0; }
+}
+
+/* Mobile overview: content flows above a reserved, safe-area-aware viewer dock. */
+@media (max-width:700px) {
+  .experience[data-workspace=atlas] {
+    --atlas-mobile-gap: 8px;
+    --atlas-mobile-safe-bottom: env(safe-area-inset-bottom,0px);
+    --atlas-mobile-nav-height: 62px;
+    --atlas-mobile-nav-space: calc(var(--atlas-mobile-nav-height) + 2 * var(--atlas-mobile-gap) + var(--atlas-mobile-safe-bottom));
+    --atlas-mobile-toolbar-height: 54px;
+    --atlas-mobile-toolbar-space: calc(var(--atlas-mobile-toolbar-height) + 2 * var(--atlas-mobile-gap));
+  }
+  .experience[data-workspace=atlas] > .mobile-study-nav { bottom: calc(var(--atlas-mobile-gap) + var(--atlas-mobile-safe-bottom)); height: var(--atlas-mobile-nav-height); }
+  .experience[data-workspace=atlas] .atlas-workspace {
+    bottom: var(--atlas-mobile-nav-space);
+    padding-bottom: var(--atlas-mobile-toolbar-space);
+    overflow-y: auto;
+    scroll-padding-bottom: var(--atlas-mobile-toolbar-space);
+    overscroll-behavior-y: contain;
+    scrollbar-width: thin;
+  }
+  .experience[data-workspace=atlas] .atlas-workspace:not(:has(.detail-panel)) {
+    display: grid;
+    grid-template-columns: minmax(0,1fr);
+    grid-template-rows: minmax(260px,1fr) auto auto auto auto;
+    gap: var(--atlas-mobile-gap);
+    padding-inline: 12px;
+  }
+  .experience[data-workspace=atlas] .atlas-workspace:not(:has(.detail-panel)) > .stage {
+    position: relative; inset: auto; grid-row: 1; width: auto; min-width: 0; margin-top: 108px;
+  }
+  .experience[data-workspace=atlas] .atlas-workspace > .discovery {
+    position: relative; inset: auto; grid-row: 2; width: auto; min-width: 0;
+  }
+  .experience[data-workspace=atlas] .discovery-secondary { display: block; margin-top: var(--atlas-mobile-gap); }
+  .experience[data-workspace=atlas] .discovery-secondary .browse-atlas {
+    display: flex; min-height: 44px; padding: 10px 12px; border: 0; border-radius: var(--mc-radius-sm);
+    background: var(--mc-brand); color: var(--mc-on-brand); font-size: 12px; text-align: left;
+  }
+  .experience[data-workspace=atlas] .discovery-secondary .start-tour { display: none; }
+  .experience[data-workspace=atlas] .atlas-workspace:not(:has(.detail-panel)) > .assistant-dock:not(.assistant-open) {
+    position: relative; inset: auto; transform: none; grid-row: 3; width: 100%; min-width: 0;
+  }
+  .experience[data-workspace=atlas] .atlas-workspace:not(:has(.detail-panel)) > .layers-panel {
+    position: relative; inset: auto; grid-row: 4; width: 100%; padding: 0; min-width: 0;
+  }
+  .experience[data-workspace=atlas] .atlas-workspace > .bottombar {
+    position: relative; inset: auto; grid-row: 5; height: auto; min-height: 44px; flex-wrap: wrap; gap: 6px 12px; padding-block: 8px; min-width: 0;
+  }
+  .experience[data-workspace=atlas] .atlas-workspace:has(.detail-panel) > .bottombar {
+    position: absolute; left: 12px; right: 12px; bottom: 0;
+  }
+  .experience[data-workspace=atlas] .atlas-workspace .viewer-bottom {
+    position: fixed; left: 12px; right: 12px; bottom: calc(var(--atlas-mobile-nav-space) + var(--atlas-mobile-gap));
+    transform: none; width: auto; gap: 0; justify-content: center; z-index: 35;
+  }
+  .experience[data-workspace=atlas] .viewer-bottom .viewer-controls {
+    box-sizing: border-box; height: var(--atlas-mobile-toolbar-height); padding: 4px; gap: 0; max-width: 100%;
+  }
+  .experience[data-workspace=atlas] .viewer-bottom .viewer-controls > button { height: 44px; min-height: 44px; min-width: 40px; padding-inline: 6px; }
+  .experience[data-workspace=atlas] .viewer-bottom .orientation-button { min-width: 64px; gap: 4px; }
+  .experience[data-workspace=atlas] .viewer-bottom .interaction-hint { display: none; }
+  .experience[data-workspace=atlas] .mobile-open .layers-content {
+    position: absolute; left: 0; right: 0; bottom: calc(100% + var(--atlas-mobile-gap));
+  }
+}
+@media(max-width:350px) {
+  .experience[data-workspace=atlas] .viewer-bottom .orientation-button svg { display: none; }
+  .experience[data-workspace=atlas] .viewer-bottom .control-separator { margin-inline: 2px; }
+}
+
+
+/* The desktop controls belong to the 3D stage, not the outer Atlas shell. */
+@media(min-width:701px) {
+  .experience .atlas-workspace .stage > .viewer-bottom {
+    position: absolute; left: auto; right: var(--atlas-gap); bottom: var(--atlas-gap);
+    transform: none; width: auto; gap: 0;
+  }
+}
+@media(min-width:1101px) {
+  .experience .atlas-workspace > .discovery {
+    bottom: auto; height: max-content;
+    max-height: calc(78% - var(--atlas-footer-height) - var(--atlas-controls-space) - var(--atlas-gap));
+    padding: 16px;
+  }
+}

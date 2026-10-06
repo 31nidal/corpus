@@ -34,6 +34,7 @@ function readRecords(): Records {
 }
 
 export default function MyCoursesWorkspace(props: {
+  onOpenAccount?: () => void
   initialDocumentId?: string | null
   initialSectionId?: string | null
   onOpenDocument?: (id: string | null) => void
@@ -46,6 +47,8 @@ export default function MyCoursesWorkspace(props: {
   const [error, setError] = useState<string | null>(null)
   const [scannedAlert, setScannedAlert] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
+  const [uploadFile,setUploadFile]=useState<{name:string;size:number}|null>(null)
+  const uploadLock=useRef(false)
   const [quota, setQuota] = useState<StudyQuota | null>(null)
 
   // Document Detail
@@ -153,6 +156,7 @@ export default function MyCoursesWorkspace(props: {
   }
 
   const handleFileUpload = async (file: File) => {
+    if(uploadLock.current)return
     if (!file.name.toLowerCase().endsWith('.pdf')) {
       setError('Seuls les fichiers PDF sont acceptés.')
       return
@@ -162,12 +166,15 @@ export default function MyCoursesWorkspace(props: {
       return
     }
     try {
+      uploadLock.current=true
+      setUploadFile({name:file.name,size:file.size})
       setUploading(true)
       setError(null)
       setScannedAlert(null)
       const doc = await uploadStudyDocument(file)
       await refreshList()
       setSelectedDocId(doc.id)
+      setToast('Document importé')
       props.onOpenDocument?.(doc.id)
     } catch (err: any) {
       if (err.scanned || err.code === 'ERR_NO_EXTRACTABLE_TEXT') {
@@ -176,7 +183,9 @@ export default function MyCoursesWorkspace(props: {
         setError(err.message || 'Échec de l’importation du fichier.')
       }
     } finally {
+      uploadLock.current=false
       setUploading(false)
+      setUploadFile(null)
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
@@ -189,21 +198,26 @@ export default function MyCoursesWorkspace(props: {
         setSelectedDocId(null)
         props.onOpenDocument?.(null)
       }
-      refreshList()
+      await refreshList()
+      setToast('Cours supprimé')
     } catch (err: any) {
-      alert(err.message || 'Erreur lors de la suppression.')
+      console.error('Suppression du document',err)
+      setError('Impossible de supprimer ce cours. Il reste disponible. Réessayez dans quelques instants.')
     }
   }
 
   const handleGenerateSummary = async () => {
     if (!currentDoc) return
     try {
+      setError(null)
       setGeneratingSummary(true)
       const summary = await generateDocumentSummary(currentDoc.id)
       setCurrentDoc(prev => prev ? { ...prev, summary, hasSummary: true } : null)
       setActiveTab('summary')
+      setToast('Synthèse générée')
     } catch (err: any) {
-      alert(err.message || 'Échec de la génération de la synthèse.')
+      console.error('Génération de la synthèse',err)
+      setError('Impossible de générer la synthèse. Votre cours reste disponible. Réessayez dans quelques instants.')
     } finally {
       setGeneratingSummary(false)
     }
@@ -214,6 +228,7 @@ export default function MyCoursesWorkspace(props: {
     if (replace && questions.length > 0 && !window.confirm('Remplacer tous les QCM existants de ce cours par une nouvelle série ?')) return
 
     try {
+      setError(null)
       setGeneratingQcm(true)
       const newQ = await generateDocumentQuestions(currentDoc.id, count, undefined, replace)
       setQuestions(prev => replace ? newQ : [...newQ, ...prev])
@@ -223,8 +238,10 @@ export default function MyCoursesWorkspace(props: {
         setPracticeSession(null)
       }
       setActiveTab('questions')
+      setToast('QCM généré')
     } catch (err: any) {
-      alert(err.message || 'Échec de la génération du QCM.')
+      console.error('Génération des questions',err)
+      setError('Impossible de générer les questions. Votre cours reste disponible. Réessayez dans quelques instants.')
     } finally {
       setGeneratingQcm(false)
     }
@@ -284,8 +301,8 @@ export default function MyCoursesWorkspace(props: {
             <strong>Connexion nécessaire pour importer vos cours</strong>
             <p>
               Les documents et questions générées sont sauvegardés de manière confidentielle et isolée dans votre espace étudiant.
-              Connectez-vous à votre compte ou créez-en un gratuitement en quelques secondes via le bouton « Compte » en haut à droite.
-            </p>
+              Connectez-vous à votre compte ou créez-en un gratuitement en quelques secondes depuis votre espace Compte.
+            </p><button className="study-primary" onClick={props.onOpenAccount}>Se connecter</button>
           </div>
         </div>
       </section>
@@ -304,6 +321,7 @@ export default function MyCoursesWorkspace(props: {
           <span>{currentDoc.title}</span>
         </div>
 
+        {error&&<div className="mycourses-alert mycourses-alert-error" role="alert"><AlertCircle size={20}/><p>{error}</p><button className="icon-button" aria-label="Fermer le message" onClick={()=>setError(null)}><X size={18}/></button></div>}
         <header className="mycourses-detail-hero">
           <div>
             <span className="study-eyebrow">SUPPORT IMPORTÉ · {currentDoc.filename}</span>
@@ -831,8 +849,7 @@ export default function MyCoursesWorkspace(props: {
           <span className="study-eyebrow">MYCORPUS STUDY · VOS DOCUMENTS PERSONNELS</span>
           <h1>Mes cours.<br /><em>Vos supports, prêts à être mémorisés.</em></h1>
           <p className="mycourses-subtitle">
-            Importez vos polycopiés et diapositives PDF. MyCorpus Study extrait le texte,
-            génère des synthèses structurées et crée des QCM interactifs avec traçabilité intégrale vers le support original.
+            Importez votre support, lisez-le puis créez vos outils de révision. Chaque synthèse et question renvoie au cours original.
           </p>
         </div>
 
@@ -844,6 +861,7 @@ export default function MyCoursesWorkspace(props: {
         )}
       </header>
 
+      <ol className="mycourses-workflow" aria-label="De votre cours à la révision">{['Importer','Lire','Synthèse','QCM','Flashcards','Réviser'].map((step,index)=><li key={step}><span>{index+1}</span>{step}</li>)}</ol>
       {/* Scanned PDF warning alert */}
       {scannedAlert && (
         <div className="mycourses-alert mycourses-alert-error" role="alert">
@@ -890,11 +908,13 @@ export default function MyCoursesWorkspace(props: {
         <div className="mycourses-upload-icon">
           <Upload size={26} />
         </div>
-        <h2 className="mycourses-upload-title">Importer un cours PDF</h2>
+        <h2 className="mycourses-upload-title">Ajoutez votre cours</h2>
         <p className="mycourses-upload-desc">
           Glissez-déposez votre support de cours ou sélectionnez un fichier PDF contenant du texte sélectionnable (jusqu’à 25 Mo).
         </p>
 
+        <ul className="mycourses-import-benefits"><li><Check size={15}/>Résumer votre cours</li><li><Check size={15}/>Créer des QCM</li><li><Check size={15}/>Générer des flashcards</li></ul>
+        {uploadFile&&<div className="mycourses-upload-status" role="status"><strong>{uploadFile.name}</strong><span>{new Intl.NumberFormat('fr-FR',{maximumFractionDigits:1}).format(uploadFile.size/1024)} Ko · extraction en cours</span><progress aria-label="Extraction du PDF"/><small>Votre document s’ouvrira quand l’extraction sera terminée.</small></div>}
         <div className="mycourses-upload-controls">
           <input
             ref={fileInputRef}
@@ -924,14 +944,14 @@ export default function MyCoursesWorkspace(props: {
       </div>
 
       {loading && documents.length === 0 ? (
-        <p style={{ color: '#64748b', textAlign: 'center', padding: '3rem 0' }}>Chargement de vos cours…</p>
+<p className="mc-loading" role="status">Chargement de vos cours…</p>
       ) : documents.length === 0 ? (
-        <div className="mycourses-summary-card" style={{ textAlign: 'center', padding: '3.5rem 1.5rem' }}>
-          <FileText size={42} color="#0284c7" style={{ margin: '0 auto 1rem' }} />
+        <div className="mycourses-summary-card" style={{ textAlign: 'center', padding: '1.5rem' }}>
+
           <h3>Aucun cours pour le moment</h3>
           <p style={{ color: '#64748b', maxWidth: 450, margin: '0.5rem auto' }}>
-            Importez votre premier document ci-dessus pour démarrer votre révision ciblée.
-          </p>
+            Votre bibliothèque est prête à accueillir votre premier PDF.
+          </p><button className="study-secondary" disabled={uploading} onClick={()=>fileInputRef.current?.click()}>Ajouter mon premier cours</button>
         </div>
       ) : (
         <div className="mycourses-grid">

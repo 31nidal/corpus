@@ -46,3 +46,31 @@
   .flash-workspace .flash-hero-score button { grid-column: 1 / -1; width: 100%; }
 }
 .flash-workspace .review-face h1 { font: 600 var(--mc-page-size)/1.3 var(--mc-font-display); letter-spacing: -.025em; }
+
+/* F — revise first; creation remains below the decks. */
+.flash-dashboard { display: flex; flex-direction: column; gap: 24px; }
+.flash-dashboard>.flash-stat-grid { order: 1; margin-bottom: 0; }
+.flash-dashboard>.flash-free-generator { order: 3; }
+.flash-dashboard>section:not(.flash-free-generator) { order: 2; }
+.flash-up-to-date { order: 0; margin: 0; padding: 16px; background: var(--mc-brand-soft); border-radius: var(--mc-radius-md); color: var(--mc-brand); }
+.flash-workspace .flash-empty { padding: 24px; background: var(--mc-surface-soft); border-radius: var(--mc-radius-md); }
+.flash-empty button { min-height: 44px; margin-top: 12px; }
+.deck-grid>.flash-empty { grid-column: 1 / -1; }
+.flash-review { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.flash-review-progress { width: min(820px,100%); height: 4px; accent-color: var(--mc-brand); }
+.review-card { min-height: 520px; border-radius: var(--mc-radius-lg); box-shadow: var(--mc-shadow-sm); }
+.review-shortcuts { text-align: center; font-size: 12px; color: var(--mc-text-secondary); margin: 16px 0 0; }
+.review-ratings button { min-height: 60px; transition: background 180ms,border-color 180ms; }
+.review-ratings button:hover:not(:disabled) { border-color: var(--mc-brand); background: var(--mc-brand-soft); }
+.review-ratings button:active:not(:disabled) { transform: translateY(1px); }
+.flash-toast { background: var(--mc-brand); color: var(--mc-on-brand); box-shadow: var(--mc-shadow-md); }
+.flash-error { background: var(--mc-error-soft); color: var(--mc-error); }
+@media(max-width:700px) {
+ .review-card { min-height: 420px; padding: 24px 18px; }
+ .review-answer { padding: 18px; }
+ .review-answer p { font-size: 17px; }
+ .review-ratings { grid-template-columns: 1fr 1fr; }
+ .review-ratings button { min-height: 64px; }
+ .review-shortcuts { display: none; }
+ .flash-toast { bottom: 88px; }
+}

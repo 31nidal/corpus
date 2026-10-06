@@ -14,6 +14,8 @@ interface ReviewAtlas3DProps {
 
 export const manifestCache = new Map<string, Manifest>()
 export const noteCache = new Map<string, FlashcardNote>()
+const defaultVisibility: Visibility = { skin: true, skeleton: true, organs: true, muscles: false, arteries: false, veins: false, nerves: false, joints: false }
+const defaultOpacity: Opacities = { skin: 0.12, skeleton: 1, organs: 1, muscles: 1, arteries: 1, veins: 1, nerves: 1, joints: 1 }
 
 export function clearAtlasReviewCache() {
   manifestCache.clear()
@@ -111,6 +113,9 @@ export const ReviewAtlas3D: React.FC<ReviewAtlas3DProps> = ({ card, isFlipped, o
 
   const scene = note?.fields?.scene
   const structureId = visual?.structureId || ''
+  // Loading notifications must not recreate the scene configuration and restart loading.
+  const visibility = React.useMemo<Visibility>(() => ({ ...defaultVisibility, ...(scene?.visibility as Partial<Visibility>) }), [scene?.visibility])
+  const opacity = React.useMemo<Opacities>(() => ({ ...defaultOpacity, ...(scene?.opacity as Partial<Opacities>) }), [scene?.opacity])
 
   // Groupes requis par la configuration de scène de la note
   const neededGroups = React.useMemo(() => {
@@ -184,12 +189,6 @@ export const ReviewAtlas3D: React.FC<ReviewAtlas3DProps> = ({ card, isFlipped, o
       </div>
     )
   }
-
-  const defaultVisibility: Visibility = { skin: true, skeleton: true, organs: true, muscles: false, arteries: false, veins: false, nerves: false, joints: false }
-  const defaultOpacity: Opacities = { skin: 0.12, skeleton: 1, organs: 1, muscles: 1, arteries: 1, veins: 1, nerves: 1, joints: 1 }
-
-  const visibility: Visibility = { ...defaultVisibility, ...(scene.visibility as Partial<Visibility>) }
-  const opacity: Opacities = { ...defaultOpacity, ...(scene.opacity as Partial<Opacities>) }
 
   return (
     <div

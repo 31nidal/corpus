@@ -39,7 +39,7 @@ test('flashcards : deck, carte manuelle, génération en brouillon et révision 
   const errors: string[] = []
   page.on('pageerror', error => errors.push(error.message))
   await register(page)
-  await page.getByRole('button', { name: 'Mes decks' }).click()
+  await page.getByRole('button', { name: 'Mes decks', exact: true }).click()
   await page.getByLabel('Nom du nouveau deck').fill('Cardiologie')
   await page.getByRole('button', { name: 'Créer un deck' }).click()
   await expect(page.getByRole('heading', { name: 'Cardiologie' })).toBeVisible()
@@ -63,8 +63,8 @@ test('flashcards : deck, carte manuelle, génération en brouillon et révision 
   await page.getByRole('button', { name: 'Enregistrer la sélection' }).click()
 
   await expect(page.locator('.flash-hero-score strong')).toHaveText(/[2-9]/)
-  await page.getByRole('button', { name: 'Commencer' }).click()
-  await expect(page.getByText('RECTO')).toBeVisible()
+  await page.getByRole('button', { name: 'Réviser maintenant' }).click()
+  await expect(page.getByText('QUESTION', {exact:true})).toBeVisible()
   await page.getByRole('button', { name: 'Afficher la réponse' }).click()
   await Promise.all([
     page.waitForResponse(response => response.url().endsWith('/review') && response.request().method() === 'POST' && response.ok()),
@@ -83,7 +83,7 @@ test('flashcards : deck, carte manuelle, génération en brouillon et révision 
 
 test('génération et persistance : texte libre (front/back non vides, dialogue et deck)', async ({ page }) => {
   await register(page)
-  await page.getByRole('button', { name: 'Mes decks' }).click()
+  await page.getByRole('button', { name: 'Mes decks', exact: true }).click()
   await page.getByLabel('Nom du nouveau deck').fill('Physio')
   await page.getByRole('button', { name: 'Créer un deck' }).click()
   await expect(page.getByRole('heading', { name: 'Physio' })).toBeVisible()
@@ -139,7 +139,7 @@ test('génération et persistance : texte libre (front/back non vides, dialogue 
 
 test('génération et persistance : cours MyCorpus (front/back non vides, dialogue et deck)', async ({ page }) => {
   await register(page)
-  await page.getByRole('button', { name: 'Mes decks' }).click()
+  await page.getByRole('button', { name: 'Mes decks', exact: true }).click()
   await page.getByLabel('Nom du nouveau deck').fill('Cœur')
   await page.getByRole('button', { name: 'Créer un deck' }).click()
 
@@ -183,7 +183,7 @@ test('génération et persistance : cours MyCorpus (front/back non vides, dialog
 
 test('génération et persistance : PDF Study (front/back non vides, dialogue et deck)', async ({ page }) => {
   await register(page)
-  await page.getByRole('button', { name: 'Mes decks' }).click()
+  await page.getByRole('button', { name: 'Mes decks', exact: true }).click()
   await page.getByLabel('Nom du nouveau deck').fill('Poumons')
   await page.getByRole('button', { name: 'Créer un deck' }).click()
 
@@ -244,7 +244,7 @@ test('génération et persistance : PDF Study (front/back non vides, dialogue et
 
 test('génération et persistance : erreur QCM (front/back non vides, dialogue et deck)', async ({ page }) => {
   await register(page)
-  await page.getByRole('button', { name: 'Mes decks' }).click()
+  await page.getByRole('button', { name: 'Mes decks', exact: true }).click()
   await page.getByLabel('Nom du nouveau deck').fill('Erreurs')
   await page.getByRole('button', { name: 'Créer un deck' }).click()
 
@@ -302,7 +302,7 @@ test('interface mobile 393x852 : dialogue plein écran et absence de double scro
   await page.setViewportSize({ width: 393, height: 852 })
   await register(page)
 
-  await page.getByRole('button', { name: 'Mes decks' }).click()
+  await page.getByRole('button', { name: 'Mes decks', exact: true }).click()
   await page.getByLabel('Nom du nouveau deck').fill('MobileDeck')
   await page.getByRole('button', { name: 'Créer un deck' }).click()
 
@@ -354,7 +354,7 @@ test('une erreur réseau de révision conserve la réponse et un double clic ne 
   const deck = (await (await page.request.post('/api/flashcards/decks', { headers, data: { name: 'Révision fiable' } })).json()).deck
   await page.request.post('/api/flashcards/cards', { headers, data: { deckId: deck.id, front: 'Question réseau', back: 'Réponse conservée' } })
   await page.reload()
-  await page.getByRole('button', { name: 'Commencer' }).click()
+  await page.getByRole('button', { name: 'Réviser maintenant' }).click()
   await page.getByRole('button', { name: 'Afficher la réponse' }).click()
   await page.route('**/api/flashcards/cards/*/review', route => route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ error: 'Connexion interrompue. Réessayez.' }) }))
   await page.getByRole('button', { name: /Correct/ }).click()
@@ -372,7 +372,7 @@ test('une erreur réseau de révision conserve la réponse et un double clic ne 
 
 test('les brouillons incomplets ne disparaissent pas et la recherche garde le focus', async ({ page }) => {
   await register(page)
-  await page.getByRole('button', { name: 'Mes decks' }).click()
+  await page.getByRole('button', { name: 'Mes decks', exact: true }).click()
   await page.getByLabel('Nom du nouveau deck').fill('Brouillons')
   await page.getByRole('button', { name: 'Créer un deck' }).click()
   await expect(page.getByRole('heading', { name: 'Brouillons' })).toBeVisible()
@@ -398,7 +398,7 @@ test('les brouillons incomplets ne disparaissent pas et la recherche garde le fo
 
 test('une réponse perdue après enregistrement ne duplique pas les brouillons', async ({page}) => {
  await register(page)
- await page.getByRole('button',{name:'Mes decks'}).click()
+ await page.getByRole('button',{name:'Mes decks',exact:true}).click()
  await page.getByLabel('Nom du nouveau deck').fill('Réseau instable')
  await page.getByRole('button',{name:'Créer un deck'}).click()
  await expect(page.getByRole('heading',{name:'Réseau instable'})).toBeVisible()
@@ -423,7 +423,7 @@ test('une réponse perdue après enregistrement ne duplique pas les brouillons',
 
 test('FSRS : session de révision, affichage des 4 intervalles précalculés et persistance FSRS', async ({ page }) => {
   await register(page)
-  await page.getByRole('button', { name: 'Mes decks' }).click()
+  await page.getByRole('button', { name: 'Mes decks', exact: true }).click()
   await page.getByLabel('Nom du nouveau deck').fill('FSRS Deck')
   await page.getByRole('button', { name: 'Créer un deck' }).click()
   await expect(page.getByRole('heading', { name: 'FSRS Deck' })).toBeVisible()
@@ -436,10 +436,10 @@ test('FSRS : session de révision, affichage des 4 intervalles précalculés et 
   await expect(page.getByText('Qu’est-ce que le nœud sinusal ?')).toBeVisible()
 
   await page.getByRole('button', { name: 'Aujourd’hui' }).click()
-  await page.getByRole('button', { name: 'Commencer' }).click()
-  await expect(page.getByText('RECTO')).toBeVisible()
+  await page.getByRole('button', { name: 'Réviser maintenant' }).click()
+  await expect(page.getByText('QUESTION', {exact:true})).toBeVisible()
   await page.getByRole('button', { name: 'Afficher la réponse' }).click()
-  await expect(page.getByText('VERSO')).toBeVisible()
+  await expect(page.getByText('RÉPONSE', {exact:true})).toBeVisible()
 
   const againBtn = page.getByRole('button', { name: /À revoir/ })
   const hardBtn = page.getByRole('button', { name: /Difficile/ })
@@ -475,8 +475,8 @@ test('réponse /preview retardée : boutons désactivés, affichage du calcul pu
   const deck = (await (await page.request.post('/api/flashcards/decks', { headers, data: { name: 'FSRS Latence' } })).json()).deck
   await page.request.post('/api/flashcards/cards', { headers, data: { deckId: deck.id, front: 'Question latence', back: 'Réponse latence' } })
   await page.reload()
-  await page.getByRole('button', { name: 'Commencer' }).click()
-  await expect(page.getByText('RECTO')).toBeVisible()
+  await page.getByRole('button', { name: 'Réviser maintenant' }).click()
+  await expect(page.getByText('QUESTION', {exact:true})).toBeVisible()
 
   let delayResolved = false
   await page.route('**/api/flashcards/cards/*/preview', async route => {
@@ -486,7 +486,7 @@ test('réponse /preview retardée : boutons désactivés, affichage du calcul pu
   })
 
   await page.getByRole('button', { name: 'Afficher la réponse' }).click()
-  await expect(page.getByText('VERSO')).toBeVisible()
+  await expect(page.getByText('RÉPONSE', {exact:true})).toBeVisible()
 
   await expect(page.getByText('Calcul des prochains rappels…')).toBeVisible()
   const disabledButtons = page.locator('.review-ratings button:disabled')
@@ -514,15 +514,15 @@ test('échec réseau du /preview : aucun rating possible, message d’erreur et 
   const deck = (await (await page.request.post('/api/flashcards/decks', { headers, data: { name: 'FSRS Erreur' } })).json()).deck
   await page.request.post('/api/flashcards/cards', { headers, data: { deckId: deck.id, front: 'Question panne', back: 'Réponse panne' } })
   await page.reload()
-  await page.getByRole('button', { name: 'Commencer' }).click()
-  await expect(page.getByText('RECTO')).toBeVisible()
+  await page.getByRole('button', { name: 'Réviser maintenant' }).click()
+  await expect(page.getByText('QUESTION', {exact:true})).toBeVisible()
 
   await page.route('**/api/flashcards/cards/*/preview', route =>
     route.fulfill({ status: 500, contentType: 'application/json', body: JSON.stringify({ error: 'Service preview indisponible' }) })
   )
 
   await page.getByRole('button', { name: 'Afficher la réponse' }).click()
-  await expect(page.getByText('VERSO')).toBeVisible()
+  await expect(page.getByText('RÉPONSE', {exact:true})).toBeVisible()
 
   await expect(page.getByRole('alert')).toContainText('Service preview indisponible')
   await expect(page.locator('.review-ratings')).toHaveCount(0)
@@ -575,8 +575,8 @@ test('phase 2A : création note Cloze, masquage [...], révélation en révision
 
   // Démarrer la révision : grâce au sibling burying, une seule des deux cartes doit être présente
   await page.getByRole('button', { name: 'Aujourd’hui' }).click()
-  await expect(page.getByRole('button', { name: 'Commencer' })).toBeEnabled()
-  await page.getByRole('button', { name: 'Commencer' }).click()
+  await expect(page.getByRole('button', { name: 'Réviser maintenant' })).toBeEnabled()
+  await page.getByRole('button', { name: 'Réviser maintenant' }).click()
 
   // Seule une carte dans la session (1 / 1)
   await expect(page.locator('.flash-review header span')).toHaveText('1 / 1')
@@ -618,8 +618,8 @@ test('phase 2A : note réponse saisie (Typed Answer), validation saisie et feedb
   })
 
   await page.reload()
-  await expect(page.getByRole('button', { name: 'Commencer' })).toBeEnabled()
-  await page.getByRole('button', { name: 'Commencer' }).click()
+  await expect(page.getByRole('button', { name: 'Réviser maintenant' })).toBeEnabled()
+  await page.getByRole('button', { name: 'Réviser maintenant' }).click()
 
   // Champ de saisie présent au recto
   const input = page.locator('.review-typed-input input')
@@ -643,7 +643,7 @@ test('phase 2A : note réponse saisie (Typed Answer), validation saisie et feedb
 
 test('phase 2A : création via éditeur UI d’une note Bidirectionnelle', async ({ page }) => {
   await register(page)
-  await page.getByRole('button', { name: 'Mes decks' }).click()
+  await page.getByRole('button', { name: 'Mes decks', exact: true }).click()
   await page.getByLabel('Nom du nouveau deck').fill('Langues & Termes')
   await page.getByRole('button', { name: 'Créer un deck' }).click()
 
@@ -728,18 +728,18 @@ test('phase 3A : image occlusion (upload asset, création de note, hide_one revi
 
   // 5. Révision interactive : semantic hide_one & sibling burying
   await page.getByRole('button', { name: 'Aujourd’hui' }).click()
-  await expect(page.getByRole('button', { name: 'Commencer' })).toBeEnabled()
-  await page.getByRole('button', { name: 'Commencer' }).click()
+  await expect(page.getByRole('button', { name: 'Réviser maintenant' })).toBeEnabled()
+  await page.getByRole('button', { name: 'Réviser maintenant' }).click()
 
   // Recto : masque actif avec point d'interrogation
-  await expect(page.getByText('RECTO')).toBeVisible()
+  await expect(page.getByText('QUESTION', {exact:true})).toBeVisible()
   await expect(page.getByText('Identifier la structure cardiaque')).toBeVisible()
   await expect(page.locator('.review-face img')).toBeVisible()
   await expect(page.getByText('Masque actif')).toBeVisible()
 
   // Révéler le verso
   await page.getByRole('button', { name: 'Afficher la réponse' }).click()
-  await expect(page.getByText('VERSO')).toBeVisible()
+  await expect(page.getByText('RÉPONSE', {exact:true})).toBeVisible()
   await expect(page.getByText('Zone révélée')).toBeVisible()
   await expect(page.locator('.review-answer')).toContainText(/(Oreillette droite|Ventricule gauche)/)
 
@@ -753,6 +753,8 @@ test('phase 3A : image occlusion (upload asset, création de note, hide_one revi
 })
 
 test('phase 3B : atlas 3D (création note 3D, badges, révision recto/verso, vue d’origine et sibling burying)', async ({ page }) => {
+  const renderErrors: string[] = []
+  page.on('console', message => { if (message.text().includes('Maximum update depth exceeded')) renderErrors.push(message.text()) })
   await register(page)
   const headers = { 'x-mycorpus-request': '1' }
   const deck = (await (await page.request.post('/api/flashcards/decks', { headers, data: { name: 'Atlas 3D Découverte' } })).json()).deck
@@ -804,11 +806,12 @@ test('phase 3B : atlas 3D (création note 3D, badges, révision recto/verso, vue
 
   // 3. Révision interactive : Recto 3D avec OrbitControls et cible masquée
   await page.getByRole('button', { name: 'Aujourd’hui' }).click()
-  await expect(page.getByRole('button', { name: 'Commencer' })).toBeEnabled()
-  await page.getByRole('button', { name: 'Commencer' }).click()
+  await expect(page.getByRole('button', { name: 'Réviser maintenant' })).toBeEnabled()
+  await page.getByRole('button', { name: 'Réviser maintenant' }).click()
 
   // RECTO
-  await expect(page.getByText('RECTO')).toBeVisible()
+  // Software WebGL initialization can delay the first review render.
+  await expect(page.getByText('QUESTION', {exact:true})).toBeVisible({ timeout: 15000 })
   await expect(page.getByText('Identifier l’organe ciblé')).toBeVisible()
   await expect(page.locator('.study-eyebrow').getByText('Atlas 3D', { exact: true })).toBeVisible()
   await expect(page.getByText('Structure masquée')).toBeVisible()
@@ -819,7 +822,7 @@ test('phase 3B : atlas 3D (création note 3D, badges, révision recto/verso, vue
   await page.getByRole('button', { name: 'Afficher la réponse' }).click()
 
   // VERSO
-  await expect(page.getByText('VERSO')).toBeVisible()
+  await expect(page.getByText('RÉPONSE', {exact:true})).toBeVisible()
   await expect(page.getByText('Structure révélée')).toBeVisible()
   await expect(page.locator('.review-answer')).toContainText(/(Encéphale|Coeur)/)
   await expect(page.locator('.review-answer')).toContainText('Vue antérieure de référence')
@@ -834,6 +837,7 @@ test('phase 3B : atlas 3D (création note 3D, badges, révision recto/verso, vue
 
   // La session se termine immédiatement car la carte sœur est enterrée
   await expect(page.getByRole('heading', { name: 'Session terminée' })).toBeVisible({ timeout: 15000 })
+  expect(renderErrors).toEqual([])
 })
 
 test('phase 3B hardening : blocage de reveal et de rating tant que la scène 3D n’est pas prête', async ({ page }) => {
@@ -892,7 +896,7 @@ test('phase 3B hardening : blocage de reveal et de rating tant que la scène 3D 
 
   // 2. Démarrer la révision
   await page.reload()
-  await page.getByRole('button', { name: 'Commencer' }).click()
+  await page.getByRole('button', { name: 'Réviser maintenant' }).click()
 
   // 3. Vérifier que tant que la 3D charge, "Afficher la réponse" est grisé et disabled
   const revealBtn = page.getByRole('button', { name: 'Afficher la réponse' })
@@ -919,6 +923,6 @@ test('phase 3B hardening : blocage de reveal et de rating tant que la scène 3D 
   expect(previewResponse.ok()).toBe(true)
 
   // Verso affiché et boutons de notation actifs
-  await expect(page.getByText('VERSO')).toBeVisible()
+  await expect(page.getByText('RÉPONSE', {exact:true})).toBeVisible()
   await expect(page.getByRole('button', { name: /Correct/ })).toBeEnabled()
 })

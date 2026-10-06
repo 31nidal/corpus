@@ -24,6 +24,9 @@ const routes = [
   ['mes-cours', 'tab=mes-cours', '.mycourses-workspace'],
   ['decks', 'tab=flashcards', '.flash-hero'],
   ['revision', 'tab=flashcards', '.flash-hero'],
+  ['qcm', 'tab=entrainement&cours=membrane', '.session-builder'],
+  ['examen', 'tab=entrainement&cours=membrane', '.session-builder'],
+  ['compte', 'tab=cours', '.courses-workspace'],
 ]
 try {
   const account = await context.request.post(`${baseUrl}/api/account/register`, { headers, data: { name: 'Audit visuel', email: `design-${randomUUID()}@example.test`, password } })
@@ -38,23 +41,34 @@ try {
     for (const theme of ['light', 'dark']) {
       for (const [name, hash, ready] of routes) {
         await page.setViewportSize({ width, height: 900 })
-        await page.goto(`${baseUrl}/#${hash}`)
+        await page.goto(`${baseUrl}/?capture=${name}-${width}-${theme}#${hash}`)
         await page.locator(ready).waitFor({ timeout: 90000 })
         if (await page.locator('html').getAttribute('data-theme') !== theme) {
           await page.getByRole('button', { name: theme === 'dark' ? 'Activer le thème sombre' : 'Activer le thème clair', exact: true }).click()
         }
         await page.waitForFunction(value => document.documentElement.dataset.theme === value, theme)
         await page.evaluate(() => document.fonts.ready)
+        const fontsLoaded=await page.evaluate(()=>['Manrope','DM Sans'].every(name=>[...document.fonts].some(face=>face.family.includes(name)&&face.status==='loaded')))
+        if(!fontsLoaded)throw new Error(`Polices non chargées : ${name}/${width}/${theme}`)
         if (['flashcards', 'decks', 'revision'].includes(name)) {
-          await page.waitForFunction(() => [...document.querySelectorAll('button')].some(button => button.textContent.trim() === 'Commencer' && !button.disabled))
+          await page.waitForFunction(() => [...document.querySelectorAll('button')].some(button => ['Commencer','Réviser maintenant'].includes(button.textContent.trim()) && !button.disabled))
         }
         if (name === 'decks') {
           await page.getByRole('button', { name: 'Mes decks', exact: true }).click()
           await page.locator('.deck-grid article').waitFor()
         }
         if (name === 'revision') {
-          await page.getByRole('button', { name: 'Commencer', exact: true }).click()
+          await page.getByRole('button', { name: /^(Commencer|Réviser maintenant)$/, exact: true }).click()
           await page.locator('.review-card').waitFor()
+        }
+        if (['qcm','examen'].includes(name)) {
+          if(name==='examen') await page.getByRole('button',{name:/Examen blanc/}).click()
+          await page.getByRole('button',{name:'Commencer la série',exact:true}).click()
+          await page.locator('.answer-options').waitFor()
+        }
+        if(name==='compte') {
+          await page.getByRole('button',{name:'Mon compte',exact:true}).click()
+          await page.locator('.account-panel').waitFor()
         }
         await page.screenshot({ animations: 'disabled', path: new URL(`${phase}-${name}-${width}-${theme}.png`, output).pathname })
         observations.push({ name, width, theme, ...await page.evaluate(() => ({ overflow: document.documentElement.scrollWidth > innerWidth, bodyFont: getComputedStyle(document.body).fontFamily })) })

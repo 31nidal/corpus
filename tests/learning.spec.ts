@@ -42,7 +42,7 @@ test('coupe, repères, opacité et restauration exacte de la caméra',async({pag
 
 test('cours séparés, rappel actif, pathologies et progression locale',async({page})=>{
  await page.goto('/#structure=FMA7088');await loaded(page)
- await page.getByRole('button',{name:'Apprendre cette structure'}).click()
+ await page.getByRole('button',{name:'Voir le cours'}).click()
  await expect(page.locator('.courses-workspace')).toBeVisible()
  await expect(page.locator('.stage')).not.toBeVisible()
  await expect(page.locator('.course-article')).toContainText('pression')

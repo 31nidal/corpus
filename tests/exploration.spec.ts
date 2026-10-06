@@ -138,7 +138,7 @@ test('mobile : couches, pincement à deux doigts et fiche isolée',async({browse
 test('orientation, boutons de zoom et aide',async({page})=>{
   await ready(page)
   const before=await state(page)
-  await page.getByRole('button',{name:'Zoom avant',exact:true}).click();await page.waitForTimeout(600)
+  await page.getByRole('button',{name:'Agrandir le modèle',exact:true}).click();await page.waitForTimeout(600)
   expect((await state(page)).camera).not.toEqual(before.camera)
   await page.getByRole('button',{name:'Face',exact:true}).click();await page.waitForTimeout(900)
   await expect.poll(async()=>(await state(page)).camera[2],{timeout:10000}).toBeLessThan(0)
@@ -177,7 +177,7 @@ test('vues rapides et présentation française sur petit écran',async({page})=>
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true)
   await page.getByRole('combobox').fill('veine porte')
   await page.getByRole('option').first().click();await loaded(page)
-  await expect(page.locator('.original-name')).not.toContainText('portal')
+  await expect(page.locator('.original-name')).toContainText('portal')
   await expect(page.locator('.detail-content h2')).toContainText('Veine porte')
   await page.waitForTimeout(1400)
   await page.screenshot({path:'tests/artifacts/modern-small-detail.png'})
