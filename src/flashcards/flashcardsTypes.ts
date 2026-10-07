@@ -205,6 +205,8 @@ export type FlashcardNoteDraft = {
 }
 
 export type FlashcardStats = {
+  eligibleDue?: number
+  reviewedToday?: number
   total: number
   newCards: number
   dueToday: number
@@ -213,7 +215,7 @@ export type FlashcardStats = {
   successRate: number
   streak: number
   decks: {id: string; name: string; total: number; mastered: number; due: number}[]
-  courses: {id: string; title: string; total: number}[]
+  courses: {id: string; title: string; total: number; mastered?: number}[]
   subjects: {name: string; total: number; mastered: number}[]
 }
 

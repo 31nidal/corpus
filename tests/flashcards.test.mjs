@@ -357,3 +357,21 @@ test('Validation stricte FSRS review : previewId obligatoire, rejet expiration, 
   } finally { rmSync(directory, {recursive: true, force: true}) }
 })
 
+
+test('dashboard FSRS : échéances disponibles, statistiques par cours, réponses du jour et isolation',async()=>{
+ const directory=mkdtempSync(path.join(tmpdir(),'corpus-dashboard-flash-')),call=api(directory)
+ try {
+  const alice=await call('/api/account/register','POST',{email:'stats-a@example.test',name:'Alice',password})
+  const bob=await call('/api/account/register','POST',{email:'stats-b@example.test',name:'Bob',password})
+  const deck=(await call('/api/flashcards/decks','POST',{name:'Révision'},alice.cookie)).data.deck
+  const card=(await call('/api/flashcards/cards','POST',{deckId:deck.id,front:'Question existante',back:'Réponse existante',subject:'Anatomie',chapter:'Orientation',source:{type:'catalog_course',courseId:'orientation'}},alice.cookie)).data.card
+  const before=(await call('/api/flashcards/stats','GET',undefined,alice.cookie)).data.stats
+  assert.equal(before.eligibleDue,1);assert.equal(before.reviewedToday,0);assert.equal(before.courses[0].id,'orientation');assert.equal(before.courses[0].mastered,0)
+  const preview=(await call(`/api/flashcards/cards/${card.id}/preview`,'POST',{},alice.cookie)).data.preview
+  const reviewed=await call(`/api/flashcards/cards/${card.id}/review`,'POST',{rating:'good',responseMs:1000,previewId:preview.id,expectedDueAt:card.review.dueAt,expectedVersion:card.review.reviewVersion},alice.cookie)
+  assert.equal(reviewed.status,200)
+  const after=(await call('/api/flashcards/stats','GET',undefined,alice.cookie)).data.stats
+  assert.equal(after.reviewedToday,1);assert.equal(after.eligibleDue,0)
+  assert.equal((await call('/api/flashcards/stats','GET',undefined,bob.cookie)).data.stats.total,0)
+ }finally{rmSync(directory,{recursive:true,force:true})}
+})

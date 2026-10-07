@@ -172,3 +172,9 @@
  .course-toc nav { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: var(--mc-surface); padding: 8px; border: 1px solid var(--mc-border); border-radius: var(--mc-radius-md); box-shadow: var(--mc-shadow-md); }
  .course-section { scroll-margin-top: 72px; }
 }
+
+.exam-subjects{border:1px solid var(--mc-border);border-radius:var(--mc-radius-sm);padding:16px;margin:16px 0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;font-size:12px;color:var(--mc-text)}
+.exam-subjects legend{padding:0 6px;color:var(--mc-text-secondary);font-size:12px}.exam-subjects label{display:flex;align-items:center;gap:8px;min-height:44px}.exam-subjects input{accent-color:var(--mc-brand)}
+.exam-confirm{background:var(--mc-surface);color:var(--mc-text);border:1px solid var(--mc-border);border-radius:var(--mc-radius-lg);padding:24px;max-width:min(480px,calc(100vw - 32px))}.exam-confirm::backdrop{background:#071f2a88}.exam-confirm p{font-size:14px;line-height:1.7;color:var(--mc-text-secondary)}.exam-confirm>div{display:flex;flex-wrap:wrap;gap:12px}
+.exam-breakdown,.exam-history{padding:24px;background:var(--mc-surface);border:1px solid var(--mc-border);border-radius:var(--mc-radius-lg);margin:24px 0}.exam-breakdown>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}.exam-breakdown p,.exam-history p{font-size:13px;line-height:1.7;color:var(--mc-text-secondary)}.exam-breakdown>.study-text-link{display:flex;min-height:44px;text-align:left}
+@media(max-width:700px){.exam-subjects,.exam-breakdown>div{grid-template-columns:minmax(0,1fr)}.exam-breakdown,.exam-history{padding:16px}}

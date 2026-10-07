@@ -193,3 +193,25 @@ test('migration : une base de comptes existante reçoit les colonnes OAuth sans 
   migrated.close()
  }finally{rmSync(dir,{recursive:true,force:true})}
 })
+
+test('pilotage étudiant : lecture synchronisée, fusion multi-appareils, isolation et validation',async()=>{
+ const dir=mkdtempSync(path.join(tmpdir(),'corpus-reading-')),api=harness({ACCOUNT_DATA_DIR:dir})
+ try {
+  const alice=await api.call('register',{email:'reading-a@example.test',name:'Alice',password:'lecture-solide-2026'})
+  const bob=await api.call('register',{email:'reading-b@example.test',name:'Bob',password:'lecture-solide-2026'})
+  const put=async(id,value,before=null)=>api.call('sync',{userId:alice.data.user.id,operations:[{id,kind:'value',payload:{key:'corpus-reading-v1',value:JSON.stringify(value),before}}]},alice.cookie)
+  assert.equal((await put('reading-1',{orientation:{percent:62,updatedAt:100,section:'a'}})).status,200)
+  assert.equal((await put('reading-2',{orientation:{percent:20,updatedAt:200,section:'b'}})).status,200)
+  const state=(await api.call('session',undefined,alice.cookie)).data.state
+  assert.deepEqual(JSON.parse(state['corpus-reading-v1']),{orientation:{percent:62,updatedAt:200,section:'b'}})
+  assert.equal((await api.call('session',undefined,bob.cookie)).data.state['corpus-reading-v1'],undefined)
+  assert.equal((await put('reading-bad',{orientation:{percent:101,updatedAt:200}})).status,400)
+  const exam={id:'exam-result',kind:'quiz',payload:{title:'Examen blanc',score:1,total:2,duration:45,questions:['q1','q2'],answers:{q1:[0],q2:[]}}}
+  const submit=()=>api.call('sync',{userId:alice.data.user.id,operations:[exam]},alice.cookie)
+  assert.equal((await submit()).status,200);assert.equal((await submit()).status,200)
+  assert.equal((await api.call('exams',undefined,alice.cookie)).data.items.length,1)
+  assert.equal((await api.call('exams',undefined,bob.cookie)).data.items.length,0)
+  api.restart();assert.equal((await api.call('exams',undefined,alice.cookie)).data.items[0].payload.score,1)
+  api.restart();assert.deepEqual(JSON.parse((await api.call('session',undefined,alice.cookie)).data.state['corpus-reading-v1']),JSON.parse(state['corpus-reading-v1']))
+ } finally {rmSync(dir,{recursive:true,force:true})}
+})

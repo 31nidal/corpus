@@ -1,6 +1,6 @@
 import {useEffect,useState} from 'react'
 import {CheckCircle2,Download,History,LogOut,ShieldCheck,UserRound,X} from 'lucide-react'
-import {courses} from '../study/curriculum'
+import courses from '../study/courseIndex.json'
 import {questions} from '../study/questions'
 import {activate,clearOAuthNotice,clearRecovery,flush,importGuest,logout,request,storageScope,useAccount} from './store'
 

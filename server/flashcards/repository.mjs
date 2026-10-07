@@ -1269,9 +1269,10 @@ export class FlashcardRepository {
     `).all(now, userId)
 
     const courses = this.db.prepare(`
-      SELECT source_course_id id, MAX(chapter) title, COUNT(*) total
-      FROM flashcards
-      WHERE user_id=? AND source_course_id IS NOT NULL
+      SELECT c.source_course_id id, MAX(c.chapter) title, COUNT(*) total,
+        SUM(CASE WHEN r.repetitions>=3 AND r.interval_days>=21 THEN 1 ELSE 0 END) mastered
+      FROM flashcards c JOIN flashcard_reviews r ON r.card_id=c.id
+      WHERE c.user_id=? AND c.source_course_id IS NOT NULL
       GROUP BY source_course_id
       ORDER BY title
     `).all(userId)
@@ -1286,7 +1287,15 @@ export class FlashcardRepository {
       ORDER BY total DESC
     `).all(userId)
 
+    const eligibleDue=this.db.prepare(`SELECT COUNT(DISTINCT COALESCE(c.note_id,c.id)) count
+      FROM flashcards c JOIN flashcard_reviews r ON r.card_id=c.id
+      WHERE c.user_id=? AND r.due_at<=? AND NOT EXISTS (
+        SELECT 1 FROM flashcards sibling JOIN flashcard_review_logs l ON l.card_id=sibling.id
+        WHERE sibling.note_id IS NOT NULL AND sibling.note_id=c.note_id AND sibling.id<>c.id
+          AND l.user_id=? AND l.reviewed_at>=?)`).get(userId,now,userId,getStartOfDayIana(now,timeZone)).count
     return {
+      eligibleDue,
+      reviewedToday:reviewRows.filter(row=>toDayString(row.reviewed_at)===toDayString(now)).length,
       total: totals.total || 0,
       newCards: totals.new_cards || 0,
       dueToday: totals.due || 0,
