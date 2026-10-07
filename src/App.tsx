@@ -1,14 +1,16 @@
-import AccountPanel from './account/AccountPanel'
+import {dailyPlan,advanceDailySession} from './dashboard/session'
 import {storageScope,profileRequested} from './account/store'
 import { useCallback, useEffect, useRef, useState, lazy, Suspense } from 'react'
-import { BookOpen, Box, Brain, GraduationCap, ArrowLeft, ArrowRight, ArrowUpRight, Bone, Copy, SlidersHorizontal, Moon, Sun, ChevronDown, CircleHelp, Eye, Heart, Layers3, Minus, Plus, Rotate3D, RotateCcw, Search, ShieldCheck, Sparkles, UserRound, X, FileText } from 'lucide-react'
+import { BookOpen, Box, Brain, GraduationCap, ArrowLeft, ArrowRight, ArrowUpRight, Bone, Copy, SlidersHorizontal, Moon, Sun, ChevronDown, CircleHelp, Eye, Heart, Layers3, Minus, Plus, Rotate3D, RotateCcw, Search, ShieldCheck, Sparkles, UserRound, X, FileText, CalendarDays } from 'lucide-react'
 import {breastMeshIds} from './data/female-regions'
 import ChatAssistant from './ChatAssistant'
+const AccountPanel = lazy(() => import('./account/AccountPanel'))
+const DashboardWorkspace = lazy(() => import('./dashboard/DashboardWorkspace'))
 const CoursesWorkspace = lazy(() => import('./study/CoursesWorkspace'))
 const PracticeWorkspace = lazy(() => import('./study/PracticeWorkspace'))
 const MyCoursesWorkspace = lazy(() => import('./study/MyCoursesWorkspace'))
 const FlashcardsWorkspace = lazy(() => import('./flashcards/FlashcardsWorkspace'))
-import {courses} from './study/curriculum'
+import courses from './study/courseIndex.json'
 import {structureCourseCandidates} from './study/structureCourse'
 import {isValidCourseOrHubId, getCourseOrHubTitle} from './study/taxonomy'
 import {lessonFor,profileFor,type LearningLevel} from './learning'
@@ -19,7 +21,7 @@ import ExplorerTools from './ExplorerTools'
 import QuizPanel, {initialQuiz, type QuizState} from './QuizPanel'
 import {quizQuestions} from './data/quiz'
 import {decodeView, encodeView, roundedPose, defaultOpacity, defaultCut} from './viewState'
-import AnatomyViewer from './AnatomyViewer'
+const AnatomyViewer = lazy(() => import('./AnatomyViewer'))
 import { describeStructure } from './data/anatomy'
 import type { CameraPose, LabelMode, SharedView, GroupId, LoadState, Manifest, ViewerApi, Visibility } from './types'
 import { Atlas3DNoteModal } from './flashcards/Atlas3DNoteModal'
@@ -68,14 +70,15 @@ export default function App() {
   const [atlasMode, setAtlasMode] = useState<AtlasMode>(() => (new URLSearchParams(location.hash.slice(1)).get('mode') as AtlasMode) || 'explore')
   const [atlasView, setAtlasView] = useState<string | null>(() => new URLSearchParams(location.hash.slice(1)).get('view'))
   const [atlasStructure, setAtlasStructure] = useState<string | null>(() => new URLSearchParams(location.hash.slice(1)).get('structure'))
+  const [dashboardOpen,setDashboardOpen]=useState(()=>new URLSearchParams(location.hash.slice(1)).get('tab')==='aujourdhui')
   const [learningOpen,setLearningOpen]=useState(()=>new URLSearchParams(location.hash.slice(1)).get('tab')==='cours')
   const [myCoursesOpen,setMyCoursesOpen]=useState(()=>new URLSearchParams(location.hash.slice(1)).get('tab')==='mes-cours')
   const [flashcardsOpen,setFlashcardsOpen]=useState(()=>new URLSearchParams(location.hash.slice(1)).get('tab')==='flashcards')
   const [myCourseDocId,setMyCourseDocId]=useState<string|null>(()=>new URLSearchParams(location.hash.slice(1)).get('doc'))
   const [myCourseSectionId,setMyCourseSectionId]=useState<string|null>(()=>new URLSearchParams(location.hash.slice(1)).get('section'))
-  const [atlasVisited,setAtlasVisited]=useState(()=>{const params=new URLSearchParams(location.hash.slice(1));return !(params.get('tab')==='atlas'&&params.get('sub'))&&!['cours','entrainement','mes-cours','flashcards'].includes(params.get('tab')??'')})
+  const [atlasVisited,setAtlasVisited]=useState(()=>{const params=new URLSearchParams(location.hash.slice(1));return !(params.get('tab')==='atlas'&&params.get('sub'))&&!['cours','entrainement','mes-cours','flashcards','aujourdhui'].includes(params.get('tab')??'')})
   const [practiceOpen,setPracticeOpen]=useState(()=>new URLSearchParams(location.hash.slice(1)).get('tab')==='entrainement')
-  useEffect(()=>{if(!atlasOpen&&!learningOpen&&!practiceOpen&&!myCoursesOpen&&!flashcardsOpen)setAtlasVisited(true)},[atlasOpen,learningOpen,practiceOpen,myCoursesOpen,flashcardsOpen])
+  useEffect(()=>{if(!dashboardOpen&&!atlasOpen&&!learningOpen&&!practiceOpen&&!myCoursesOpen&&!flashcardsOpen)setAtlasVisited(true)},[dashboardOpen,atlasOpen,learningOpen,practiceOpen,myCoursesOpen,flashcardsOpen])
   const [courseToOpen,setCourseToOpen]=useState<string|null>(()=>new URLSearchParams(location.hash.slice(1)).get('cours'))
   const [practiceCourse,setPracticeCourse]=useState<string|null>(()=>new URLSearchParams(location.hash.slice(1)).get('cours'))
   const currentLesson=courseToOpen??''
@@ -164,7 +167,7 @@ export default function App() {
   }
 
   const writeRoute = (id: string | null, detail = detailMode, reference = body) => {
-    setAtlasOpen(false);setLearningOpen(false);setPracticeOpen(false);setMyCoursesOpen(false);setFlashcardsOpen(false)
+    setAtlasOpen(false);setDashboardOpen(false);setLearningOpen(false);setPracticeOpen(false);setMyCoursesOpen(false);setFlashcardsOpen(false)
     const url = new URL(window.location.href)
     const params = new URLSearchParams()
     if (id) params.set('structure', id)
@@ -190,6 +193,7 @@ export default function App() {
       setAtlasView(params.get('view'))
       setAtlasStructure(params.get('structure'))
       setBody(params.get('body')==='female'?'female':'male')
+      setDashboardOpen(tab==='aujourdhui')
       setLearningOpen(tab==='cours')
       setPracticeOpen(tab==='entrainement')
       setMyCoursesOpen(tab==='mes-cours')
@@ -241,6 +245,7 @@ export default function App() {
 
   useEffect(() => {
     const controller = new AbortController()
+    if(dashboardOpen)return ()=>controller.abort()
     if (!readRoute().id) setSelectedId(null); setHiddenIds([]); setIsolated(false); setManifestError(false)
     setLoad({progress:0,ready:[],error:null,complete:false})
     if (body==='male' && detailMode && searchManifest) { setManifest(searchManifest); return () => controller.abort() }
@@ -250,7 +255,7 @@ export default function App() {
       .then((data: Manifest) => { if (!data.groups?.length || !data.structures?.length) throw new Error('manifest'); if (!controller.signal.aborted) setManifest(data) })
       .catch(error => { if (error.name !== 'AbortError') setManifestError(true) })
     return () => controller.abort()
-  }, [detailMode,body])
+  }, [detailMode,body,dashboardOpen])
 
   useEffect(() => {
     function key(event: KeyboardEvent) {
@@ -369,7 +374,7 @@ export default function App() {
     setVisibility(Object.fromEntries(Object.keys(initialVisibility).map(id=>[id,(quizQuestions[index].groups as readonly string[]).includes(id)])) as Visibility)
     setResetKey(k=>k+1);setSearchOpen(false);setQuery('')
   }
-  const startQuiz = () => {setChatOpen(false);setAtlasOpen(false);setLearningOpen(false);setFlashcardsOpen(false);setProfileOpen(false);setAnimation(null);setQuiz(initialQuiz);prepareQuestion(0)}
+  const startQuiz = () => {setChatOpen(false);setAtlasOpen(false);setDashboardOpen(false);setLearningOpen(false);setFlashcardsOpen(false);setProfileOpen(false);setAnimation(null);setQuiz(initialQuiz);prepareQuestion(0)}
   const endQuiz = () => {setQuiz(null);setLabels('off');reset();setVisibility(initialVisibility)}
   const nextQuestion = () => {
     if(!quiz)return
@@ -389,9 +394,9 @@ export default function App() {
     setChatOpen(false)
     location.hash = new URLSearchParams({ tab: 'atlas', sub: atlasId }).toString()
   }
-  const openStudy=(tab:'cours'|'entrainement',id:string|null=null,section?:string|null)=>{setAnimation(null);setChatOpen(false);setAtlasOpen(false);setLearningOpen(tab==='cours');setPracticeOpen(tab==='entrainement');setMyCoursesOpen(false);setFlashcardsOpen(false);setCourseToOpen(id);setPracticeCourse(tab==='entrainement'?id:null);setToolsOpen(false);setProfileOpen(false);setQuiz(null);setCatalogOpen(false);const params=new URLSearchParams(location.hash.slice(1));params.delete('view');params.set('tab',tab);if(id)params.set('cours',id);else params.delete('cours');if(section)params.set('section',section);else params.delete('section');history.pushState(null,'','#'+params.toString())}
-  const openMyCourses=(docId:string|null=null,sectionId:string|null=null)=>{setAnimation(null);setChatOpen(false);setAtlasOpen(false);setLearningOpen(false);setPracticeOpen(false);setMyCoursesOpen(true);setFlashcardsOpen(false);setMyCourseDocId(docId);setMyCourseSectionId(sectionId);setToolsOpen(false);setProfileOpen(false);setQuiz(null);setCatalogOpen(false);const params=new URLSearchParams(location.hash.slice(1));params.delete('view');params.set('tab','mes-cours');if(docId)params.set('doc',docId);else params.delete('doc');if(sectionId)params.set('section',sectionId);else params.delete('section');history.pushState(null,'','#'+params.toString())}
-  const openFlashcards=()=>{setAnimation(null);setChatOpen(false);setAtlasOpen(false);setLearningOpen(false);setPracticeOpen(false);setMyCoursesOpen(false);setFlashcardsOpen(true);setToolsOpen(false);setProfileOpen(false);setQuiz(null);setCatalogOpen(false);history.pushState(null,'','#tab=flashcards')}
+  const openStudy=(tab:'cours'|'entrainement',id:string|null=null,section?:string|null)=>{setDashboardOpen(false);setAnimation(null);setChatOpen(false);setAtlasOpen(false);setLearningOpen(tab==='cours');setPracticeOpen(tab==='entrainement');setMyCoursesOpen(false);setFlashcardsOpen(false);setCourseToOpen(id);setPracticeCourse(tab==='entrainement'?id:null);setToolsOpen(false);setProfileOpen(false);setQuiz(null);setCatalogOpen(false);const params=new URLSearchParams(location.hash.slice(1));params.delete('view');params.set('tab',tab);if(id)params.set('cours',id);else params.delete('cours');if(section)params.set('section',section);else params.delete('section');history.pushState(null,'','#'+params.toString())}
+  const openMyCourses=(docId:string|null=null,sectionId:string|null=null)=>{setAnimation(null);setChatOpen(false);setAtlasOpen(false);setDashboardOpen(false);setLearningOpen(false);setPracticeOpen(false);setMyCoursesOpen(true);setFlashcardsOpen(false);setMyCourseDocId(docId);setMyCourseSectionId(sectionId);setToolsOpen(false);setProfileOpen(false);setQuiz(null);setCatalogOpen(false);const params=new URLSearchParams(location.hash.slice(1));params.delete('view');params.set('tab','mes-cours');if(docId)params.set('doc',docId);else params.delete('doc');if(sectionId)params.set('section',sectionId);else params.delete('section');history.pushState(null,'','#'+params.toString())}
+  const openFlashcards=()=>{setAnimation(null);setChatOpen(false);setAtlasOpen(false);setDashboardOpen(false);setLearningOpen(false);setPracticeOpen(false);setMyCoursesOpen(false);setFlashcardsOpen(true);setToolsOpen(false);setProfileOpen(false);setQuiz(null);setCatalogOpen(false);history.pushState(null,'','#tab=flashcards')}
   const femaleCourse=selected?.meshNames.some(n=>breastMeshIds.includes(n))?'anat-breast':'anat-female-pelvis'
   const courseForSelectedStructure=()=>{
     if(!selected)return null
@@ -404,8 +409,9 @@ export default function App() {
   }
   const learningCourseId=body==='female'?femaleCourse:courseForSelectedStructure()
   const openLearning=()=>openStudy('cours',learningCourseId)
+  const openDashboard=()=>{setDashboardOpen(true);setAtlasOpen(false);setLearningOpen(false);setPracticeOpen(false);setMyCoursesOpen(false);setFlashcardsOpen(false);setProfileOpen(false);setChatOpen(false);setToolsOpen(false);setQuiz(null);location.hash='tab=aujourdhui'}
   const openPractice=()=>openStudy('entrainement',learningCourseId)
-  const completeCourse=(id:string)=>{const next=[...new Set([...completed,id])];setCompleted(next);try{accountStorage.setItem('corpus-completed',JSON.stringify(next))}catch{}}
+  const completeCourse=(id:string)=>{const plan=dailyPlan();if(plan?.steps[plan.index]?.kind==='course'&&plan.steps[plan.index].course===id)advanceDailySession();const next=[...new Set([...completed,id])];setCompleted(next);try{accountStorage.setItem('corpus-completed',JSON.stringify(next))}catch{}}
   const executeAction=(raw:SceneAction)=>{
     const action=validateAction(raw,structures.map(s=>s.id),availableSystems.map(s=>s.id),animationRegistry.map(a=>a.id))
     if(!action)return
@@ -433,19 +439,20 @@ export default function App() {
   useEffect(()=>{if(learningOpen&&courseToOpen)accountStorage.event('course',{id:courseToOpen,title:courses.find(c=>c.id===courseToOpen)?.title||getCourseOrHubTitle(courseToOpen)||courseToOpen,url:location.hash})},[learningOpen,courseToOpen])
   useEffect(()=>{if(quiz?.done)accountStorage.event('quiz',{title:'Identification anatomique 3D',score:quiz.score,total:quizQuestions.length,results:quiz.results})},[quiz?.done])
   const selectedAnimation=animationRegistry.find(a=>a.targets.some(id=>id===selectedId))
-  return <main className="experience" data-body={body} data-workspace={atlasOpen ? 'atlas-detailed' : learningOpen ? 'courses' : practiceOpen ? 'practice' : myCoursesOpen ? 'my-courses' : flashcardsOpen ? 'flashcards' : 'atlas'} data-chat={chatOpen} data-selected={selectedId ?? ''} data-loaded={isLoaded}>
+  return <main className="experience" data-body={body} data-workspace={dashboardOpen ? 'dashboard' : atlasOpen ? 'atlas-detailed' : learningOpen ? 'courses' : practiceOpen ? 'practice' : myCoursesOpen ? 'my-courses' : flashcardsOpen ? 'flashcards' : 'atlas'} data-chat={chatOpen} data-selected={selectedId ?? ''} data-loaded={isLoaded}>
     <div className="ambient ambient-one" /><div className="ambient ambient-two" /><div className="world-grid" />
     <header className="topbar">
       <Brand />
       <nav aria-label="Navigation principale">
-        <button aria-current={!profileOpen && !learningOpen && !practiceOpen && !myCoursesOpen && !flashcardsOpen ? "page" : undefined} aria-pressed={!profileOpen && !learningOpen && !practiceOpen && !myCoursesOpen && !flashcardsOpen} className={!profileOpen && !atlasOpen && !learningOpen && !practiceOpen && !myCoursesOpen && !flashcardsOpen ? "nav-active" : ""} onClick={() => { setChatOpen(false); setAtlasOpen(false); setLearningOpen(false); setPracticeOpen(false); setMyCoursesOpen(false); setFlashcardsOpen(false); setToolsOpen(false); setQuiz(null); setProfileOpen(false); writeRoute(selectedId); }}><Box size={15}/>Atlas 3D</button>
+        <a href="#tab=aujourdhui" onClick={event=>{event.preventDefault();openDashboard()}} aria-current={!profileOpen&&dashboardOpen?"page":undefined}><CalendarDays size={15}/>Aujourd’hui</a>
+        <button aria-current={!profileOpen && !dashboardOpen && !learningOpen && !practiceOpen && !myCoursesOpen && !flashcardsOpen ? "page" : undefined} aria-pressed={!profileOpen && !dashboardOpen && !learningOpen && !practiceOpen && !myCoursesOpen && !flashcardsOpen} className={!profileOpen && !dashboardOpen && !atlasOpen && !learningOpen && !practiceOpen && !myCoursesOpen && !flashcardsOpen ? "nav-active" : ""} onClick={() => { setChatOpen(false); setAtlasOpen(false); setDashboardOpen(false);setLearningOpen(false); setPracticeOpen(false); setMyCoursesOpen(false); setFlashcardsOpen(false); setToolsOpen(false); setQuiz(null); setProfileOpen(false); writeRoute(selectedId); }}><Box size={15}/>Atlas 3D</button>
         <button onClick={() => openStudy('cours')} aria-current={!profileOpen && (learningOpen) ? "page" : undefined} aria-pressed={!profileOpen&&learningOpen}><BookOpen size={15}/>Cours</button>
         <button onClick={() => openMyCourses()} aria-current={!profileOpen && (myCoursesOpen) ? "page" : undefined} aria-pressed={!profileOpen&&myCoursesOpen}><FileText size={15}/>Mes cours</button>
         <button onClick={openFlashcards} aria-current={!profileOpen && (flashcardsOpen) ? "page" : undefined} aria-pressed={!profileOpen&&flashcardsOpen}><Brain size={16}/>Flashcards</button>
         <button onClick={openPractice} aria-current={!profileOpen && (practiceOpen || Boolean(quiz)) ? "page" : undefined} aria-pressed={!profileOpen&&(practiceOpen || Boolean(quiz))}><GraduationCap size={16}/>Entraînement</button>
         <button aria-label="Mon compte" aria-current={profileOpen ? "page" : undefined} aria-pressed={profileOpen} onClick={() => { setChatOpen(false); setProfileOpen(v => !v); setToolsOpen(false); setQuiz(null); setCatalogOpen(false); }}>Compte</button>
       </nav>
-      <span className="mobile-current-space">{profileOpen ? "Compte" : atlasOpen ? "Atlas 3D · Atlas spécialisé" : learningOpen ? "Cours" : practiceOpen || quiz ? "Entraînement" : myCoursesOpen ? "Mes cours" : flashcardsOpen ? "Flashcards" : "Atlas 3D"}</span>
+      <span className="mobile-current-space">{profileOpen ? "Compte" : dashboardOpen ? "Aujourd’hui" : atlasOpen ? "Atlas 3D · Atlas spécialisé" : learningOpen ? "Cours" : practiceOpen || quiz ? "Entraînement" : myCoursesOpen ? "Mes cours" : flashcardsOpen ? "Flashcards" : "Atlas 3D"}</span>
       <button className="theme-toggle" aria-label={dark ? 'Activer le thème clair' : 'Activer le thème sombre'} title={dark ? 'Thème clair' : 'Thème sombre'} onClick={()=>setDark(v=>!v)}>{dark ? <Sun size={18}/> : <Moon size={18}/>}</button>
       <div className="search-wrap" ref={searchBox}>
         <div className={`search-input ${searchOpen ? 'is-open' : ''}`}>
@@ -460,7 +467,8 @@ export default function App() {
       </div>
     </header>
     {<nav className="mobile-study-nav" aria-label="Navigation pédagogique mobile">
-      <button aria-current={!profileOpen&&!learningOpen&&!myCoursesOpen&&!flashcardsOpen&&!practiceOpen ? "page" : undefined} aria-pressed={!profileOpen&&!learningOpen&&!myCoursesOpen&&!flashcardsOpen&&!practiceOpen} onClick={()=>{setAtlasOpen(false);setLearningOpen(false);setPracticeOpen(false);setMyCoursesOpen(false);setFlashcardsOpen(false);writeRoute(selectedId)}}><Box size={17}/><span>Atlas 3D</span></button>
+      <a href="#tab=aujourdhui" onClick={event=>{event.preventDefault();openDashboard()}} aria-current={!profileOpen&&dashboardOpen?"page":undefined}><CalendarDays size={17}/><span>Aujourd’hui</span></a>
+      <button aria-current={!profileOpen&&!dashboardOpen&&!learningOpen&&!myCoursesOpen&&!flashcardsOpen&&!practiceOpen ? "page" : undefined} aria-pressed={!profileOpen&&!dashboardOpen&&!learningOpen&&!myCoursesOpen&&!flashcardsOpen&&!practiceOpen} onClick={()=>{setAtlasOpen(false);setDashboardOpen(false);setLearningOpen(false);setPracticeOpen(false);setMyCoursesOpen(false);setFlashcardsOpen(false);writeRoute(selectedId)}}><Box size={17}/><span>Atlas 3D</span></button>
       <button aria-current={!profileOpen&&learningOpen ? "page" : undefined} aria-pressed={!profileOpen&&learningOpen} onClick={()=>openStudy('cours')}><BookOpen size={17}/><span>Cours</span></button>
       <button aria-current={!profileOpen&&myCoursesOpen ? "page" : undefined} aria-pressed={!profileOpen&&myCoursesOpen} onClick={()=>openMyCourses()}><FileText size={17}/><span>Mes cours</span></button>
       <button aria-current={!profileOpen&&flashcardsOpen ? "page" : undefined} aria-pressed={!profileOpen&&flashcardsOpen} onClick={openFlashcards}><Brain size={17}/><span>Flashcards</span></button>
@@ -468,8 +476,8 @@ export default function App() {
       <button aria-label="Mon compte" aria-current={profileOpen ? "page" : undefined} aria-pressed={profileOpen} onClick={()=>{setProfileOpen(v=>!v);setChatOpen(false);setToolsOpen(false);setCatalogOpen(false)}}><UserRound size={17}/><span>Compte</span></button>
     </nav>}
 
-    {profileOpen && <AccountPanel close={()=>setProfileOpen(false)}/>}
-    <div className="atlas-workspace" hidden={atlasOpen||learningOpen||practiceOpen||myCoursesOpen||flashcardsOpen}>
+    {profileOpen && <Suspense fallback={<div className="account-loading" role="status">Chargement de votre compte…</div>}><AccountPanel close={()=>setProfileOpen(false)}/></Suspense>}
+    <div className="atlas-workspace" hidden={dashboardOpen||atlasOpen||learningOpen||practiceOpen||myCoursesOpen||flashcardsOpen}>
     <aside className="intro">
       <div className="edition"><span className="pulse-dot" /> ATLAS ANATOMIQUE <span className="edition-number">ÉDITION 03</span></div>
       <h1>{body==='female'?'Anatomie féminine.':'Le corps humain.'}<br /><em>{body==='female'?'Explorer par région.':'Une autre dimension.'}</em></h1>
@@ -488,12 +496,12 @@ export default function App() {
     <section className={`stage ${selected ? 'has-selection' : ''}`} aria-label="Corps humain en trois dimensions">
       <div className="stage-zoom" aria-label="Zoom du modèle"><span>Zoom</span><button aria-label="Réduire le modèle" disabled={!load.ready.length} onClick={()=>apiRef.current?.zoom(-1)}><Minus size={18}/></button><button aria-label="Agrandir le modèle" disabled={!load.ready.length} onClick={()=>apiRef.current?.zoom(1)}><Plus size={18}/></button><button aria-label="Recadrer la structure" disabled={!load.ready.length} onClick={()=>selectedId?apiRef.current?.frame(selectedId):apiRef.current?.reset()}><RotateCcw size={16}/></button></div><div className="stage-orbit orbit-one" /><div className="stage-orbit orbit-two" />
       <div className="stage-axis" /><span className="axis-label axis-top">SUPÉRIEUR</span><span className="axis-label axis-bottom">INFÉRIEUR</span>
-      {manifest && atlasVisited && !atlasOpen && <AnatomyViewer manifest={manifest} visibility={visibility} selectedId={selectedId} resetKey={resetKey} onSelect={selectStructure} onHover={setHover} onLoad={onLoad} apiRef={apiRef} isolated={isolated} hiddenIds={hiddenIds} opacity={opacity} cut={cut} labelPriority={quiz&&!quiz.done?quizQuestions[quiz.index].id:null} labels={quiz ? 'revision' : labels} cameraRestore={cameraRestore} animation={animation} />}
+      {manifest && atlasVisited && !dashboardOpen && !atlasOpen && <Suspense fallback={null}><AnatomyViewer manifest={manifest} visibility={visibility} selectedId={selectedId} resetKey={resetKey} onSelect={selectStructure} onHover={setHover} onLoad={onLoad} apiRef={apiRef} isolated={isolated} hiddenIds={hiddenIds} opacity={opacity} cut={cut} labelPriority={quiz&&!quiz.done?quizQuestions[quiz.index].id:null} labels={quiz ? 'revision' : labels} cameraRestore={cameraRestore} animation={animation} /></Suspense>}
       {(!isLoaded && !load.error && !manifestError) && <div className={`loading-indicator ${load.ready.length ? 'loading-small' : ''}`} role="status"><span className="loading-symbol"><Brand /></span><span>{load.ready.length ? 'Les structures prennent forme' : 'Le vivant se révèle'}</span><div className="progress-track"><div style={{ width: `${load.progress}%` }} /></div><small>CHARGEMENT DES MAILLAGES <span>{Math.round(load.progress)} %</span></small></div>}
       {(load.error || manifestError) && <div className="error-panel" role="alert"><CircleHelp size={24} /><h2>Le modèle n’a pas pu se charger</h2><p>{manifestError ? 'Le catalogue anatomique est indisponible.' : load.error}</p><button onClick={() => window.location.reload()}>Réessayer <RotateCcw size={15} /></button></div>}
       {load.complete && visibleCount === 0 && <div className="empty-model"><Layers3 size={26} /><p>Le corps attend votre regard.</p><button onClick={() => setVisibility(initialVisibility)}>Afficher les structures <Eye size={15} /></button></div>}
       <div className="view-corner"><span className="corner-cross">+</span> {detailMode ? "ATLAS DÉTAILLÉ" : "VUE D’ENSEMBLE"}<br /><span className="coordinate">{orientation === 'front' ? 'VUE ANTÉRIEURE' : 'VUE POSTÉRIEURE'} · POSITION LIBRE</span></div>
-    <div className="viewer-bottom"><div className="interaction-hint"><Rotate3D size={15} /><span>Glisser pour tourner</span><span className="hint-dot">·</span><span className="desktop-hint">Pointer puis défiler pour zoomer</span><span className="mobile-hint">Deux doigts pour zoomer / déplacer</span></div><div className="viewer-controls" aria-label="Commandes de la vue"><button aria-label="Outils d’exploration" aria-pressed={toolsOpen} onClick={()=>{setChatOpen(false);setToolsOpen(v=>!v);setLearningOpen(false);setProfileOpen(false)}} disabled={Boolean(quiz)}><SlidersHorizontal size={17}/></button><button aria-label="Zoom arrière" onClick={() => apiRef.current?.zoom(-1)} disabled={!load.ready.length}><Minus size={18} /></button><button aria-label="Zoom avant" onClick={() => apiRef.current?.zoom(1)} disabled={!load.ready.length}><Plus size={18} /></button><span className="control-separator" /><button className="orientation-button" onClick={() => { const next = orientation === 'front' ? 'back' : 'front'; setOrientation(next); apiRef.current?.orient(next) }} disabled={!load.ready.length} title="Changer de côté">{orientation === 'front' ? 'Face' : 'Dos'}<Rotate3D size={15} /></button><span className="control-separator" /><button aria-label="Réinitialiser la vue" title="Réinitialiser la vue" onClick={reset} disabled={!load.ready.length}><RotateCcw size={17} /></button></div></div>
+    <div className="viewer-bottom"><div className="interaction-hint"><Rotate3D size={15} /><span>Glisser pour tourner</span><span className="hint-dot">·</span><span className="desktop-hint">Pointer puis défiler pour zoomer</span><span className="mobile-hint">Deux doigts pour zoomer / déplacer</span></div><div className="viewer-controls" aria-label="Commandes de la vue"><button aria-label="Outils d’exploration" aria-pressed={toolsOpen} onClick={()=>{setChatOpen(false);setToolsOpen(v=>!v);setDashboardOpen(false);setLearningOpen(false);setProfileOpen(false)}} disabled={Boolean(quiz)}><SlidersHorizontal size={17}/></button><button aria-label="Zoom arrière" onClick={() => apiRef.current?.zoom(-1)} disabled={!load.ready.length}><Minus size={18} /></button><button aria-label="Zoom avant" onClick={() => apiRef.current?.zoom(1)} disabled={!load.ready.length}><Plus size={18} /></button><span className="control-separator" /><button className="orientation-button" onClick={() => { const next = orientation === 'front' ? 'back' : 'front'; setOrientation(next); apiRef.current?.orient(next) }} disabled={!load.ready.length} title="Changer de côté">{orientation === 'front' ? 'Face' : 'Dos'}<Rotate3D size={15} /></button><span className="control-separator" /><button aria-label="Réinitialiser la vue" title="Réinitialiser la vue" onClick={reset} disabled={!load.ready.length}><RotateCcw size={17} /></button></div></div>
     </section>
 
     <aside className={`layers-panel ${layersOpen ? 'mobile-open' : ''}`} aria-label="Couches anatomiques">
@@ -523,7 +531,8 @@ export default function App() {
     <footer className="bottombar"><div className="model-status"><span className={`status-dot ${load.complete ? 'is-ready' : ''}`} /><span>{load.complete ? `${visibleCount} structures actives` : 'Préparation de l’exploration'}</span><span className="footer-divider">/</span><span>{body==='female'?'Human Reference Atlas':'BodyParts3D'}</span></div><button className="education-note" onClick={()=>{setSelectedId(null);setIsolated(false);setCatalogOpen(v=>!v)}}>Index des structures <ArrowUpRight size={12}/></button><div className="footer-actions"><a href="/confidentialite.html" target="_blank">Confidentialité</a><button onClick={() => setModal('about')}>Sources & crédits <ArrowUpRight size={12} /></button><button onClick={() => setModal('help')} aria-label="Aide à la navigation"><CircleHelp size={17} /></button></div></footer>
 
     </div>
-    {learningOpen&&<Suspense fallback={<div className="study-workspace mc-loading" role="status">Chargement du cours…</div>}><CoursesWorkspace initial={courseToOpen} completed={completed} complete={completeCourse} explore={id=>{const reference=id.startsWith('HRA-')?'female':'male';setBody(reference);setSelectedId(id);setDetailMode(true);setLearningOpen(false);setPracticeOpen(false);setMyCoursesOpen(false);writeRoute(id,true,reference)}} practice={id=>openStudy('entrainement',id)} navigate={id=>openStudy('cours',id)}/></Suspense>}
+    {dashboardOpen&&<Suspense fallback={<div className="study-workspace mc-loading" role="status">Chargement de votre journée…</div>}><DashboardWorkspace/></Suspense>}
+    {learningOpen&&<Suspense fallback={<div className="study-workspace mc-loading" role="status">Chargement du cours…</div>}><CoursesWorkspace initial={courseToOpen} completed={completed} complete={completeCourse} explore={id=>{const reference=id.startsWith('HRA-')?'female':'male';setBody(reference);setSelectedId(id);setDetailMode(true);setDashboardOpen(false);setLearningOpen(false);setPracticeOpen(false);setMyCoursesOpen(false);writeRoute(id,true,reference)}} practice={id=>openStudy('entrainement',id)} navigate={id=>openStudy('cours',id)}/></Suspense>}
     {practiceOpen&&<Suspense fallback={<div className="study-workspace mc-loading" role="status">Chargement de l’entraînement…</div>}><PracticeWorkspace course={practiceCourse} navigate={id=>openStudy('entrainement',id)} learn={id=>openStudy('cours',id)} start3D={startQuiz}/></Suspense>}
     {myCoursesOpen&&(
       <Suspense fallback={<div className="study-workspace mc-loading" role="status">Chargement de vos cours…</div>}>

@@ -40,6 +40,7 @@ export function storageScope(){const id=snapshot.user?.id??null;return {
   if(recentEvents.size>500)for(const [key,time] of recentEvents)if(time<now-60000)recentEvents.delete(key)
   append(kind,payload)
  },
+ identity:id,
  authenticated:Boolean(id)
 }}
 export function activate(data:AccountResponse){values=data.state||{};queue=[];if(data.user)try{queue=JSON.parse(sessionStorage.getItem('mycorpus-outbox-'+data.user.id)||'[]');for(const o of queue)if(o.kind==='value'){const p=o.payload as {key:string;value:string|null};if(p.value===null)delete values[p.key];else values[p.key]=p.value}}catch{queue=[]}emit({recovery:data.recovery||'',showProfile:data.showProfile??snapshot.ready,ready:true,available:data.available!==false,googleAvailable:data.google?.available??snapshot.googleAvailable,user:data.user,status:queue.length?'Modifications en attente…':data.user?'Tout est enregistré':'Mode invité',revision:snapshot.revision+1});if(queue.length)void flush().catch(()=>{})}
@@ -47,7 +48,7 @@ export const profileRequested=()=>snapshot.showProfile
 export function clearRecovery(){emit({recovery:''})}
 export function clearOAuthNotice(){emit({oauthNotice:'',oauthError:false})}
 export async function logout(){await flush();await request('logout',{});activate({user:null})}
-export function importGuest(){const storage=storageScope();for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i)!;if(/^corpus-(completed|saved-courses|practice-v1|note-)/.test(key)&&!storage.getItem(key))storage.setItem(key,localStorage.getItem(key)!)}emit({revision:snapshot.revision+1})}
+export function importGuest(){const storage=storageScope();for(let i=0;i<localStorage.length;i++){const key=localStorage.key(i)!;if(/^corpus-(completed|saved-courses|practice-v1|reading-v1|note-)/.test(key)&&!storage.getItem(key))storage.setItem(key,localStorage.getItem(key)!)}emit({revision:snapshot.revision+1})}
 function oauthNotice(){
  const params=new URLSearchParams(location.search)
  if(params.get('compte')!=='google')return null

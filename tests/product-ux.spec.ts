@@ -2,11 +2,15 @@ import { test, expect } from '@playwright/test'
 import { deflateSync } from 'node:zlib'
 
 for (const width of [1440, 390]) {
-  test(`navigation produit : ${width}px, six espaces et compte`, async ({ page }) => {
+  test(`navigation produit : ${width}px, sept espaces et compte`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     await page.goto('/#tab=cours')
     const navigation = page.getByRole('navigation', { name: width <= 700 ? 'Navigation pédagogique mobile' : 'Navigation principale', exact: true })
-    await expect(navigation.getByRole('button')).toHaveCount(6)
+    await expect(navigation.locator('button, a')).toHaveCount(7)
+    const today = navigation.getByRole('link', { name: 'Aujourd’hui', exact: true })
+    await today.click()
+    await expect(page.locator('main')).toHaveAttribute('data-workspace', 'dashboard')
+    await expect(today).toHaveAttribute('aria-current', 'page')
     await expect(page.getByRole('navigation', {name:width<=700?'Navigation principale':'Navigation pédagogique mobile',exact:true})).not.toBeVisible()
     for (const [label, workspace] of [['Flashcards', 'flashcards'], ['Mes cours', 'my-courses'], ['Entraînement', 'practice'], ['Cours', 'courses'], ['Atlas 3D', 'atlas']]) {
       const button = navigation.getByRole('button', { name: label, exact: true })

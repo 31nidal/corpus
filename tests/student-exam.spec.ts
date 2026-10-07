@@ -1,0 +1,70 @@
+import {test,expect,type Page} from '@playwright/test'
+import {questions} from '../src/study/questions'
+async function start(page:Page){await page.goto('/#tab=entrainement&cours=orientation&revision=exam');await expect(page.getByRole('button',{name:/Examen blanc/})).toHaveAttribute('aria-pressed','true');await page.getByLabel('Nombre de questions').selectOption('5');await page.getByLabel('Durée de l’examen').selectOption('1');await page.getByRole('button',{name:'Commencer la série'}).click()}
+test('examen : timer configurable, navigation, édition, reload, soumission et scoring exact',async({page})=>{
+ await start(page)
+ await expect(page.locator('.question-topline')).toContainText('Temps restant')
+ const first=await page.locator('.question-layout h1').innerText()
+ await page.locator('.answer-options button').first().click()
+ await page.getByRole('button',{name:'Question 2',exact:true}).click()
+ await page.getByRole('button',{name:'Question 1',exact:true}).click()
+ await expect(page.locator('.answer-options button').first()).toHaveAttribute('aria-pressed','true')
+ await page.reload()
+ await expect(page.locator('.question-layout h1')).toHaveText(first)
+ await expect(page.locator('.answer-options button').first()).toHaveAttribute('aria-pressed','true')
+ await expect(page.locator('.answer-correction')).toHaveCount(0)
+ await page.locator('.answer-options button').first().click()
+ for(let i=1;i<=5;i++){
+  await page.getByRole('button',{name:'Question '+i,exact:true}).click()
+  const prompt=await page.locator('.question-layout h1').innerText(),q=questions.find(q=>q.prompt===prompt)!
+  for(const index of q.correct)await page.locator('.answer-options button').filter({hasText:q.options[index]}).click()
+  await expect(page.locator('.answer-correction')).toHaveCount(0)
+ }
+ await page.getByRole('button',{name:'Terminer et voir mon bilan'}).click()
+ await expect(page.locator('.result-score strong')).toHaveText('5/5')
+ await expect(page.getByRole('region',{name:'Bilan par matière et chapitre'})).toBeVisible()
+ await expect(page.locator('.exam-breakdown')).toContainText('5 bonnes · 0 mauvaises · 0 non répondues')
+ await expect.poll(()=>page.evaluate(()=>Object.values(JSON.parse(localStorage.getItem('corpus-practice-v1')||'{}')).length)).toBe(5)
+ await page.reload();await expect(page.locator('.result-score strong')).toHaveText('5/5')
+ expect(await page.evaluate(()=>Object.values(JSON.parse(localStorage.getItem('corpus-practice-v1')||'{}')).every((r:any)=>r.seen===1))).toBe(true)
+})
+test('examen : confirmation de fin anticipée et questions non répondues au carnet',async({page})=>{
+ await start(page);await page.getByRole('button',{name:'Quitter la série'}).click()
+ await expect(page.getByRole('dialog')).toBeVisible()
+ await page.getByRole('button',{name:'Continuer l’examen'}).click()
+ await expect(page.locator('.question-layout')).toBeVisible()
+ await page.getByRole('button',{name:'Quitter la série'}).click()
+ await page.getByRole('button',{name:'Terminer l’examen',exact:true}).click()
+ await expect(page.locator('.exam-breakdown')).toContainText('0 bonnes · 0 mauvaises · 5 non répondues')
+ expect(await page.evaluate(()=>Object.values(JSON.parse(localStorage.getItem('corpus-practice-v1')||'{}')).every((r:any)=>r.wrong))).toBe(true)
+})
+test('examen : expiration automatique de la durée configurée',async({page})=>{
+ await page.clock.install();await start(page);await page.clock.fastForward(61000)
+ await expect(page.locator('.result-score strong')).toHaveText('0/5')
+})
+test('examen : filtre jamais vu et erreurs, responsive sombre mobile',async({page})=>{
+ await page.setViewportSize({width:390,height:844});await page.addInitScript(()=>localStorage.setItem('corpus-theme','dark'))
+ await page.goto('/#tab=aujourdhui');await page.getByRole('button',{name:'Examen blanc',exact:true}).click()
+ await page.getByLabel('Questions à inclure').selectOption('errors')
+ await expect(page.getByRole('button',{name:'Commencer la série'})).toBeDisabled()
+ await page.getByLabel('Questions à inclure').selectOption('unseen')
+ await expect(page.getByRole('button',{name:'Commencer la série'})).toBeEnabled()
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true)
+ await page.screenshot({path:'tests/artifacts/design/dashboard/exam-390-dark.png'})
+})
+test('examen connecté : résultat et progression utilisent la synchronisation existante',async({page})=>{
+ const operations:any[]=[]
+ await page.route('**/api/account/session',r=>r.fulfill({json:{available:true,user:{id:'exam-student',name:'Étudiant',email:'exam@example.test'},state:{}}}))
+ await page.route('**/api/account/exams',r=>r.fulfill({json:{items:[]}}))
+ await page.route('**/api/account/sync',r=>{operations.push(...r.request().postDataJSON().operations);return r.fulfill({json:{ok:true}})})
+ await start(page)
+ await page.getByRole('button',{name:'Question 5',exact:true}).click()
+ await page.getByRole('button',{name:'Terminer et voir mon bilan'}).click()
+ await expect.poll(()=>operations.filter(o=>o.kind==='quiz'&&o.payload.title==='Examen blanc').length).toBe(1)
+ const result=operations.find(o=>o.kind==='quiz'&&o.payload.title==='Examen blanc').payload
+ expect(result.score).toBe(0);expect(result.total).toBe(5);expect(result.questions).toHaveLength(5)
+ const progress=operations.find(o=>o.kind==='value'&&o.payload.key==='corpus-practice-v1')
+ expect(Object.values(JSON.parse(progress.payload.value)).every((r:any)=>r.wrong&&r.seen===1)).toBe(true)
+ await page.getByRole('button',{name:'Nouvelle série',exact:true}).click()
+ await expect(page.getByRole('region',{name:'Historique des examens blancs'})).toContainText('0/5')
+})

@@ -1,3 +1,4 @@
+import {saveReading} from '../dashboard/reading'
 import {storageScope,useAccount} from '../account/store'
 import {useEffect,useRef,useState,type FormEvent} from 'react'
 import {ArrowLeft,ArrowRight,BookOpen,Check,CheckCircle2,Box,Bookmark,GraduationCap,PenLine,ShieldAlert,FileDown,Sparkles} from 'lucide-react'
@@ -92,6 +93,7 @@ export default function CoursesWorkspace(p:{initial:string|null;completed:string
   const limit=element.getBoundingClientRect().top+100
   const current=sections.filter(section=>section.getBoundingClientRect().top<=limit).at(-1)??sections[0]
   if(current)setActiveSection(current.id.slice('section-'.length))
+  if(course)saveReading(course.id,Math.min(100,Math.round(element.scrollTop/Math.max(1,element.scrollHeight-element.clientHeight)*100)),current?.id.slice('section-'.length))
  }
  useEffect(()=>{
   const query=window.matchMedia('(max-width:700px)')
@@ -102,7 +104,7 @@ export default function CoursesWorkspace(p:{initial:string|null;completed:string
  const routeResolution=resolveCourseRoute(p.initial)
  const course=routeResolution.kind==='legacy-hub'?undefined:courses.find(c=>c.id===p.initial)
  useEffect(()=>{setReveal(false);setPathology(null);setProgress(0);setActiveSection('');setTocOpen(window.innerWidth>700);workspace.current?.scrollTo(0,0)},[p.initial])
- useEffect(()=>{if(!course)return;const section=new URLSearchParams(location.hash.slice(1)).get('section');if(section)requestAnimationFrame(()=>document.getElementById('section-'+section)?.scrollIntoView({behavior:'smooth',block:'start'}))},[course?.id])
+ useEffect(()=>{if(!course)return;saveReading(course.id,0);const section=new URLSearchParams(location.hash.slice(1)).get('section');if(section)requestAnimationFrame(()=>document.getElementById('section-'+section)?.scrollIntoView({behavior:'smooth',block:'start'}))},[course?.id])
  const browse=(subject:string,module='')=>{setCategory(subject);setGroup(module);const params=new URLSearchParams(location.hash.slice(1));if(subject)params.set('matiere',subject);else params.delete('matiere');if(module)params.set('module',module);else params.delete('module');history.pushState(null,'','#'+params.toString());workspace.current?.scrollTo(0,0)}
  useEffect(()=>{const sync=()=>{const params=new URLSearchParams(location.hash.slice(1));setCategory(params.get('matiere')??'');setGroup(params.get('module')??'')};window.addEventListener('popstate',sync);window.addEventListener('hashchange',sync);return()=>{window.removeEventListener('popstate',sync);window.removeEventListener('hashchange',sync)}},[])
  const disease=diseases.find(d=>d.id===pathology),siblings=course?courses.filter(c=>c.category===course.category):[],nextCourse=course?siblings[siblings.indexOf(course)+1]:null
