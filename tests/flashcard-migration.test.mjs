@@ -1,3 +1,6 @@
+import {FLASHCARD_NOTE_TYPES} from '../server/flashcards/noteTypes.mjs'
+import {FlashcardRepository} from '../server/flashcards/repository.mjs'
+import {draftContentHash, draftEvidenceSignals, isSafeDraft, SAFE_DRAFT_RULE, REJECTED_DRAFT_RETENTION_MS} from '../server/flashcards/review/policy.mjs'
 import {test} from 'node:test'
 import assert from 'node:assert/strict'
 import {DatabaseSync} from 'node:sqlite'
@@ -396,7 +399,7 @@ test('TEST DE RETRY APRÈS ÉCHEC D’INIT : getDb ne cache pas une instance dé
   }
 })
 
-test('TEST DB NEUVE : initialisation complète, migrations 1..4 et API fonctionnelle', async () => {
+test('TEST DB NEUVE : initialisation complète, migrations 1..5 et API fonctionnelle', async () => {
   const {createHash} = await import('node:crypto')
   const {mkdtempSync, rmSync} = await import('node:fs')
   const os = await import('node:os')
@@ -484,10 +487,10 @@ test('TEST DB NEUVE : initialisation complète, migrations 1..4 et API fonctionn
     })
     assert.equal(createCardRes.status, 201)
 
-    // Vérifier que les migrations 1..4 sont bien enregistrées
+    // Vérifier que les migrations 1..5 sont bien enregistrées
     const checkDb = new DatabaseSync(dbPath)
     const versions = checkDb.prepare('SELECT version FROM flashcard_migrations ORDER BY version ASC').all().map(r => r.version)
-    assert.deepEqual(versions, [1, 2, 3, 4], 'Les 4 migrations doivent être enregistrées sur une DB neuve')
+    assert.deepEqual(versions, [1, 2, 3, 4, 5], 'Les 5 migrations doivent être enregistrées sur une DB neuve')
     checkDb.close()
   } finally {
     rmSync(tempDir, {recursive: true, force: true})
@@ -495,3 +498,145 @@ test('TEST DB NEUVE : initialisation complète, migrations 1..4 et API fonctionn
 })
 
 
+
+
+function reviewDatabase() {
+  const db = new DatabaseSync(':memory:')
+  db.exec(`PRAGMA foreign_keys=ON;
+    CREATE TABLE users(id TEXT PRIMARY KEY);
+    CREATE TABLE study_documents(id TEXT PRIMARY KEY,user_id TEXT REFERENCES users(id) ON DELETE CASCADE);
+    CREATE TABLE study_sections(id TEXT PRIMARY KEY,document_id TEXT REFERENCES study_documents(id) ON DELETE CASCADE);
+    INSERT INTO users VALUES('owner'),('other');
+    INSERT INTO study_documents VALUES('doc','owner'),('doc-other','owner'),('doc-bob','other');
+    INSERT INTO study_sections VALUES('section','doc');`)
+  initFlashcardSchema(db)
+  migrateFlashcards(db)
+  return db
+}
+
+function insertDraft(db, id, overrides = {}) {
+  const value = {
+    user:'owner', document:'doc', section:'section', page:2, type:'basic',
+    front:'Quelle est la fonction du nerf ?', back:'Une réponse sourcée.', excerpt:'Une preuve précise.',
+    status:'pending', created:Date.UTC(2026,9,8), ...overrides,
+  }
+  const hash = draftContentHash(value.front,value.excerpt)
+  return db.prepare(`INSERT OR IGNORE INTO flashcard_drafts
+    (id,user_id,document_id,section_id,page,note_type,front,back,fields_json,source_excerpt,content_hash,status,created_at,updated_at)
+    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+    id,value.user,value.document,value.section,value.page,value.type,value.front,value.back,
+    JSON.stringify({front:value.front,back:value.back}),value.excerpt,hash,value.status,value.created,value.created,
+  ).changes
+}
+
+test('migration brouillons : versions explicites, idempotence et cascade document/compte', () => {
+  const db = reviewDatabase()
+  try {
+    insertDraft(db,'draft')
+    const before = {...db.prepare('SELECT * FROM flashcard_drafts').get()}
+    migrateFlashcards(db)
+    assert.deepEqual(db.prepare('SELECT version FROM flashcard_migrations ORDER BY version').all().map(r=>r.version),[1,2,3,4,5])
+    assert.deepEqual({...db.prepare('SELECT * FROM flashcard_drafts').get()},before)
+    assert.equal(db.prepare("SELECT count(*) n FROM pragma_table_info('flashcard_drafts') WHERE name='high_confidence'").get().n,0)
+    db.exec("DELETE FROM study_sections WHERE id='section'")
+    assert.equal(db.prepare('SELECT section_id FROM flashcard_drafts').get().section_id,null)
+    db.exec("DELETE FROM study_documents WHERE id='doc'")
+    assert.equal(db.prepare('SELECT count(*) n FROM flashcard_drafts').get().n,0)
+    insertDraft(db,'other-draft',{document:'doc-other',section:null})
+    db.exec("DELETE FROM users WHERE id='owner'")
+    assert.equal(db.prepare('SELECT count(*) n FROM flashcard_drafts').get().n,0)
+  } finally {db.close()}
+})
+
+test('brouillons : hash accentué et dédoublonnage isolé, y compris les rejets', () => {
+  const db = reviewDatabase()
+  try {
+    const front='Quel rôle du nerf médian ?',excerpt='Le nerf médian innerve ce muscle.'
+    assert.equal(draftContentHash(front,excerpt),draftContentHash('  QUEL RÔLE  du nerf me\u0301dian ? ', 'Le nerf\n médian innerve ce muscle.'))
+    assert.notEqual(draftContentHash(front,excerpt),draftContentHash(front.replace('rôle','role'),excerpt))
+    assert.notEqual(draftContentHash('a','bc'),draftContentHash('ab','c'))
+    assert.equal(insertDraft(db,'first',{front,excerpt}),1)
+    assert.equal(insertDraft(db,'repeated',{front,excerpt}),0)
+    db.exec("UPDATE flashcard_drafts SET status='rejected',rejected_from='pending',rejected_at=updated_at WHERE id='first'")
+    assert.equal(insertDraft(db,'rejected-again',{front,excerpt}),0)
+    assert.equal(insertDraft(db,'other-document',{front,excerpt,document:'doc-other',section:null}),1)
+    assert.equal(insertDraft(db,'other-user',{front,excerpt,user:'other',document:'doc-bob',section:null}),1)
+    assert.equal(db.prepare('SELECT count(*) n FROM flashcard_drafts').get().n,3)
+  } finally {db.close()}
+})
+
+test('brouillons : types réels, statuts, provenance et dates en millisecondes', () => {
+  const db=reviewDatabase()
+  try {
+    insertDraft(db,'checked')
+    for (const type of FLASHCARD_NOTE_TYPES) {
+      db.prepare("UPDATE flashcard_drafts SET note_type=? WHERE id='checked'").run(type)
+    }
+    for (const sql of [
+      "UPDATE flashcard_drafts SET note_type='unknown'",
+      "UPDATE flashcard_drafts SET status='unknown'",
+      "UPDATE flashcard_drafts SET rejected_from='accepted'",
+      'UPDATE flashcard_drafts SET page=0',
+      'UPDATE flashcard_drafts SET verbatim_proof=2',
+      'UPDATE flashcard_drafts SET confidence=1.1',
+      "UPDATE flashcard_drafts SET created_at='2026-10-08T00:00:00Z'",
+      'UPDATE flashcard_drafts SET updated_at=created_at-1',
+      'UPDATE flashcard_drafts SET rejected_at=created_at-1',
+      "UPDATE flashcard_drafts SET content_hash='invalid'",
+    ]) assert.throws(()=>db.exec(sql),sql)
+    for (const from of [null,'pending','edited']) db.prepare('UPDATE flashcard_drafts SET rejected_from=?').run(from)
+    const date=Date.UTC(2026,9,8)+1000
+    db.prepare('UPDATE flashcard_drafts SET rejected_at=?,updated_at=?').run(date,date)
+    const row=db.prepare('SELECT * FROM flashcard_drafts').get()
+    assert.equal(row.rejected_at,date)
+    assert.equal(new Date(row.created_at).toISOString(),'2026-10-08T00:00:00.000Z')
+    assert.equal(REJECTED_DRAFT_RETENTION_MS,30*86400000)
+  } finally {db.close()}
+})
+
+test('brouillon accepté : note supprimée, remplacement possible et unicité conservée', () => {
+  const db=reviewDatabase(),repo=new FlashcardRepository(db)
+  try {
+    insertDraft(db,'accepted')
+    insertDraft(db,'another',{front:'Autre question'})
+    const deck=repo.createDeck('owner',{name:'Cours'})
+    const value={defaultDeckId:deck.id,noteType:'basic',fields:{front:'Q',back:'A'},source:{type:'study_document',documentId:'doc'}}
+    const accept = () => {
+      db.exec('BEGIN IMMEDIATE')
+      try {
+        const draft=db.prepare("SELECT * FROM flashcard_drafts WHERE id='accepted' AND user_id='owner'").get()
+        const note=draft.accepted_note_id ? repo.note('owner',draft.accepted_note_id) : repo.createNoteRows('owner',value)
+        db.prepare("UPDATE flashcard_drafts SET status='accepted',accepted_note_id=? WHERE id='accepted' AND user_id='owner'").run(note.id)
+        db.exec('COMMIT');return note
+      } catch(error) {db.exec('ROLLBACK');throw error}
+    }
+    const original=accept()
+    assert.equal(accept().id,original.id)
+    assert.equal(db.prepare('SELECT count(*) n FROM flashcards').get().n,1)
+    assert.throws(()=>db.prepare("UPDATE flashcard_drafts SET accepted_note_id=? WHERE id='another'").run(original.id))
+    repo.deleteNote('owner',original.id,original.noteVersion)
+    const deleted=db.prepare("SELECT status,accepted_note_id FROM flashcard_drafts WHERE id='accepted'").get()
+    assert.equal(deleted.status,'accepted');assert.equal(deleted.accepted_note_id,null)
+    const replacement=accept()
+    assert.notEqual(replacement.id,original.id)
+    assert.equal(accept().id,replacement.id)
+    assert.equal(db.prepare('SELECT count(*) n FROM flashcards').get().n,1)
+    assert.equal(repo.card('owner',replacement.cards[0].id).review.state,'new')
+  } finally {db.close()}
+})
+
+test('critère sûr : seuil exact, preuve verbatim, type compatible et statut non édité', () => {
+  assert.equal(SAFE_DRAFT_RULE.minConfidence,0.95)
+  const safe={noteType:'basic',status:'pending',confidence:0.95,verbatimProof:true}
+  assert.equal(isSafeDraft(safe),true)
+  for (const change of [{confidence:0.949},{confidence:NaN},{verbatimProof:false},{status:'edited'},{status:'rejected'},{status:'accepted'},{noteType:'typed'},{noteType:'bidirectional'},{noteType:'image_occlusion'},{noteType:'atlas_3d'}]) {
+    assert.equal(isSafeDraft({...safe,...change}),false,JSON.stringify(change))
+  }
+  assert.equal(isSafeDraft({...safe,noteType:'reverse'}),true)
+  assert.equal(isSafeDraft({...safe,noteType:'cloze'}),true)
+  const excerpt='Le nerf médian innerve le muscle pronateur rond.'
+  const section={id:'source',startPage:2,endPage:3,content:excerpt}
+  assert.deepEqual(draftEvidenceSignals({source:{excerpt}},section),{confidence:0.97,verbatimProof:true})
+  assert.deepEqual(draftEvidenceSignals({source:{excerpt:excerpt.replace('médian','median')}},section),{confidence:0,verbatimProof:false})
+  assert.deepEqual(draftEvidenceSignals({source:{excerpt:'Le débit cardiaque vaut cinq litres par minute.'}},{...section,content:'Le débit cardiaque vaut cinq litres par minute.'}),{confidence:0,verbatimProof:true})
+})

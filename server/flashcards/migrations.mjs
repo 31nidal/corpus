@@ -1,3 +1,4 @@
+import {initDraftReviewSchema} from './review/schema.mjs'
 import {defaultFsrsScheduler} from './fsrsScheduler.mjs'
 
 const REVIEW_COLUMNS = {
@@ -209,6 +210,11 @@ export function migrateFlashcards(db, scheduler = defaultFsrsScheduler) {
         CREATE INDEX IF NOT EXISTS flashcard_note_assets_asset ON flashcard_note_assets(asset_id);
       `)
       db.prepare('INSERT INTO flashcard_migrations VALUES(4, ?)').run(Date.now())
+    }
+
+    if (!db.prepare('SELECT 1 FROM flashcard_migrations WHERE version=5').get()) {
+      initDraftReviewSchema(db)
+      db.prepare('INSERT INTO flashcard_migrations VALUES(5, ?)').run(Date.now())
     }
 
     db.exec('COMMIT')

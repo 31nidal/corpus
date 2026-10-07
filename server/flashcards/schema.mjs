@@ -1,3 +1,4 @@
+import {initDraftReviewSchema} from './review/schema.mjs'
 export const FLASHCARD_EVOLUTIVE_COLUMNS = {
   flashcards: {
     note_id: 'TEXT REFERENCES flashcard_notes(id) ON DELETE CASCADE',
@@ -229,4 +230,5 @@ export function initFlashcardSchema(db) {
     CREATE INDEX IF NOT EXISTS flashcards_note_id ON flashcards(note_id);
     CREATE UNIQUE INDEX IF NOT EXISTS flashcards_note_derivation ON flashcards(note_id, derivation_key) WHERE note_id IS NOT NULL;
   `)
+  initDraftReviewSchema(db)
 }

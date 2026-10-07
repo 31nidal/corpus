@@ -1,3 +1,4 @@
+import {FLASHCARD_NOTE_TYPES} from './noteTypes.mjs'
 import {getAtlasModel, resolveAtlasStructure, calculateEffectiveVisibleMeshes} from './atlasRegistry.mjs'
 
 const sourceTypes = new Set(['manual', 'catalog_course', 'study_document', 'qcm_error', 'free_text'])
@@ -94,7 +95,7 @@ export function validateNote(input, partial = false) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return null
 
   const noteType = input.noteType === undefined && partial ? undefined : cleanText(input.noteType, 50, true)
-  if (noteType !== undefined && !['basic', 'reverse', 'bidirectional', 'cloze', 'typed', 'image_occlusion', 'atlas_3d'].includes(noteType)) {
+  if (noteType !== undefined && !FLASHCARD_NOTE_TYPES.includes(noteType)) {
     return null
   }
 
