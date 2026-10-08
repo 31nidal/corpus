@@ -1,3 +1,4 @@
+import {purgeRejectedDraftsOnStartup} from './flashcards/review/startup.mjs'
 import http from 'node:http'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -8,6 +9,7 @@ const root=path.resolve(fileURLToPath(new URL('../dist/',import.meta.url))),api=
 const PORT=Number(process.env.PORT)||8080
 const HOST='0.0.0.0'
 const types={'.html':'text/html; charset=utf-8','.js':'text/javascript','.css':'text/css','.json':'application/json','.glb':'model/gltf-binary','.woff2':'font/woff2','.svg':'image/svg+xml','.txt':'text/plain','.md':'text/plain'}
+purgeRejectedDraftsOnStartup()
 http.createServer((req,res)=>{applySecurityHeaders(res);api(req,res,()=>{
  if(!['GET','HEAD'].includes(req.method)){res.writeHead(405);return res.end()}
  let pathname;try{pathname=decodeURIComponent(new URL(req.url,'http://localhost').pathname)}catch{res.writeHead(400);return res.end()}
