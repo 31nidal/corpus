@@ -97,8 +97,8 @@ export const duplicateCard = async (id: string, deckId?: string) =>
 export const moveCard = async (id: string, deckId: string) =>
   (await request<{card: Flashcard}>(`cards/${encodeURIComponent(id)}/move`, {method: 'POST', body: JSON.stringify({deckId})})).card
 
-export const reviewQueue = async (deckId?: string) =>
-  (await request<{cards: Flashcard[]}>('review' + (deckId ? `?deck=${encodeURIComponent(deckId)}` : ''), {
+export const reviewQueue = async (deckId?: string, noteId?: string) =>
+  (await request<{cards: Flashcard[]}>('review?' + new URLSearchParams({...deckId?{deck:deckId}:{},...noteId?{note:noteId}:{}}), {
     headers: {'x-timezone': clientTimezone()},
   })).cards
 
