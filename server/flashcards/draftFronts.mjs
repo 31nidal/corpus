@@ -21,7 +21,9 @@ export function disambiguateDraftFronts(candidates, diagnostics) {
     for (const [index,item] of group.entries()) {
       const context = item.source?.sectionTitle || 'Passage'
       item.front += ` (${context} · ${index+1})`
-      if (item.fields && item.noteType !== 'cloze') item.fields = {...item.fields, front:item.front}
+      if (item.fields) item.fields = item.noteType === 'cloze'
+        ? {...item.fields, text:`${item.fields.text} (${context} · ${index+1})`}
+        : {...item.fields, front:item.front}
       countDiagnostic(diagnostics, 'disambiguatedFronts')
     }
   }
