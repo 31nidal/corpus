@@ -103,3 +103,16 @@ La fidélité n’est pas une colonne : `faithfulToCourse` est calculé lors de 
 ## Validation API
 
 `test:flashcards` : 95 tests réussis (dont 9 nouveaux tests API) ; `test:study` : 25 ; `test:catalog-content` : 6. Build production et TypeScript réussis. UI et Playwright du nouveau parcours restent à faire ; aucune CI distante lancée à cette étape non poussée.
+
+## Point de contrôle avant UI
+
+Réponses HTTP réelles, complètes, produites avec un compte de test et la base isolée :
+- [Liste avec basic rejeté, cloze et typed édités](examples/drafts-list.json).
+- [Acceptation individuelle](examples/draft-accept.json).
+- [Acceptation en lot : accepted, already_accepted et not_found](examples/drafts-accept-batch.json).
+
+Dans le contrat actuel, l'identifiant de note est `note.id` dans chaque résultat réussi ; aucun champ explicite `noteId` n'existe encore. Le compteur fidèle inclut uniquement pending et exclut edited. Le lot fidèle est plafonné à 100, recalcule l'éligibilité et rapporte les résultats réels : il ne garantit pas d'accepter le compteur entier au-delà du plafond ou en cas d'erreur.
+
+L'UI ne proposera aucun bouton de lot fidèle. Proposition en attente d'accord : cases à cocher, Maj+clic, sélection de la vue filtrée, acceptation/rejet des identifiants sélectionnés en lots de 100. Pour Mes cours uniquement, remplacer l'appel de GenerationDialog par génération persistée puis ouverture de Révision ; conserver les trois autres usages (catalogue, correction QCM, texte libre), les synthèses/QCM et la création manuelle visuelle.
+
+Le test de pagination ajouté retire une acceptation puis recharge le préfixe depuis offset 0 : aucun brouillon restant n'est sauté. La limite actuelle de 100 reste une restriction à résoudre avant les chargements de préfixes de 150 éléments et plus. Aucun code UI n'a été ajouté. Suites locales : flashcards 96, study 25, catalog-content 6, toutes vertes.

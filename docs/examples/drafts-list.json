@@ -1,0 +1,93 @@
+{
+  "drafts": [
+    {
+      "id": "6f57a647-31f8-4434-a5e3-8e5b776c4b4b",
+      "documentId": "doc-a",
+      "sectionId": "doc-a-section",
+      "page": 3,
+      "noteType": "basic",
+      "front": "Quelle localisation ou quel trajet est indiqué pour « Le cœur » ?",
+      "back": "Le cœur est situé dans le médiastin thoracique.",
+      "fields": {
+        "front": "Quelle localisation ou quel trajet est indiqué pour « Le cœur » ?",
+        "back": "Le cœur est situé dans le médiastin thoracique."
+      },
+      "sourceExcerpt": "Le cœur est situé dans le médiastin thoracique.",
+      "subject": "",
+      "chapter": "Cours doc-a",
+      "tags": [],
+      "confidence": 0.93,
+      "verbatimProof": true,
+      "status": "rejected",
+      "rejectedFrom": "pending",
+      "acceptedNoteId": null,
+      "createdAt": 1791453600000,
+      "updatedAt": 1791453600001,
+      "faithfulToCourse": false
+    },
+    {
+      "id": "8c4e7ba3-7599-486d-a0f0-21c78e312bdd",
+      "documentId": "doc-a",
+      "sectionId": "doc-a-section",
+      "page": 3,
+      "noteType": "cloze",
+      "front": "Le nerf médian innerve [...].",
+      "back": "Le nerf médian innerve le muscle pronateur rond.",
+      "fields": {
+        "text": "Le nerf médian innerve {{c1::le muscle pronateur rond}}.",
+        "extra": ""
+      },
+      "sourceExcerpt": "Le nerf médian innerve le muscle pronateur rond.",
+      "subject": "",
+      "chapter": "Cours doc-a",
+      "tags": [],
+      "confidence": 0,
+      "verbatimProof": true,
+      "status": "edited",
+      "rejectedFrom": null,
+      "acceptedNoteId": null,
+      "createdAt": 1791453600000,
+      "updatedAt": 1791453600001,
+      "faithfulToCourse": false
+    },
+    {
+      "id": "b733e9ae-3165-436d-aeac-d88a507c35a1",
+      "documentId": "doc-a",
+      "sectionId": "doc-a-section",
+      "page": 3,
+      "noteType": "typed",
+      "front": "Que filtre le rein ?",
+      "back": "Le plasma sanguin",
+      "fields": {
+        "front": "Que filtre le rein ?",
+        "answer": "Le plasma sanguin",
+        "acceptedAnswers": [],
+        "extra": ""
+      },
+      "sourceExcerpt": "Le rein filtre le plasma sanguin.",
+      "subject": "",
+      "chapter": "Cours doc-a",
+      "tags": [],
+      "confidence": 0,
+      "verbatimProof": true,
+      "status": "edited",
+      "rejectedFrom": null,
+      "acceptedNoteId": null,
+      "createdAt": 1791453600000,
+      "updatedAt": 1791453600001,
+      "faithfulToCourse": false
+    }
+  ],
+  "counts": {
+    "total": 3,
+    "pending": 0,
+    "edited": 2,
+    "accepted": 0,
+    "rejected": 1,
+    "faithfulToCourse": 0
+  },
+  "filteredTotal": 3,
+  "limit": 50,
+  "offset": 0,
+  "nextOffset": null
+}

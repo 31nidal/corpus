@@ -1,0 +1,113 @@
+{
+  "id": "8c4e7ba3-7599-486d-a0f0-21c78e312bdd",
+  "status": "accepted",
+  "note": {
+    "id": "ccec6a4d-779b-454e-828b-f2cd43b61dd4",
+    "userId": "9e51c3f3-333a-41d8-89ae-9a02a07d3c78",
+    "defaultDeckId": "04442990-5224-446b-b0a1-42d01f7d3a94",
+    "noteType": "cloze",
+    "title": "",
+    "fields": {
+      "text": "Le nerf médian innerve {{c1::le muscle pronateur rond}}.",
+      "extra": ""
+    },
+    "suppressedDerivations": [],
+    "subject": "",
+    "chapter": "Cours doc-a",
+    "tags": [],
+    "visual": null,
+    "assetId": null,
+    "source": {
+      "type": "study_document",
+      "courseId": null,
+      "documentId": "doc-a",
+      "sectionId": "doc-a-section",
+      "locator": {
+        "pages": [
+          3,
+          3
+        ]
+      },
+      "excerpt": "Le nerf médian innerve le muscle pronateur rond."
+    },
+    "schemaVersion": 1,
+    "noteVersion": 0,
+    "createdAt": "2026-10-08T07:41:14.347Z",
+    "updatedAt": "2026-10-08T07:41:14.347Z",
+    "cards": [
+      {
+        "id": "6ad540db-6b20-4c62-838d-3ca3554ddf23",
+        "deckId": "04442990-5224-446b-b0a1-42d01f7d3a94",
+        "noteId": "ccec6a4d-779b-454e-828b-f2cd43b61dd4",
+        "derivationKey": "c1",
+        "noteVersion": 0,
+        "cardType": "cloze",
+        "front": "Le nerf médian innerve [...].",
+        "back": "Le nerf médian innerve <span class=\"cloze-revealed\" data-cloze=\"c1\">le muscle pronateur rond</span>.",
+        "typedTarget": null,
+        "acceptedAnswers": [],
+        "subject": "",
+        "chapter": "Cours doc-a",
+        "tags": [],
+        "visual": null,
+        "source": {
+          "type": "study_document",
+          "courseId": null,
+          "documentId": "doc-a",
+          "sectionId": "doc-a-section",
+          "locator": {
+            "pages": [
+              3,
+              3
+            ]
+          },
+          "excerpt": "Le nerf médian innerve le muscle pronateur rond."
+        },
+        "createdAt": "2026-10-08T07:41:14.347Z",
+        "updatedAt": "2026-10-08T07:41:14.347Z",
+        "review": {
+          "state": "new",
+          "dueAt": 1791445274348,
+          "intervalDays": 0,
+          "easeFactor": 2.5,
+          "repetitions": 0,
+          "lapses": 0,
+          "lastRating": null,
+          "lastReviewedAt": null,
+          "stability": 0,
+          "difficulty": 0,
+          "fsrsReps": 0,
+          "learningSteps": 0,
+          "scheduledDays": 0,
+          "reviewVersion": 0,
+          "origin": "new"
+        }
+      }
+    ]
+  },
+  "draft": {
+    "id": "8c4e7ba3-7599-486d-a0f0-21c78e312bdd",
+    "documentId": "doc-a",
+    "sectionId": "doc-a-section",
+    "page": 3,
+    "noteType": "cloze",
+    "front": "Le nerf médian innerve [...].",
+    "back": "Le nerf médian innerve le muscle pronateur rond.",
+    "fields": {
+      "text": "Le nerf médian innerve {{c1::le muscle pronateur rond}}.",
+      "extra": ""
+    },
+    "sourceExcerpt": "Le nerf médian innerve le muscle pronateur rond.",
+    "subject": "",
+    "chapter": "Cours doc-a",
+    "tags": [],
+    "confidence": 0,
+    "verbatimProof": true,
+    "status": "accepted",
+    "rejectedFrom": null,
+    "acceptedNoteId": "ccec6a4d-779b-454e-828b-f2cd43b61dd4",
+    "createdAt": 1791453600000,
+    "updatedAt": 1791453600002,
+    "faithfulToCourse": false
+  }
+}

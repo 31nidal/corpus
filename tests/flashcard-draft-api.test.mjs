@@ -260,3 +260,22 @@ test('brouillons API : liste avec compteurs globaux, états filtrés et exemple 
     }
   }finally{f.close()}
 })
+
+
+test('brouillons API : recharger le préfixe après acceptation ne saute aucun brouillon',async()=>{
+  const f=await fixture()
+  try {
+    f.db.prepare('UPDATE study_sections SET content=? WHERE document_id=?').run(Array.from({length:60},(_,i)=>`Le muscle numéro ${i} permet la flexion de la partie ${i}.`).join(' '),'doc-a')
+    await f.generate('doc-a',{count:60,level:'complete'})
+    const first=await f.list('?status=pending&limit=50&offset=0')
+    assert.equal(first.drafts.length,50)
+    const removed=first.drafts[0].id
+    assert.equal((await f.call(`${draftRoute(removed)}/accept`,'POST',{deckId:f.deck.id},f.alice.cookie)).status,200)
+    const next=await f.list('?status=pending&limit=99&offset=0')
+    assert.equal(next.drafts.length,59)
+    assert.equal(next.nextOffset,null)
+    assert.equal(next.drafts.some(d=>d.id===removed),false)
+    for(const draft of first.drafts.slice(1))assert.ok(next.drafts.some(d=>d.id===draft.id))
+    assert.equal(new Set(next.drafts.map(d=>d.id)).size,59)
+  }finally{f.close()}
+})
