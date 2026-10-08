@@ -35,34 +35,70 @@ const relations = [
   ['définition', /(?:est|sont|correspond(?:ent)? à|désigne(?:nt)?|se définit comme|constitue(?:nt)?|représente(?:nt)?)/i, 'Que précise le cours à propos de'],
 ]
 
-export function questionFor(sentence) {
+// Local generation only: metadata lines are not learning facts.
+const headingOrCaption = /^(?:chapitre|partie|figure|tableau|sch[eé]ma)\s+(?:\d+|[ivxlcdm]+)(?=\s|[:.\-–—]|$)/i
+const truncatedSubject = /(?:^|\s)(?:et|ou|au|aux|du|des|de|la|le|les|un|une)$/i
+const countDiagnostic = (diagnostics, name) => {
+  if (diagnostics) diagnostics[name] = (diagnostics[name] || 0) + 1
+}
+const localSentenceAllowed = (sentence, diagnostics) => {
+  if (!headingOrCaption.test(sentence)) return true
+  countDiagnostic(diagnostics, 'rejectedHeadings')
+  return false
+}
+
+// Merge matching questions before the requested-count limit. Keep every source
+// sentence; incompatible answer types become one basic note, never lose answers.
+function mergeMatchingFronts(candidates, diagnostics) {
+  const byFront = new Map()
+  for (const candidate of candidates) {
+    const key = normalize(candidate.front), existing = byFront.get(key)
+    if (!existing) { byFront.set(key, candidate); continue }
+    countDiagnostic(diagnostics, 'mergedDuplicateFronts')
+    if (normalize(existing.back) === normalize(candidate.back)) continue
+    existing.back += '\n' + candidate.back
+    existing.excerpt += '\n' + candidate.excerpt
+    if (existing.noteType) {
+      existing.noteType = 'basic'
+      existing.fields = {front: existing.front, back: existing.back}
+      existing.rationale = 'Réponses regroupées pour une même question'
+    }
+  }
+  return [...byFront.values()]
+}
+
+export function questionFor(sentence, diagnostics) {
+  if (!localSentenceAllowed(sentence, diagnostics)) return null
+
   for (const [kind, verb, prompt] of relations) {
     const match = sentence.match(new RegExp(`^(.{2,100}?)\\s+(${verb.source})\\s+(.{3,})[.!]?$`, 'i'))
     if (!match) continue
     const subject = match[1].trim()
+    if (truncatedSubject.test(subject)) { countDiagnostic(diagnostics, 'rejectedTruncatedSubjects'); return null }
     if (ambiguous(subject) || /\b(?:ne|n['’])$/i.test(subject) || /[?!:]/.test(subject)) return null
     return {front: `${prompt} « ${subject} » ?`, back: sentence, kind}
   }
   const labelled = sentence.match(/^([^:?!]{3,90})\s*:\s*(.{8,})$/)
-  if (labelled && !ambiguous(labelled[1]) && /[\p{L}]/u.test(labelled[2])) {
+  if (labelled && !truncatedSubject.test(labelled[1].trim()) && !ambiguous(labelled[1]) && /[\p{L}]/u.test(labelled[2])) {
     return {front: `Que faut-il retenir à propos de « ${labelled[1].trim()} » ?`, back: sentence, kind: 'repère'}
   }
   const formula = sentence.match(/^([^=?!]{3,90})\s*=\s*(.{3,})$/)
-  if (formula && !ambiguous(formula[1])) {
+  if (formula && !truncatedSubject.test(formula[1].trim()) && !ambiguous(formula[1])) {
     return {front: `Quelle formule exprime « ${formula[1].trim()} » ?`, back: sentence, kind: 'formule'}
   }
   return null
 }
 
-export function generateLocalDrafts({text, level = 'standard', requestedCount = 12, source = {}, subject = '', chapter = '', tags = []}) {
+export function generateLocalDrafts({text, level = 'standard', requestedCount = 12, source = {}, subject = '', chapter = '', tags = [], diagnostics}) {
   const seen = new Set()
   const candidates = sentences(text).flatMap((sentence, index) => {
-    const card = questionFor(sentence), key = normalize(sentence)
+    const card = questionFor(sentence, diagnostics), key = normalize(sentence)
     if (!card || seen.has(key)) return []
     seen.add(key)
     return [{...card, excerpt: sentence, index, priority: ['définition', 'fonction', 'composition'].includes(card.kind) ? 2 : 1}]
   })
-  const selected = (level === 'essential' ? candidates.sort((a, b) => b.priority - a.priority || a.index - b.index) : candidates).slice(0, maximumFor(level, requestedCount))
+  const uniqueCandidates = mergeMatchingFronts(candidates, diagnostics)
+  const selected = (level === 'essential' ? uniqueCandidates.sort((a, b) => b.priority - a.priority || a.index - b.index) : uniqueCandidates).slice(0, maximumFor(level, requestedCount))
   return selected.map(({front, back, excerpt}) => ({
     temporaryId: randomUUID(),
     front,
@@ -75,14 +111,15 @@ export function generateLocalDrafts({text, level = 'standard', requestedCount = 
   }))
 }
 
-export function generateLocalNoteDrafts({text, level = 'standard', requestedCount = 12, source = {}, subject = '', chapter = '', tags = []}) {
+export function generateLocalNoteDrafts({text, level = 'standard', requestedCount = 12, source = {}, subject = '', chapter = '', tags = [], diagnostics}) {
   const seen = new Set()
   const candidates = sentences(text).flatMap((sentence, index) => {
+    if (!localSentenceAllowed(sentence, diagnostics)) return []
     // 1. Equivalence check (Bidirectional)
     const eqMatch = sentence.match(new RegExp(`^(.{2,60}?)\\s+${EQUIVALENCE_REGEX.source}[.!]?$`, 'i'))
     if (eqMatch) {
       const termA = eqMatch[1].trim(), termB = eqMatch[2].trim()
-      if (!ambiguous(termA) && termB.length >= 2 && termB.length <= 80 && !ambiguous(termB)) {
+      if (!truncatedSubject.test(termA) && !truncatedSubject.test(termB) && !ambiguous(termA) && termB.length >= 2 && termB.length <= 80 && !ambiguous(termB)) {
         const sig = `bidirectional|${[normalize(termA), normalize(termB)].sort().join('<->')}`
         if (!seen.has(sig)) {
           seen.add(sig)
@@ -103,7 +140,7 @@ export function generateLocalNoteDrafts({text, level = 'standard', requestedCoun
     const parenMatch = sentence.match(PAREN_ALIAS_REGEX)
     if (parenMatch) {
       const termA = parenMatch[1].trim(), termB = parenMatch[2].trim()
-      if (!ambiguous(termA) && !ambiguous(termB) && termA.length <= 60 && termB.length <= 60) {
+      if (!truncatedSubject.test(termA) && !truncatedSubject.test(termB) && !ambiguous(termA) && !ambiguous(termB) && termA.length <= 60 && termB.length <= 60) {
         const sig = `bidirectional|${[normalize(termA), normalize(termB)].sort().join('<->')}`
         if (!seen.has(sig)) {
           seen.add(sig)
@@ -122,7 +159,7 @@ export function generateLocalNoteDrafts({text, level = 'standard', requestedCoun
     }
 
     // 2. Base question extraction
-    const card = questionFor(sentence)
+    const card = questionFor(sentence, diagnostics)
     if (!card) return []
 
     // 3. Typed check (for values and formulas)
@@ -214,9 +251,10 @@ export function generateLocalNoteDrafts({text, level = 'standard', requestedCoun
     return []
   })
 
+  const uniqueCandidates = mergeMatchingFronts(candidates, diagnostics)
   const selected = (level === 'essential'
-    ? candidates.sort((a, b) => b.priority - a.priority || a.index - b.index)
-    : candidates
+    ? uniqueCandidates.sort((a, b) => b.priority - a.priority || a.index - b.index)
+    : uniqueCandidates
   ).slice(0, maximumFor(level, requestedCount))
 
   return selected.map(({noteType, front, back, fields, rationale, excerpt}) => ({
