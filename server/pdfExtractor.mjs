@@ -12,13 +12,13 @@ import { inflateSync, inflateRawSync } from 'node:zlib'
  *   2. getPageOrder() / walkPageTree()  — Détermine l'ordre des pages via
  *                                         /Catalog → /Pages → /Kids (correct même pour
  *                                         les PDFs avec objets réordonnés).
- *   3. decompressStream()               — FlateDecode (zlib) avec fallback raw-inflate.
+ *   3. decompressStream()               — ASCII85Decode et FlateDecode (zlib/raw-inflate), en chaîne.
  *   4. extractTextFromContentStream()   — Parser BT…ET : opérateurs Tj/TJ/Td/TD/Tm/T*,
  *                                         lookup CMap hex, fallback Win-1252 / TeX-OT1.
  *   5. normalizeFrenchText()            — Reconstruit les diacritiques TeX fragmentés.
  *   6. chunkIntoSections()              — Segmentation heuristique en sections d'étude.
  *
- * Supporté   : FlateDecode, ToUnicode CMap, ligatures TeX OT1, Win-1252, /Length indirect.
+ * Supporté   : ASCII85Decode, FlateDecode, ToUnicode CMap, ligatures TeX OT1, Win-1252, /Length indirect.
  * Non supporté: PDFs chiffrés, scannés/image-only (pas d'OCR), LZW/JBIG2/CCITT,
  *               XObject forms, fontes Type 3, CID composite sans ToUnicode.
  */
@@ -360,19 +360,74 @@ function walkPageTree(node, objects, pages, depth) {
 
 // ─── 5. Décompression de stream ───────────────────────────────────────────────
 
-/**
- * Décompresse un buffer de stream en FlateDecode (zlib inflate),
- * avec fallback raw-inflate pour les streams sans en-tête zlib.
- * Retourne une chaîne latin1.
- */
-function decompressStream(streamData, dict) {
-  if (!streamData || streamData.length === 0) return ''
-  if (!/\/Filter/.test(dict)) return streamData.toString('latin1')
+/** PDF filters are applied in their declared order, never just Flate first. */
+function streamFilters(dict) {
+  const match = dict.match(/\/Filter\s*(\[[^\]]*\]|\/[A-Za-z0-9]+)/)
+  return match ? [...match[1].matchAll(/\/([A-Za-z0-9]+)/g)].map(value => value[1]) : []
+}
 
+function streamError(code, message, filters) {
+  const error = new Error(`${message} Filtres rencontrés : ${filters.join(', ') || 'aucun'}.`)
+  error.code = code
+  error.status = 422
+  error.filters = filters
+  return error
+}
+
+export function decodeAscii85(buffer) {
+  let encoded = buffer.toString('latin1').replace(/[\x00\t\n\f\r ]/g, '')
+  if (encoded.startsWith('<~')) encoded = encoded.slice(2)
+  if (!encoded.endsWith('~>')) throw new Error('Terminaison ASCII85 manquante.')
+  encoded = encoded.slice(0, -2)
+  const output = [], group = []
+  const flush = (length = 4) => {
+    let value = 0
+    for (const digit of group) value = value * 85 + digit
+    if (value > 0xffffffff) throw new Error('Groupe ASCII85 hors limites.')
+    const bytes = Buffer.alloc(4)
+    bytes.writeUInt32BE(value)
+    output.push(bytes.subarray(0, length))
+    group.length = 0
+  }
+  for (const character of encoded) {
+    if (character === 'z') {
+      if (group.length) throw new Error('Abréviation ASCII85 dans un groupe incomplet.')
+      output.push(Buffer.alloc(4)); continue
+    }
+    const digit = character.charCodeAt(0) - 33
+    if (digit < 0 || digit > 84) throw new Error('Caractère ASCII85 invalide.')
+    group.push(digit)
+    if (group.length === 5) flush()
+  }
+  if (group.length === 1) throw new Error('Dernier groupe ASCII85 invalide.')
+  if (group.length) {
+    const length = group.length - 1
+    while (group.length < 5) group.push(84)
+    flush(length)
+  }
+  return Buffer.concat(output)
+}
+
+function decompressStream(streamData, dict, encountered = streamFilters(dict)) {
+  const filters = streamFilters(dict)
+  // Validate the whole chain first so unsupported compression is never called a scan.
+  for (const filter of filters) {
+    if (!['ASCII85Decode', 'A85', 'FlateDecode', 'Fl'].includes(filter)) {
+      throw streamError('ERR_UNSUPPORTED_PDF_FILTER', `Filtre de compression PDF non supporté (${filter}).`, encountered)
+    }
+  }
+  if (!streamData || streamData.length === 0) return ''
   let data = streamData
-  if (/\/Filter\s*\/FlateDecode/.test(dict) || /\/Filter\s*\[[^\]]*\/FlateDecode/.test(dict)) {
-    try         { data = inflateSync(data) }
-    catch       { try { data = inflateRawSync(data) } catch { return data.toString('latin1') } }
+  for (const filter of filters) {
+    try {
+      if (filter === 'ASCII85Decode' || filter === 'A85') data = decodeAscii85(data)
+      else {
+        try { data = inflateSync(data) }
+        catch { data = inflateRawSync(data) }
+      }
+    } catch {
+      throw streamError('ERR_INVALID_PDF_STREAM', `Flux PDF invalide pour le filtre ${filter}.`, encountered)
+    }
   }
   return data.toString('latin1')
 }
@@ -501,13 +556,26 @@ export function extractPdfPagesAndText(buffer) {
 
   const raw     = buffer.toString('latin1')
   const objects = parseObjects(buffer, raw)
+  const encounteredFilters = [...new Set([...objects.values()].flatMap(obj => streamFilters(obj.dict)))]
+  const unicodeRefs = new Set([...objects.values()].flatMap(obj =>
+    [...obj.dict.matchAll(/\/ToUnicode\s+(\d+)\s+(\d+)\s+R/g)].map(match => `${match[1]}_${match[2]}`)))
+  const decode = obj => decompressStream(obj.streamData, obj.dict, encounteredFilters)
 
   // Collecter toutes les entrées CMap (ToUnicode) depuis chaque stream.
   // Fusionnées dans une map globale — suffisant pour les documents à encodage unique.
   const globalCmap = new Map()
   for (const obj of objects.values()) {
     if (!obj.isStream) continue
-    const text = decompressStream(obj.streamData, obj.dict)
+    // Image/attachment compression is irrelevant to text extraction. Required
+    // ToUnicode streams must still report unsupported filters explicitly.
+    if (/\/Subtype\s*\/Image\b/.test(obj.dict)) continue
+    let text
+    try { text = decode(obj) }
+    catch (error) {
+      if ([...unicodeRefs].some(ref => objects.get(ref) === obj)) throw error
+      if (error.code === 'ERR_UNSUPPORTED_PDF_FILTER') continue
+      throw error
+    }
     if (text.includes('beginbfchar') || text.includes('beginbfrange')) {
       for (const [k, v] of parseCMap(text)) globalCmap.set(k, v)
     }
@@ -529,7 +597,7 @@ export function extractPdfPagesAndText(buffer) {
         const cObj = objects.get(`${cm[1]}_${cm[2]}`)
         if (cObj?.streamData) {
           pageText = extractTextFromContentStream(
-            decompressStream(cObj.streamData, cObj.dict), globalCmap
+            decode(cObj), globalCmap
           )
         }
       } else if (cm[3]) {
@@ -539,7 +607,7 @@ export function extractPdfPagesAndText(buffer) {
           const cObj = objects.get(`${ref[1]}_${ref[2]}`)
           if (cObj?.streamData) {
             parts.push(extractTextFromContentStream(
-              decompressStream(cObj.streamData, cObj.dict), globalCmap
+              decode(cObj), globalCmap
             ))
           }
         }
@@ -555,7 +623,8 @@ export function extractPdfPagesAndText(buffer) {
     let n = 1
     for (const obj of objects.values()) {
       if (!obj.isStream) continue
-      const text = decompressStream(obj.streamData, obj.dict)
+      if (/\/Subtype\s*\/Image\b/.test(obj.dict)) continue
+      const text = decode(obj)
       if (text.includes('BT') && text.includes('ET')) {
         const extracted = extractTextFromContentStream(text, globalCmap)
         if (extracted.trim().length > 10) pages.push({ pageNumber: n++, text: extracted.trim() })
@@ -566,13 +635,9 @@ export function extractPdfPagesAndText(buffer) {
   // Rejeter les PDFs scannés / sans texte extractible
   const totalChars = pages.map(p => p.text).join('\n').replace(/\s+/g, '').length
   if (totalChars < 50) {
-    const err = new Error(
-      'Ce document PDF contient trop peu de texte extractible. MyCorpus Study V1 ne prend pas ' +
-      'en charge les documents scannés ou images (pas d\'OCR en V1). ' +
-      'Veuillez utiliser un cours PDF avec texte sélectionnable.'
-    )
-    err.code   = 'ERR_NO_EXTRACTABLE_TEXT'
-    err.status = 422
+    const err = streamError('ERR_NO_EXTRACTABLE_TEXT',
+      'PDF scanné ou sans texte extractible suffisant (pas d’OCR). Les documents scannés nécessitent un cours PDF avec texte sélectionnable.',
+      encounteredFilters)
     throw err
   }
 
