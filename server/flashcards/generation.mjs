@@ -1,3 +1,5 @@
+import {disambiguateDraftFronts} from './draftFronts.mjs'
+export {disambiguateDraftFronts} from './draftFronts.mjs'
 import {randomUUID} from 'node:crypto'
 import {extractClozeKeys} from './cloze.mjs'
 
@@ -26,13 +28,13 @@ const PAREN_ALIAS_REGEX = /^([A-ZÀ-ÖØ-ßa-zà-öø-ÿ\s'-]{2,60})\s+\((?:ou\s
 
 const relations = [
   ['localisation', /(?:est situé(?:e)?|sont situé(?:e)?s|se situent?|se trouvent?|chemine(?:nt)?|traverse(?:nt)?|débouche(?:nt)?|s['’]étend(?:ent)?|passe(?:nt)? par)/i, 'Quelle localisation ou quel trajet est indiqué pour'],
-  ['composition', /(?:se compose(?:nt)? de|comprend|comprennent|contient|contiennent|est constitué(?:e)? de|sont constitué(?:e)?s de|est formé(?:e)? de|se divise(?:nt)? en)/i, 'Quelle est la composition de'],
+  ['composition', /(?:se constitue(?:nt)?(?: de)?|se compose(?:nt)? de|comprend|comprennent|contient|contiennent|est constitué(?:e)? de|sont constitué(?:e)?s de|est formé(?:e)? de|se divise(?:nt)? en)/i, 'Quelle est la composition de'],
   ['anatomie', /(?:s['’]articule(?:nt)?(?: proximalement| distalement)? avec|s['’]insère(?:nt)? sur|innerve(?:nt)?|vascularise(?:nt)?|relie(?:nt)?|sépare(?:nt)?|entoure(?:nt)?|recouvre(?:nt)?|protège(?:nt)?)/i, 'Quelle relation anatomique est décrite pour'],
-  ['fonction', /(?:permet|permettent|assure(?:nt)?|participe(?:nt)? à|joue(?:nt)? un rôle dans|fléchit|fléchissent|étend(?:ent)?|sécrète(?:nt)?|produit|produisent|transporte(?:nt)?|régule(?:nt)?|contrôle(?:nt)?|filtre(?:nt)?|draine(?:nt)?|favorise(?:nt)?|éjecte(?:nt)?)/i, 'Quel rôle est décrit pour'],
-  ['cause', /(?:provoque(?:nt)?|entra[iî]ne(?:nt)?|cause(?:nt)?|induit|induisent|augmente(?:nt)?|diminue(?:nt)?)/i, 'Quel effet est décrit pour'],
+  ['fonction', /(?:agit sur|permet|permettent|assure(?:nt)?|participe(?:nt)? à|joue(?:nt)? un rôle dans|fléchit|fléchissent|étend(?:ent)?|sécrète(?:nt)?|produit|produisent|transporte(?:nt)?|régule(?:nt)?|contrôle(?:nt)?|filtre(?:nt)?|draine(?:nt)?|favorise(?:nt)?|éjecte(?:nt)?)/i, 'Quel rôle est décrit pour'],
+  ['cause', /(?:réduit|réduisent|provoque(?:nt)?|entra[iî]ne(?:nt)?|cause(?:nt)?|induit|induisent|augmente(?:nt)?|diminue(?:nt)?)/i, 'Quel effet est décrit pour'],
   ['dépendance', /(?:dépend(?:ent)? de|varie(?:nt)? avec)/i, 'De quoi dépend'],
   ['valeur', /(?:vaut|valent|mesure(?:nt)?|atteint|atteignent|est égal(?:e)? à|sont égal(?:e)?s à)/i, 'Quelle valeur est indiquée pour'],
-  ['définition', /(?:est|sont|correspond(?:ent)? à|désigne(?:nt)?|se définit comme|constitue(?:nt)?|représente(?:nt)?)/i, 'Que précise le cours à propos de'],
+  ['définition', /(?:est|sont|correspond(?:ent)? à|désigne(?:nt)?|se définit comme|constitue(?:nt)?|décrit|décrivent|représente(?:nt)?)/i, 'Que précise le cours à propos de'],
 ]
 
 // Local generation only: metadata lines are not learning facts.
@@ -47,36 +49,26 @@ const localSentenceAllowed = (sentence, diagnostics) => {
   return false
 }
 
-// Merge matching questions before the requested-count limit. Keep every source
-// sentence; incompatible answer types become one basic note, never lose answers.
-function mergeMatchingFronts(candidates, diagnostics) {
-  const byFront = new Map()
-  for (const candidate of candidates) {
-    const key = normalize(candidate.front), existing = byFront.get(key)
-    if (!existing) { byFront.set(key, candidate); continue }
-    countDiagnostic(diagnostics, 'mergedDuplicateFronts')
-    if (normalize(existing.back) === normalize(candidate.back)) continue
-    existing.back += '\n' + candidate.back
-    existing.excerpt += '\n' + candidate.excerpt
-    if (existing.noteType) {
-      existing.noteType = 'basic'
-      existing.fields = {front: existing.front, back: existing.back}
-      existing.rationale = 'Réponses regroupées pour une même question'
-    }
-  }
-  return [...byFront.values()]
-}
+const mergeMatchingFronts = disambiguateDraftFronts
 
 export function questionFor(sentence, diagnostics) {
   if (!localSentenceAllowed(sentence, diagnostics)) return null
 
-  for (const [kind, verb, prompt] of relations) {
+  // Prefer the first valid predicate, not a later verb in its complement.
+  const matches = relations.flatMap(([kind, verb, prompt]) => {
     const match = sentence.match(new RegExp(`^(.{2,100}?)\\s+(${verb.source})\\s+(.{3,})[.!]?$`, 'i'))
-    if (!match) continue
-    const subject = match[1].trim()
-    if (truncatedSubject.test(subject)) { countDiagnostic(diagnostics, 'rejectedTruncatedSubjects'); return null }
-    if (ambiguous(subject) || /\b(?:ne|n['’])$/i.test(subject) || /[?!:]/.test(subject)) return null
-    return {front: `${prompt} « ${subject} » ?`, back: sentence, kind}
+    if (!match) return []
+    return [{kind, prompt, subject:match[1].trim(), predicate:match[2]}]
+  }).sort((a,b)=>a.subject.length-b.subject.length)
+  for (const {kind,prompt,subject,predicate} of matches) {
+    if (truncatedSubject.test(subject) || /(?:d|l)['’](?:un|une)?$/i.test(subject)) {
+      countDiagnostic(diagnostics, 'rejectedTruncatedSubjects'); continue
+    }
+    if (/^produit$/i.test(predicate) && /\b(?:décrit|décrivent|est|sont)\b/i.test(sentence.slice(subject.length+predicate.length+2))) continue
+    if (ambiguous(subject) || /\b(?:ne|n['’])$/i.test(subject) || /[?!:]/.test(subject)) continue
+    const label = kind==='valeur' && !/\d/.test(sentence) ? 'Que précise le cours à propos de' : kind==='anatomie' && /^(?:relie|sépare|entoure|recouvre|protège)/i.test(predicate)
+      ? 'Quel lien ou effet est décrit pour' : prompt
+    return {front: `${label} « ${subject} » ?`, back: sentence, kind}
   }
   const labelled = sentence.match(/^([^:?!]{3,90})\s*:\s*(.{8,})$/)
   if (labelled && !truncatedSubject.test(labelled[1].trim()) && !ambiguous(labelled[1]) && /[\p{L}]/u.test(labelled[2])) {
@@ -158,6 +150,36 @@ export function generateLocalNoteDrafts({text, level = 'standard', requestedCoun
       }
     }
 
+    // 4. Cloze check (for anatomical insertion / trajectory / specific structure)
+    if (!ambiguous(sentence)) {
+      const clozeMatch = sentence.match(/(?:s['’]insère(?:nt)? sur|s['’]articule(?:nt)?(?: proximalement| distalement)? avec|chemine(?:nt)? dans|traverse(?:nt)?|débouche(?:nt)? dans)\s+([^.!,;?]{4,60})([,;.!].*)?$/i)
+      if (clozeMatch) {
+        const prefix = sentence.slice(0, clozeMatch.index).trim()
+        const coordinated = /\b(?:commence|provient|émerge|descend)\b[\s\S]*\bet$/i.test(prefix)
+        if (truncatedSubject.test(prefix) && !coordinated) return []
+        const target = clozeMatch[1].trim()
+        if (!ambiguous(target) && !/[?!:]/.test(target)) {
+          const clozeText = sentence.replace(target, `{{c1::${target}}}`)
+          if (clozeText !== sentence) {
+            const sig = `cloze|${normalize(sentence)}|c1`
+            if (!seen.has(sig)) {
+              seen.add(sig)
+              return [{
+                noteType: 'cloze',
+                front: clozeText.replace(/\{\{c1::(.*?)\}\}/g, '[...]'),
+                back: sentence,
+                fields: {text: clozeText, extra: ''},
+                rationale: 'Structure dans son contexte anatomique',
+                excerpt: sentence,
+                index,
+                priority: 2,
+              }]
+            }
+          }
+        }
+      }
+    }
+
     // 2. Base question extraction
     const card = questionFor(sentence, diagnostics)
     if (!card) return []
@@ -186,7 +208,7 @@ export function generateLocalNoteDrafts({text, level = 'standard', requestedCoun
 
     if (card.kind === 'formule') {
       const formulaMatch = sentence.match(/^([^=?!]{3,90})\s*=\s*(.{3,})$/)
-      if (formulaMatch) {
+      if (formulaMatch && !/[a-zà-öø-ÿ]{3,}/u.test(formulaMatch[2])) {
         const formula = formulaMatch[2].trim()
         const sig = `typed|${normalize(card.front)}|${normalize(formula)}`
         if (!seen.has(sig)) {
@@ -201,33 +223,6 @@ export function generateLocalNoteDrafts({text, level = 'standard', requestedCoun
             index,
             priority: 3,
           }]
-        }
-      }
-    }
-
-    // 4. Cloze check (for anatomical insertion / trajectory / specific structure)
-    if (card.kind === 'anatomie' || card.kind === 'localisation') {
-      const clozeMatch = sentence.match(/(?:s['’]insère(?:nt)? sur|s['’]articule(?:nt)?(?: proximalement| distalement)? avec|chemine(?:nt)? dans|traverse(?:nt)?|débouche(?:nt)? dans)\s+([^.!,;?]{4,60})([,;.!].*)?$/i)
-      if (clozeMatch) {
-        const target = clozeMatch[1].trim()
-        if (!ambiguous(target) && !/[?!:]/.test(target)) {
-          const clozeText = sentence.replace(target, `{{c1::${target}}}`)
-          if (clozeText !== sentence) {
-            const sig = `cloze|${normalize(sentence)}|c1`
-            if (!seen.has(sig)) {
-              seen.add(sig)
-              return [{
-                noteType: 'cloze',
-                front: clozeText.replace(/\{\{c1::(.*?)\}\}/g, '[...]'),
-                back: sentence,
-                fields: {text: clozeText, extra: ''},
-                rationale: 'Structure dans son contexte anatomique',
-                excerpt: sentence,
-                index,
-                priority: 2,
-              }]
-            }
-          }
         }
       }
     }
