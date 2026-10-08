@@ -17,6 +17,10 @@ export async function handleDraftReview({db,notes,userId,subpath,url,req,readJso
     if(req.method==='POST'&&action) {
       const body=await readJson(req)
       if(!body||typeof body!=='object'||Array.isArray(body)){send(400,{error:'Requête invalide.'});return true}
+      if(action==='accept') {
+        if(typeof body.deckId!=='string'||!body.deckId.trim()){send(400,{error:'Deck de destination requis.'});return true}
+        if(!notes.deck(userId,body.deckId)){send(400,{error:'Deck de destination introuvable.'});return true}
+      }
       if(action==='generate') {
         if(Object.keys(body).some(k=>!['count','level','sectionId','sectionIds','startPage','endPage'].includes(k))){send(400,{error:'La génération lit uniquement les sections du document ; seuls les paramètres de génération et filtres de sections/pages sont autorisés.'});return true}
         send(201,repo.generate(userId,documentId,body))
@@ -30,6 +34,10 @@ export async function handleDraftReview({db,notes,userId,subpath,url,req,readJso
     if(action&&req.method==='POST') {
       const body=await readJson(req)
       if(!body||typeof body!=='object'||Array.isArray(body)){send(400,{error:'Requête invalide.'});return true}
+      if(action==='accept') {
+        if(typeof body.deckId!=='string'||!body.deckId.trim()){send(400,{error:'Deck de destination requis.'});return true}
+        if(!notes.deck(userId,body.deckId)){send(400,{error:'Deck de destination introuvable.'});return true}
+      }
       const result=repo.act(userId,id,action,{deckId:body.deckId})
       send(result.status==='not_found'?404:result.status==='invalid'?result.httpStatus:200,result)
       return true

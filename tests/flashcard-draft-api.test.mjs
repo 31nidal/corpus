@@ -63,7 +63,8 @@ test('brouillons API : propriété 404 sur liste, génération, PATCH, actions e
       ]),
       [`${docRoute('doc-a')}/accept`,'POST',{faithfulOnly:true,deckId:f.deck.id}],
     ])assert.equal((await f.call(route,method,body,f.bob.cookie)).status,404,route)
-    const ownedBatch=await f.call(`${docRoute('doc-b')}/accept`,'POST',{ids:[id],deckId:f.deck.id},f.bob.cookie)
+    const bobDeck=(await f.call(`${root}/decks`,'POST',{name:'Cours Bob'},f.bob.cookie)).data.deck
+    const ownedBatch=await f.call(`${docRoute('doc-b')}/accept`,'POST',{ids:[id],deckId:bobDeck.id},f.bob.cookie)
     assert.equal(ownedBatch.status,200)
     assert.equal(ownedBatch.data.results[0].status,'not_found')
     assert.equal((await f.call(docRoute('doc-a'))).status,401)
@@ -152,7 +153,7 @@ test('brouillons API : acceptation idempotente sans reçu, deux appels rapproch�
     assert.equal(removed.status,200)
     const replacement=await f.call(`${draftRoute(id)}/accept`,'POST',{deckId:f.deck.id},f.alice.cookie)
     assert.equal(replacement.data.status,'accepted');assert.notEqual(replacement.data.note.id,a.data.note.id)
-    const repeated=await f.call(`${draftRoute(id)}/accept`,'POST',{},f.alice.cookie)
+    const repeated=await f.call(`${draftRoute(id)}/accept`,'POST',{deckId:f.deck.id},f.alice.cookie)
     assert.equal(repeated.data.status,'already_accepted');assert.equal(repeated.data.note.id,replacement.data.note.id)
     assert.equal(f.db.prepare('SELECT count(*) n FROM flashcards WHERE user_id=?').get(f.alice.data.user.id).n,cardCount)
   }finally{f.close()}
@@ -166,7 +167,8 @@ test('brouillons API : lots partiels bornés, résultats par ID et fidélité re
     const excessive=await f.call(`${docRoute('doc-a')}/accept`,'POST',{ids:Array(101).fill(ids[0]),deckId:f.deck.id},f.alice.cookie)
     assert.equal(excessive.status,400)
     const noDeck=await f.call(`${docRoute('doc-a')}/accept`,'POST',{ids:[ids[0]],deckId:'other-users-deck'},f.alice.cookie)
-    assert.equal(noDeck.data.results[0].status,'invalid')
+    assert.equal(noDeck.status,400)
+    assert.deepEqual(noDeck.data,{error:'Deck de destination introuvable.'})
     const valid=ids[0],rejected=ids[1]
     await f.call(`${draftRoute(rejected)}/reject`,'POST',{},f.alice.cookie)
     const lot=await f.call(`${docRoute('doc-a')}/accept`,'POST',{ids:[valid,'missing',null,rejected,valid],deckId:f.deck.id},f.alice.cookie)
@@ -333,5 +335,30 @@ test('brouillons API : lien FSRS ciblé avant la limite de file, isolation et é
     assert.equal((await f.call(`${root}/review?note=${noteId}`,'GET',undefined,f.bob.cookie)).data.cards.length,0)
     f.db.prepare('UPDATE flashcard_reviews SET due_at=? WHERE card_id IN (SELECT id FROM flashcards WHERE note_id=?)').run(Date.now()+86400000,noteId)
     assert.equal((await f.call(`${root}/review?note=${noteId}`,'GET',undefined,f.alice.cookie)).data.cards.length,0)
+  }finally{f.close()}
+})
+
+
+test('brouillons API : deck requis validé avant SQLite, en individuel et globalement en lot',async()=>{
+  const f=await fixture()
+  try {
+    const id=(await f.generate()).data.ids[0]
+    const foreignDeck=(await f.call(`${root}/decks`,'POST',{name:'Privé'},f.bob.cookie)).data.deck
+    for(const deckValue of [undefined,null,42,'','   ']) {
+      const body=deckValue===undefined?{}:{deckId:deckValue}
+      for(const route of [`${draftRoute(id)}/accept`,`${docRoute('doc-a')}/accept`]) {
+        const response=await f.call(route,'POST',{...body,ids:[id]},f.alice.cookie)
+        assert.equal(response.status,400)
+        assert.deepEqual(response.data,{error:'Deck de destination requis.'})
+      }
+    }
+    for(const deckId of [foreignDeck.id,'deck-inexistant']) {
+      for(const route of [`${draftRoute(id)}/accept`,`${docRoute('doc-a')}/accept`]) {
+        const response=await f.call(route,'POST',{deckId,ids:[id]},f.alice.cookie)
+        assert.equal(response.status,400)
+        assert.deepEqual(response.data,{error:'Deck de destination introuvable.'})
+      }
+    }
+    assert.equal((await f.list()).counts.accepted,0)
   }finally{f.close()}
 })
