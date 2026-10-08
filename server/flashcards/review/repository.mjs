@@ -1,4 +1,5 @@
 import {randomUUID} from 'node:crypto'
+import {disambiguateDraftFronts} from '../draftFronts.mjs'
 import {generateLocalNoteDrafts} from '../generation.mjs'
 import {validateNote} from '../validation.mjs'
 import {draftContentHash,draftEvidenceSignals,isSafeDraft} from './policy.mjs'
@@ -56,14 +57,18 @@ export class DraftReviewRepository {
     if(sectionIds!==undefined && (!Array.isArray(sectionIds)||!sectionIds.length||sectionIds.length>100||sectionIds.some(id=>typeof id!=='string'||!sections.some(s=>s.id===id))))throw error(404,'Section introuvable.')
     if(sectionId!==undefined && sectionIds!==undefined)throw error(400,'Choisissez sectionId ou sectionIds.')
     if([startPage,endPage].some(p=>p!==undefined&&(!Number.isSafeInteger(p)||p<1||p>doc.page_count)) || (startPage!==undefined&&endPage!==undefined&&startPage>endPage))throw error(400,'La plage de pages est invalide.')
+    const allSections=sections
     if(sectionId!==undefined)sections=sections.filter(s=>s.id===sectionId)
     if(sectionIds!==undefined)sections=sections.filter(s=>sectionIds.includes(s.id))
     if(startPage!==undefined||endPage!==undefined)sections=sections.filter(s=>s.endPage>=(startPage??1)&&s.startPage<=(endPage??doc.page_count))
     if(!sections.length)throw error(422,'Aucune section disponible pour générer des brouillons.')
     // Generate per section, then round-robin before the global cap. Later sections
     // get the same opportunity as the first; source attribution stays exact.
-    const queues=sections.map(section=>generateLocalNoteDrafts({text:section.content,level,requestedCount,
-      source:{type:'study_document',documentId},chapter:doc.title}).map(draft=>({draft,section})))
+    const allQueues=allSections.map(section=>generateLocalNoteDrafts({text:section.content,level,requestedCount,
+      source:{type:'study_document',documentId,sectionId:section.id,sectionTitle:section.title},chapter:doc.title}).map(draft=>({draft,section})))
+    // Resolve collisions across the whole document, including section-only runs.
+    disambiguateDraftFronts(allQueues.flat().map(item=>item.draft))
+    const queues=allQueues.filter(queue=>queue.length&&sections.some(section=>section.id===queue[0].section.id))
     const maximum=Math.min(requestedCount,level==='essential'?20:level==='standard'?35:60)
     const candidates=[]
     for(let index=0;candidates.length<maximum&&queues.some(q=>index<q.length);index++) {
@@ -77,7 +82,10 @@ export class DraftReviewRepository {
         (id,user_id,document_id,section_id,page,note_type,front,back,fields_json,source_excerpt,content_hash,
          subject,chapter,tags_json,confidence,verbatim_proof,created_at,updated_at)
         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+      const existing=this.db.prepare('SELECT section_id,note_type,back,source_excerpt FROM flashcard_drafts WHERE user_id=? AND document_id=?').all(userId,documentId)
       for(const {draft,section} of candidates) {
+        // Front improvements never resurrect rejected/edited or existing facts.
+        if(existing.some(row=>row.section_id===section.id&&row.note_type===draft.noteType&&row.back===draft.back&&row.source_excerpt===draft.source.excerpt)){ignored++;continue}
         // Never attribute a quote assembled across sections to a fabricated page.
         if(!draftEvidenceSignals(draft,section).verbatimProof){unattributed++;continue}
         const signals=draftEvidenceSignals(draft,section),id=randomUUID(),time=this.now()

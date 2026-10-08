@@ -362,3 +362,24 @@ test('brouillons API : deck requis validé avant SQLite, en individuel et global
     assert.equal((await f.list()).counts.accepted,0)
   }finally{f.close()}
 })
+
+test('brouillons API : collisions entre sections contextualisées, preuves séparées et régénération stable',async()=>{
+ const f=await fixture()
+ try {
+  f.db.prepare('UPDATE study_sections SET content=?,title=? WHERE id=?').run('Le rein filtre le plasma sanguin.','Filtration','doc-a-section')
+  f.db.prepare('INSERT INTO study_sections(id,document_id,user_id,title,section_order,start_page,end_page,content,token_count) VALUES(?,?,?,?,?,?,?,?,?)')
+   .run('doc-a-second','doc-a',f.alice.data.user.id,'Élimination',1,5,5,'Le rein filtre les substances dissoutes.',30)
+  const generated=await f.generate('doc-a',{level:'complete',count:60})
+  assert.equal(generated.data.created,2)
+  const rows=(await f.list()).drafts
+  assert.equal(new Set(rows.map(d=>d.front)).size,2)
+  assert.equal(new Set(rows.map(d=>d.sectionId)).size,2)
+  assert.equal(new Set(rows.map(d=>d.page)).size,2)
+  for(const row of rows)assert.equal(row.sourceExcerpt,row.back)
+  assert.ok(rows.every(d=>d.verbatimProof))
+  await f.call(`${draftRoute(rows[0].id)}/reject`,'POST',{},f.alice.cookie)
+  const again=await f.generate('doc-a',{sectionId:'doc-a-section',level:'complete',count:60})
+  assert.equal(again.data.created,0);assert.equal(again.data.ignored,1)
+  assert.equal((await f.list()).counts.total,2)
+ }finally{f.close()}
+})
