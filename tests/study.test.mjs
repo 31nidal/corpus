@@ -941,3 +941,20 @@ test('PDF : vrais exports Reportlab ASCII85+Flate, Flate seul et non compressé'
     assert.equal(result.totalText,expected,name)
   }
 })
+
+// Reproduces the UNESS college stream dictionary: /Length 6 0 R /Filter /FlateDecode.
+test('PDF : longueur indirecte résolue avant la longueur directe, objet avant ou après le flux', async () => {
+  const {extractPdfPagesAndText} = await import('../server/pdfExtractor.mjs')
+  const lines = ['Le debit cardiaque depend du volume ejecte et de la frequence cardiaque.',
+    'Les barorecepteurs sont situes au niveau aortique et carotidien.']
+  for (const encoding of ['flate', 'ascii85-flate', 'raw']) {
+    const original = makePdf(lines, encoding).toString('latin1')
+    const length = original.match(/\/Length (\d+)/)[1]
+    for (const before of [false, true]) {
+      const indirect = original.replace(/\/Length \d+/, '/Length 6 0 R').replace('6 0 R /Filter', '6 0 R/Filter')
+        .replace(before ? '4 0 obj' : 'xref', `6 0 obj\n${length}\nendobj\n${before ? '4 0 obj' : 'xref'}`)
+      const result = extractPdfPagesAndText(Buffer.from(indirect, 'latin1'))
+      for (const line of lines) assert.ok(result.totalText.includes(line), `${encoding}, before=${before}`)
+    }
+  }
+})

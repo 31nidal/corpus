@@ -240,21 +240,7 @@ function parseObjects(buffer, raw) {
       if      (buffer[dataStart] === 0x0D && buffer[dataStart + 1] === 0x0A) dataStart += 2
       else if (buffer[dataStart] === 0x0A || buffer[dataStart] === 0x0D)     dataStart += 1
 
-      // Cas 1 : /Length direct — le plus fiable
-      const lenDirect = dict.match(/\/Length\s+(\d+)\b/)
-      if (lenDirect) {
-        const dataEnd = Math.min(dataStart + parseInt(lenDirect[1], 10), buffer.length)
-        objects.set(id, { num, gen, id, dict, streamData: buffer.subarray(dataStart, dataEnd), isStream: true })
-        // Avancer le regex après endobj pour ne pas re-scanner le stream binaire
-        const esOff = raw.indexOf('endstream', dataStart)
-        if (esOff !== -1) {
-          const eoOff = raw.indexOf('endobj', esOff)
-          if (eoOff !== -1) objRe.lastIndex = eoOff + 6
-        }
-        continue
-      }
-
-      // Cas 2 : /Length indirect (/Length N G R) — résolution en 2ème passe
+      // Cas 1 : /Length indirect (/Length N G R) — résolution en 2ème passe
       const lenIndirect = dict.match(/\/Length\s+(\d+)\s+(\d+)\s+R/)
       if (lenIndirect) {
         objects.set(id, {
@@ -263,6 +249,20 @@ function parseObjects(buffer, raw) {
           indirectLength: `${lenIndirect[1]}_${lenIndirect[2]}`,
           isStream: true, pending: true
         })
+        const esOff = raw.indexOf('endstream', dataStart)
+        if (esOff !== -1) {
+          const eoOff = raw.indexOf('endobj', esOff)
+          if (eoOff !== -1) objRe.lastIndex = eoOff + 6
+        }
+        continue
+      }
+
+      // Cas 2 : /Length direct — uniquement après exclusion des références.
+      const lenDirect = dict.match(/\/Length\s+(\d+)\b/)
+      if (lenDirect) {
+        const dataEnd = Math.min(dataStart + parseInt(lenDirect[1], 10), buffer.length)
+        objects.set(id, { num, gen, id, dict, streamData: buffer.subarray(dataStart, dataEnd), isStream: true })
+        // Avancer le regex après endobj pour ne pas re-scanner le stream binaire
         const esOff = raw.indexOf('endstream', dataStart)
         if (esOff !== -1) {
           const eoOff = raw.indexOf('endobj', esOff)

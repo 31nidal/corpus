@@ -19,3 +19,9 @@ Exports réels Reportlab dans les trois variantes (texte identique vérifié). T
 ## Non vérifié
 
 Les trois exports de test ont été produits avec Reportlab 5.0.1 dans un environnement Python temporaire, sans dépendance ajoutée au projet. Ils sont conservés en fixtures (environ 4,2 ko au total) et testés sans Python. Aucun PDF réel fourni par un utilisateur n’a été testé. Pas de benchmark sur un large corpus, pas d’OCR, pas de support ajouté pour les PDF chiffrés, LZW, les références indirectes de Filter ou les nouveaux DecodeParms.
+
+## Régression de longueur indirecte
+
+Le dictionnaire `/Length 6 0 R/Filter/FlateDecode` du PDF du Collège de cardiologie UNESS était interprété comme une longueur directe de six octets. Les références sont désormais reconnues avant les valeurs directes et résolues à la deuxième passe. Un test couvre les objets de longueur avant/après le flux et les variantes Flate, ASCII85+Flate et non compressées. Les tests de scan, filtre non supporté et flux corrompu restent inchangés.
+
+Retest des documents publics du benchmark, mêmes SHA-256 : Collège cardiologie 125 pages / 238 995 caractères ; sémiologie cardiologique 18 / 29 356 ; pharmacologie Lyon 1 70 / 24 346 ; physiologie Grenoble 29 / 6 744. Aucun rejet restant parmi ces quatre documents. Ces volumes ne garantissent pas une restitution exacte des tableaux, formules ou colonnes. Les originaux externes ne sont pas versionnés.
