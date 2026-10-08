@@ -133,3 +133,27 @@ PdfCropSelector a un mode readOnly sans recadrage/export : page de preuve, pièg
 Validation finale locale : build/TypeScript réussis ; flashcards 99, study 25, catalog-content 6. Les 23 E2E concernés ont passé en une session séquentielle (dont 3 nouveaux), puis les 4 nouveaux tests ont repassé après ajout du cas de régénération et du filtre FSRS ciblé. Les tests de lots volumineux/pannes utilisent des réponses HTTP contrôlées ; import PDF, édition, acceptation et arrivée dans la file FSRS sont testés avec le vrai backend. Pas de vérification manuelle avec Safari/iPhone ou lecteur d’écran réel.
 
 CI de départ entièrement verte sur 5ebfc49 : validate et e2e (1/2/3). La branche est poussée sans merge pour validation distante du résultat final.
+
+## Non vérifié manuellement
+
+- Safari sur macOS et Safari sur iPhone réel (dont navigation tactile et clavier virtuel). Les captures à 390 px et les tests responsive utilisent Chromium, pas un appareil iPhone.
+- Lecteur d’écran réel (VoiceOver, NVDA ou équivalent). Le test Playwright vérifie une seule région aria-live active pour les compteurs, chargement, progression, résultat et annulation, y compris sur erreur ; cela ne remplace pas l’écoute des annonces sur ces lecteurs.
+
+## Suites possibles
+
+- Étendre la révision aux synthèses et QCM : identité durable et statuts propres à ces objets, routes de validation isolées par propriétaire, interfaces dédiées et adaptation des lecteurs/entraînements pour ne consommer que les contenus acceptés. Leurs flux actuels restent inchangés.
+- Dériver les brouillons depuis les faits typés, plutôt que rapprocher après génération leurs preuves avec ces faits. Ce chantier rendrait le critère de fidélité à 0,95 réellement discriminant. Ni le seuil, ni l’atomisation et/ou, ni l’extraction PDF ne sont modifiés ici.
+
+## Refactor et captures avant Ready for review
+
+Le composant ReviewWorkspace compose désormais la barre d’actions/destination, la liste, les messages et le bandeau d’annulation. Les hooks séparent orchestration, navigation/sélection clavier et lots séquentiels. Le commit de refactor ne modifie ni routes ni tests existants ; le commit d’accessibilité ajoute une seule région active et un test de non-régression.
+
+Recréer les captures sur une instance et une base locales isolées :
+
+```sh
+node scripts/capture-flashcard-review.mjs
+```
+
+Le script crée dix PNG (1440 px et 390 px) et une galerie `index.html` dans `tests/artifacts/design/flashcard-review/` : liste basic/cloze/typed, édition cloze, PDF ouvert à la preuve page 2, annulation du rejet et état vide. Il utilise le vrai backend avec des données de démonstration, puis supprime sa base temporaire. Les cloze et typed sont préparés via PATCH sur des brouillons persistés ; leur état édité est visible. Les PNG de revue restent ignorés par git, avec le script et la documentation conservés pour les recréer.
+
+Validation de cette passe : build/TypeScript, 99 tests flashcards, 25 study, 6 catalog-content et 25 E2E ciblés verts. Les E2E et tests API préexistants sont conservés sans modification ; un test aria-live est ajouté. Les captures de composant masquent temporairement la navigation externe et retirent le clipping des ancêtres pour montrer toute la liste, sans modifier sa largeur responsive ni le CSS du produit.
