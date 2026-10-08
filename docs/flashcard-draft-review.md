@@ -1,6 +1,6 @@
 # Révision des flashcards de Mes cours — contrat de migration 5
 
-Étape actuelle : schéma et API de révision implémentés, UI non commencée. Synthèses et QCM gardent leur flux actuel. Les écrans existants utilisent encore leur ancien dialogue jusqu’à l’étape UI.
+Schéma, API et UI de révision implémentés pour les flashcards de Mes cours. Synthèses et QCM gardent leur flux actuel. Le catalogue, les corrections QCM et le texte libre conservent GenerationDialog.
 
 ## Stockage durable
 
@@ -18,7 +18,7 @@ Les dates `created_at`, `updated_at`, `rejected_at` sont des millisecondes Unix 
 
 `SAFE_DRAFT_RULE` dans `server/flashcards/review/policy.mjs` est l’unique configuration : confiance ≥ 0,95, preuve verbatim, type `basic`, `reverse` ou `cloze`, statut `pending`. Les statuts édités, rejetés et déjà acceptés sont exclus du lot automatique ; la réacceptation après suppression reste une action explicite.
 
-La confiance vient exclusivement d’un fait typé déjà reconnu dans la même section, avec preuve identique. Pas de score inventé à partir d’un simple type de carte. La vérification verbatim compacte les espaces et normalise NFC, sans changer casse, accents, mots ou ponctuation. Le libellé utilisateur doit être « fidèles au cours » : une preuve verbatim ne garantit pas que le cours soit médicalement juste. Le bouton « Accepter les N fidèles » devra être absent quand N = 0. Le critère n’est jamais stocké ; seule la confiance et `verbatim_proof` le sont. Les cartes à réponses chiffrées et équivalences ne sont pas automatiquement couvertes par les faits typés actuels.
+La confiance vient exclusivement d’un fait typé déjà reconnu dans la même section, avec preuve identique. Pas de score inventé à partir d’un simple type de carte. La vérification verbatim compacte les espaces et normalise NFC, sans changer casse, accents, mots ou ponctuation. Le libellé utilisateur doit être « fidèles au cours » : une preuve verbatim ne garantit pas que le cours soit médicalement juste. Aucun bouton « Accepter les fidèles » n’est proposé dans cette itération ; le critère reste uniquement côté serveur. Le critère n’est jamais stocké ; seule la confiance et `verbatim_proof` le sont. Les cartes à réponses chiffrées et équivalences ne sont pas automatiquement couvertes par les faits typés actuels.
 
 ## Mesure du seuil 0,95
 
@@ -118,3 +118,18 @@ L'UI ne proposera aucun bouton de lot fidèle. Proposition en attente d'accord :
 Le test de pagination ajouté retire une acceptation puis recharge le préfixe depuis offset 0 : aucun brouillon restant n'est sauté. La limite de page est maintenant 500, bornes 0/1/500/501 testées. Au-delà, l’UI rechargera le préfixe de 500 puis les pages complémentaires depuis le début, sans réutiliser un offset devenu périmé. Aucun code UI n'a été ajouté. Suites locales : flashcards 96, study 25, catalog-content 6, toutes vertes.
 
 Bloc API validé : flashcards 98, study 25, catalog-content 6. CI précédente entièrement verte sur 5ebfc49.
+
+
+## UI livrée
+
+`src/study/review/` contient l’API cliente, les paramètres de génération, les cartes et l’espace de révision. L’ancien branchement de GenerationDialog dans Mes cours a été remplacé, sans changer les trois autres usages. Le nouveau paramétrage garde la sélection multiple de sections et la plage de pages (pas de génération de passage sélectionné dans l’ancien dialogue de Mes cours).
+
+La sélection comprend cases, Maj+clic et sélection de toute la vue filtrée, y compris les pages non encore chargées. Acceptation et rejet en lots séquentiels de 100 : progression, résultat par identifiant, verrou contre doubles clics, rollback de la requête en échec et reprise du suffixe non terminé. L’édition conserve le texte saisi si le serveur refuse. Le bandeau de rejet reste affiché jusqu’à annulation ou fermeture explicite ; les restaurations réussies remettent immédiatement les cartes et les compteurs à jour.
+
+Les raccourcis A/E/R/flèches et ? sont locaux à la liste, ignorés dans les champs/édition/dialogues, et désactivables. Compteurs, progression et annulation utilisent aria-live. La preuve est mise en évidence dans le contexte de la section.
+
+PdfCropSelector a un mode readOnly sans recadrage/export : page de preuve, piège de focus, Échap et retour au déclencheur ; PDF introuvable affiché explicitement. La route PDF avec contrôle de propriétaire reste utilisée. Les liens de cartes ciblent noteId ; le filtre serveur de la file FSRS s’applique avant LIMIT, sans modifier échéances, règles de cartes sœurs ou calcul FSRS.
+
+Validation finale locale : build/TypeScript réussis ; flashcards 99, study 25, catalog-content 6. Les 23 E2E concernés ont passé en une session séquentielle (dont 3 nouveaux), puis les 4 nouveaux tests ont repassé après ajout du cas de régénération et du filtre FSRS ciblé. Les tests de lots volumineux/pannes utilisent des réponses HTTP contrôlées ; import PDF, édition, acceptation et arrivée dans la file FSRS sont testés avec le vrai backend. Pas de vérification manuelle avec Safari/iPhone ou lecteur d’écran réel.
+
+CI de départ entièrement verte sur 5ebfc49 : validate et e2e (1/2/3). La branche est poussée sans merge pour validation distante du résultat final.
