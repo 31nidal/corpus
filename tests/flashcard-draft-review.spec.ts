@@ -163,3 +163,49 @@ test('régénération depuis le même bouton : doublons ignorés et état vide d
   await expect(review(page).getByText('Aucun brouillon généré, ce cours contient peu de phrases exploitables.',{exact:true})).toBeVisible()
   await expect(review(page).getByText(`${count} brouillons ignorés car déjà générés.`,{exact:true})).toHaveCount(0)
 })
+
+test('accessibilité : une seule région active annonce chargement, progression, résultat et annulation',async({page})=>{
+  const id=await prepare(page),rows=drafts(id,2)
+  let release:()=>void=()=>{}
+  const initialRequest=new Promise<void>(resolve=>{release=resolve})
+  await page.route(`**/api/flashcards/documents/${id}/drafts?*`,async route=>{
+    await initialRequest
+    await route.fulfill({json:{drafts:rows,counts:{total:2,pending:2,edited:0,accepted:0,rejected:0,faithfulToCourse:0},filteredTotal:2,limit:50,offset:0,nextOffset:null}})
+  })
+  await page.getByRole('button',{name:'Réviser les brouillons'}).click()
+  const workspace=review(page)
+  const activeLive=workspace.locator('[aria-live]:not([aria-live="off"])')
+  const assertSingle=async()=>{
+    await expect(activeLive).toHaveCount(1)
+    await expect(workspace.locator('[role="status"]')).toHaveCount(1)
+  }
+  await assertSingle()
+  await expect(activeLive).toContainText('Chargement…')
+  release()
+  await expect(workspace.locator('.draft-review-card')).toHaveCount(2)
+  await assertSingle()
+  let releaseReject:()=>void=()=>{}
+  const rejecting=new Promise<void>(resolve=>{releaseReject=resolve})
+  let fail=true
+  await page.route(`**/api/flashcards/documents/${id}/drafts/reject`,async route=>{
+    if(fail){fail=false;await route.fulfill({status:503,json:{error:'Service temporairement indisponible.'}});return}
+    await rejecting
+    const row={...rows[0],status:'rejected',rejectedFrom:'pending'}
+    await route.fulfill({json:{results:[{id:row.id,status:'rejected',draft:row}]}})
+  })
+  await workspace.locator('.draft-review-card').first().getByRole('button',{name:'Rejeter',exact:true}).click()
+  await expect(workspace.getByRole('alert')).toContainText('Service temporairement indisponible')
+  await assertSingle()
+  await expect(activeLive).toContainText('Service temporairement indisponible')
+  await expect(workspace.getByRole('alert')).toHaveAttribute('aria-live','off')
+  await workspace.getByRole('button',{name:'Réessayer',exact:true}).click()
+  await expect(activeLive).toContainText('Chargement…')
+  await expect(activeLive).toContainText('Progression : 0 sur 1')
+  await assertSingle()
+  releaseReject()
+  await expect(workspace.locator('.draft-review-undo')).toBeVisible()
+  await expect(activeLive).toContainText('Progression : 1 sur 1')
+  await expect(activeLive).toContainText('Rejeté. Annuler.')
+  await assertSingle()
+  await expect(workspace.locator('.draft-review-undo')).not.toHaveAttribute('aria-live','polite')
+})

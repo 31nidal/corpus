@@ -2,7 +2,7 @@ import { PdfCropSelector } from "../../flashcards/PdfCropSelector";
 import { GenerationOptions } from "./GenerationOptions";
 import { ReviewActions, ReviewDestination, ReviewSelectionActions } from "./ReviewActions";
 import { CreatedCards, ReviewList } from "./ReviewList";
-import { ReviewStatus } from "./ReviewStatus";
+import { ReviewAnnouncements, ReviewStatus } from "./ReviewStatus";
 import { useDraftReview } from "./useDraftReview";
 import type { ReviewOptions } from "./useDraftReview";
 import "./review.css";
@@ -16,10 +16,7 @@ export default function ReviewWorkspace(props: ReviewOptions & { onClose: () => 
       <header className="draft-review-heading">
         <div>
           <h2>Révision des flashcards</h2>
-          <p aria-live="polite" aria-atomic="true">
-            {review.data.counts.pending} en attente · {review.data.counts.edited} modifiés ·{" "}
-            {review.selected.size} sélectionnés
-          </p>
+          <ReviewAnnouncements review={review} />
         </div>
         <button disabled={review.busy} onClick={onClose}>
           Fermer la révision
