@@ -45,5 +45,7 @@ for(const item of corpus){
  const result=extractPdfPagesAndText(bytes)
  assert.equal(result.pageCount,item.pages,item.name+' : pages manquantes')
  assert.ok(result.totalText.length>1000,item.name+' : texte insuffisant')
+ const anchors={'cardiologie-uness':'principale fonction cardiaque','cardiologie-college':'cardiologie','pharmacologie-lyon':'pharmacologie','physiologie-grenoble':'barorécepteurs'}
+ assert.ok(result.totalText.toLowerCase().includes(anchors[item.name]),item.name+' : repère textuel illisible')
  console.log(JSON.stringify({name:item.name,pages:result.pageCount,characters:result.totalText.length}))
 }

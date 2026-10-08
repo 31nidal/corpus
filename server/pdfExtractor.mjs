@@ -59,15 +59,16 @@ function decodeChar(code) {
  *
  * FIX : \f est un saut de page (form-feed U+000C), PAS la ligature fi du TeX OT1.
  */
-function decodeLiteralString(str) {
+function decodeLiteralString(str, cmap = null) {
   const ESCAPES = {
     n: '\n', r: '\r', t: '\t', b: '\b', f: '\f',
     '(': '(', ')': ')', '\\': '\\'
   }
   const unescaped = str.replace(/\\([0-7]{1,3}|[\\()nrtbf])/g, (_, seq) => {
-    if (/^[0-7]+$/.test(seq)) return decodeChar(parseInt(seq, 8))
+    if (/^[0-7]+$/.test(seq)) return cmap?.size ? String.fromCharCode(parseInt(seq, 8)) : decodeChar(parseInt(seq, 8))
     return seq in ESCAPES ? ESCAPES[seq] : seq
   })
+  if (cmap?.size) return decodeHexString(Buffer.from(unescaped, 'latin1').toString('hex'), cmap)
   let out = ''
   for (let i = 0; i < unescaped.length; i++) out += decodeChar(unescaped.charCodeAt(i))
   return out
@@ -182,6 +183,8 @@ export function normalizeFrenchText(text) {
     // Accent grave ` ou \u0060
     .replace(/[`\u0060]\s*([eEaAuUiI])/g, (_, v) => GRAVE[v] || v)
     .replace(/([eEaAuU])\s*[`\u0060]/g,   (_, v) => GRAVE[v] || v)
+    // TeX uses a dotless i under a separately positioned circumflex.
+    .replace(/[\^\u02C6]\s*\u0131/g, 'î')
     // Accent circonflexe ^ ou ˆ
     .replace(/[\^\u02C6]\s*([eEaAiIoOuU])/g, (_, v) => CIRC[v] || v)
     .replace(/([eEaAiIoOuU])\s*[\^\u02C6]/g, (_, v) => CIRC[v] || v)
@@ -453,7 +456,8 @@ function decompressStream(streamData, dict, encountered = streamFilters(dict)) {
  *   [2][3] = Td/TD dx, dy
  *   [4..9] = paramètres Tm : a b c d e f  (f = translation y)
  */
-export function extractTextFromContentStream(content, cmap = null) {
+export function extractTextFromContentStream(content, cmap = null, fontMaps = new Map()) {
+  let activeCmap = cmap, literalCmap = null
   const pieces = []
   const btRe = /BT([\s\S]*?)ET/g
   let btM
@@ -464,11 +468,16 @@ export function extractTextFromContentStream(content, cmap = null) {
     let lastTy   = null   // Dernière position y absolue connue (Tm)
 
     // Regex combiné (l'ordre compte : Tj avant TJ avant Td avant Tm avant T*)
-    const opRe = /(?:\((?:[^\\()]|\\.)*\)|<[0-9A-Fa-f\s]+>)\s*(?:Tj|'|")|(\[(?:[^\[\]]|\((?:[^\\()]|\\.)*\)|<[0-9A-Fa-f\s]+>)*\])\s*TJ|(-?[0-9.]+)\s+(-?[0-9.]+)\s+(?:Td|TD)|(-?[0-9.]+)\s+(-?[0-9.]+)\s+(-?[0-9.]+)\s+(-?[0-9.]+)\s+(-?[0-9.]+)\s+(-?[0-9.]+)\s+Tm|T\*/g
+    const opRe = /(?:\((?:[^\\()]|\\.)*\)|<[0-9A-Fa-f\s]+>)\s*(?:Tj|'|")|(\[(?:[^\[\]]|\((?:[^\\()]|\\.)*\)|<[0-9A-Fa-f\s]+>)*\])\s*TJ|(-?[0-9.]+)\s+(-?[0-9.]+)\s+(?:Td|TD)|(-?[0-9.]+)\s+(-?[0-9.]+)\s+(-?[0-9.]+)\s+(-?[0-9.]+)\s+(-?[0-9.]+)\s+(-?[0-9.]+)\s+Tm|T\*|\/([^\s/<>\[\]()]+)\s+(-?[0-9.]+)\s+Tf/g
     let opM
 
     while ((opM = opRe.exec(block)) !== null) {
       const token = opM[0]
+      if (opM[10] !== undefined) {
+        literalCmap = fontMaps.get(opM[10]) ?? null
+        activeCmap = fontMaps.has(opM[10]) ? fontMaps.get(opM[10]) : cmap
+        continue
+      }
 
       // T* — retour à la ligne explicite
       if (token === 'T*') {
@@ -511,9 +520,9 @@ export function extractTextFromContentStream(content, cmap = null) {
         while ((el = elemRe.exec(opM[1])) !== null) {
           const item = el[0]
           if (item.startsWith('(') && item.endsWith(')')) {
-            word += decodeLiteralString(item.slice(1, -1))
+            word += decodeLiteralString(item.slice(1, -1), literalCmap)
           } else if (item.startsWith('<') && item.endsWith('>')) {
-            word += decodeHexString(item.slice(1, -1), cmap)
+            word += decodeHexString(item.slice(1, -1), activeCmap)
           } else if (el[1] !== undefined && parseFloat(el[1]) < -200) {
             // Crénage très négatif = coupure de mot
             if (!word.endsWith(' ')) word += ' '
@@ -526,9 +535,9 @@ export function extractTextFromContentStream(content, cmap = null) {
       // Tj / ' / " — chaîne unique (littérale ou hexadécimale)
       const rawStr = token.replace(/\s*(?:Tj|'|")$/, '')
       if (rawStr.startsWith('(') && rawStr.endsWith(')')) {
-        lineText += decodeLiteralString(rawStr.slice(1, -1))
+        lineText += decodeLiteralString(rawStr.slice(1, -1), literalCmap)
       } else if (rawStr.startsWith('<') && rawStr.endsWith('>')) {
-        lineText += decodeHexString(rawStr.slice(1, -1), cmap)
+        lineText += decodeHexString(rawStr.slice(1, -1), activeCmap)
       }
     }
 
@@ -540,6 +549,30 @@ export function extractTextFromContentStream(content, cmap = null) {
       .replace(/[\u0000-\u0008\u000E-\u0011\u0015-\u0017\u001F]/g, ' ')
       .replace(/[ \t]+/g, ' ')
   )
+}
+
+// Resolve font resources in page scope; names such as /F1 are local, not global.
+function pageFontMaps(page, objects, cmaps) {
+  const maps = new Map(), visited = new Set()
+  for (let node = page; node && !visited.has(node.id);) {
+    visited.add(node.id)
+    const resource = node.dict.match(/\/Resources\s*(?:(\d+)\s+(\d+)\s+R|<<)/)
+    if (resource) {
+      const dict = resource[1] ? objects.get(`${resource[1]}_${resource[2]}`)?.dict : node.dict
+      const fonts = dict?.match(/\/Font\s*(?:(\d+)\s+(\d+)\s+R|<<([\s\S]*?)>>)/)
+      const fontDict = fonts?.[1] ? objects.get(`${fonts[1]}_${fonts[2]}`)?.dict : fonts?.[3]
+      for (const ref of (fontDict ?? '').matchAll(/\/([^\s/<>\[\]()]+)\s+(\d+)\s+(\d+)\s+R/g)) {
+        const font = objects.get(`${ref[2]}_${ref[3]}`)
+        const unicode = font?.dict.match(/\/ToUnicode\s+(\d+)\s+(\d+)\s+R/)
+        if (!font) continue
+        maps.set(ref[1], unicode ? cmaps.get(`${unicode[1]}_${unicode[2]}`) ?? null : null)
+      }
+      break
+    }
+    const parent = node.dict.match(/\/Parent\s+(\d+)\s+(\d+)\s+R/)
+    node = parent ? objects.get(`${parent[1]}_${parent[2]}`) : null
+  }
+  return maps
 }
 
 // ─── 7. Point d'entrée principal ──────────────────────────────────────────────
@@ -567,7 +600,7 @@ export function extractPdfPagesAndText(buffer) {
 
   // Collecter toutes les entrées CMap (ToUnicode) depuis chaque stream.
   // Fusionnées dans une map globale — suffisant pour les documents à encodage unique.
-  const globalCmap = new Map()
+  const globalCmap = new Map(), cmaps = new Map()
   for (const obj of objects.values()) {
     if (!obj.isStream) continue
     // Image/attachment compression is irrelevant to text extraction. Required
@@ -581,7 +614,9 @@ export function extractPdfPagesAndText(buffer) {
       throw error
     }
     if (text.includes('beginbfchar') || text.includes('beginbfrange')) {
-      for (const [k, v] of parseCMap(text)) globalCmap.set(k, v)
+      const map = parseCMap(text)
+      cmaps.set(obj.id, map)
+      for (const [k, v] of map) globalCmap.set(k, v)
     }
   }
 
@@ -592,6 +627,8 @@ export function extractPdfPagesAndText(buffer) {
   for (let i = 0; i < pageObjects.length; i++) {
     const pageObj = pageObjects[i]
     let pageText  = ''
+    const fontMaps = pageFontMaps(pageObj, objects, cmaps)
+    const fallbackCmap = globalCmap
 
     // Résoudre /Contents — référence unique ou tableau de références
     const cm = pageObj.dict.match(/\/Contents\s*(?:(\d+)\s+(\d+)\s+R|\[([^\]]+)\])/)
@@ -601,7 +638,7 @@ export function extractPdfPagesAndText(buffer) {
         const cObj = objects.get(`${cm[1]}_${cm[2]}`)
         if (cObj?.streamData) {
           pageText = extractTextFromContentStream(
-            decode(cObj), globalCmap
+            decode(cObj), fallbackCmap, fontMaps
           )
         }
       } else if (cm[3]) {
@@ -611,7 +648,7 @@ export function extractPdfPagesAndText(buffer) {
           const cObj = objects.get(`${ref[1]}_${ref[2]}`)
           if (cObj?.streamData) {
             parts.push(extractTextFromContentStream(
-              decode(cObj), globalCmap
+              decode(cObj), fallbackCmap, fontMaps
             ))
           }
         }

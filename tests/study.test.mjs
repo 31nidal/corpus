@@ -958,3 +958,30 @@ test('PDF : longueur indirecte résolue avant la longueur directe, objet avant o
     }
   }
 })
+
+test('PDF : ToUnicode scoped par police, chaînes hex/littérales et ressources héritées', async () => {
+  const {extractPdfPagesAndText} = await import('../server/pdfExtractor.mjs')
+  const first='Le rein filtre le plasma sanguin.',second='Le coeur ejecte le sang vers les organes.'
+  const cmap=text=>`${text.length} beginbfchar\n`+[...text].map((c,i)=>`<${(i+1).toString(16).padStart(2,'0')}> <${c.charCodeAt(0).toString(16).padStart(4,'0')}>`).join('\n')+'\nendbfchar'
+  const hex=text=>[...text].map((_,i)=>(i+1).toString(16).padStart(2,'0')).join('')
+  const literal=text=>[...text].map((_,i)=>'\\'+(i+1).toString(8).padStart(3,'0')).join('')
+  const stream=(id,text)=>`${id} 0 obj\n<< /Length ${Buffer.byteLength(text)} >>\nstream\n${text}\nendstream\nendobj\n`
+  const pdf=Buffer.from('%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n'+
+    '2 0 obj\n<< /Type /Pages /Kids [3 0 R 8 0 R] /Count 2 /Resources << /Font << /F1 6 0 R /F2 7 0 R >> >> >>\nendobj\n'+
+    '3 0 obj\n<< /Type /Page /Parent 2 0 R /Contents 4 0 R >>\nendobj\n'+
+    stream(4,`BT /F1 12 Tf <${hex(first)}> Tj 0 -20 Td /F2 12 Tf (${literal(second)}) Tj ET`)+
+    '6 0 obj\n<< /Type /Font /Subtype /TrueType /ToUnicode 10 0 R >>\nendobj\n'+
+    '7 0 obj\n<< /Type /Font /Subtype /TrueType /ToUnicode 11 0 R >>\nendobj\n'+
+    '8 0 obj\n<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 7 0 R >> >> /Contents 9 0 R >>\nendobj\n'+
+    stream(9,`BT /F1 12 Tf <${hex(second)}> Tj ET`)+stream(10,cmap(first))+stream(11,cmap(second))+'%%EOF','latin1')
+  const result=extractPdfPagesAndText(pdf)
+  assert.equal(result.pageCount,2)
+  assert.equal(result.pages[0].text,first+'\n'+second)
+  assert.equal(result.pages[1].text,second)
+})
+
+test('PDF : accent TeX sur i sans point ne se déplace pas sur la lettre précédente',async()=>{
+ const {normalizeFrenchText}=await import('../server/pdfExtractor.mjs')
+ assert.equal(normalizeFrenchText('connaˆı t'),'connaî t')
+ assert.equal(normalizeFrenchText('conna^ıt'),'connaît')
+})
