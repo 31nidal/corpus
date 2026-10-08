@@ -1,4 +1,4 @@
-import {DraftReviewRepository} from './repository.mjs'
+import {DraftReviewRepository,MAX_DRAFT_PAGE_SIZE} from './repository.mjs'
 const statuses=new Set(['pending','edited','accepted','rejected'])
 export async function handleDraftReview({db,notes,userId,subpath,url,req,readJson,send,now=Date.now}) {
   const docMatch=subpath.match(/^documents\/([^/]+)\/drafts(?:\/(generate|accept|reject|restore))?$/)
@@ -11,14 +11,14 @@ export async function handleDraftReview({db,notes,userId,subpath,url,req,readJso
     if(!action&&req.method==='GET') {
       const status=url.searchParams.get('status')||undefined
       const limit=Number(url.searchParams.get('limit')??50),offset=Number(url.searchParams.get('offset')??0)
-      if((status&&!statuses.has(status))||!Number.isSafeInteger(limit)||limit<1||limit>100||!Number.isSafeInteger(offset)||offset<0){send(400,{error:'Filtres ou pagination invalides.'});return true}
+      if((status&&!statuses.has(status))||!Number.isSafeInteger(limit)||limit<1||limit>MAX_DRAFT_PAGE_SIZE||!Number.isSafeInteger(offset)||offset<0){send(400,{error:'Filtres ou pagination invalides.'});return true}
       send(200,repo.list(userId,documentId,status,limit,offset));return true
     }
     if(req.method==='POST'&&action) {
       const body=await readJson(req)
       if(!body||typeof body!=='object'||Array.isArray(body)){send(400,{error:'Requête invalide.'});return true}
       if(action==='generate') {
-        if(Object.keys(body).some(k=>!['count','level'].includes(k))){send(400,{error:'La génération lit uniquement les sections du document ; seuls count et level sont autorisés.'});return true}
+        if(Object.keys(body).some(k=>!['count','level','sectionId','sectionIds','startPage','endPage'].includes(k))){send(400,{error:'La génération lit uniquement les sections du document ; seuls les paramètres de génération et filtres de sections/pages sont autorisés.'});return true}
         send(201,repo.generate(userId,documentId,body))
       }else send(200,repo.batch(userId,documentId,action,body))
       return true

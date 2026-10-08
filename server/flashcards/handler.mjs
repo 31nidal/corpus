@@ -689,7 +689,7 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
       }
       if (req.method === 'GET' && subpath === 'review') {
         const timeZone = cleanText(req.headers['x-timezone'] || url.searchParams.get('timezone'), 60) || 'Europe/Paris'
-        const cards = repo.reviewQueue(user.id, cleanText(url.searchParams.get('deck'), 100), Number(url.searchParams.get('limit')) || 30, timeZone)
+        const cards = repo.reviewQueue(user.id, cleanText(url.searchParams.get('deck'), 100), Number(url.searchParams.get('limit')) || 30, timeZone, undefined, cleanText(url.searchParams.get('note'), 100))
         return send(200, {cards})
       }
       if (req.method === 'GET' && subpath === 'stats') {

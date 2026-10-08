@@ -115,7 +115,8 @@
         "createdAt": 1791453600000,
         "updatedAt": 1791453600002,
         "faithfulToCourse": false
-      }
+      },
+      "noteId": "217245fc-58a0-4cc0-a0f4-31b60c1c22ea"
     },
     {
       "id": "8c4e7ba3-7599-486d-a0f0-21c78e312bdd",
@@ -228,7 +229,8 @@
         "createdAt": 1791453600000,
         "updatedAt": 1791453600002,
         "faithfulToCourse": false
-      }
+      },
+      "noteId": "ccec6a4d-779b-454e-828b-f2cd43b61dd4"
     },
     {
       "id": "inconnu",

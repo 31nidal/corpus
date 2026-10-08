@@ -82,8 +82,8 @@ Préfixe `/api/flashcards`. Authentification et protection d’origine existante
 
 | Méthode | Route | Contrat |
 | --- | --- | --- |
-| POST | `/documents/:id/drafts/generate` | Corps `{count, level}` uniquement ; aucun texte client. Sections relues en base, page = start_page. Maximum nommé/testé 60. |
-| GET | `/documents/:id/drafts` | Filtres `status`, `limit` (1–100), `offset`. Liste paginée, compteurs globaux du document, total filtré. |
+| POST | `/documents/:id/drafts/generate` | Corps `{count, level, sectionId?, sectionIds?, startPage?, endPage?}` ; aucun texte client. Sections/pages sélectionnées et contrôlées en base ; génération par section puis tour de rôle avant plafond global. Sections relues en base, page = start_page. Maximum nommé/testé 60. |
+| GET | `/documents/:id/drafts` | Filtres `status`, `limit` (1–500, constante `MAX_DRAFT_PAGE_SIZE`), `offset`. Liste paginée, compteurs globaux du document, total filtré. |
 | PATCH | `/drafts/:id` | `front`, `back`, `noteType`, `fields`. Validation existante de notes ; 409 sur accepted. Un rejected édité reste rejected, restored vers edited. Empreinte et preuve d’origine inchangées. |
 | POST | `/drafts/:id/accept` | `{deckId}` ; transaction par brouillon ; accepted ou already_accepted, sans reçu ni requestId. |
 | POST | `/drafts/:id/reject` | Refus 409 sur accepted ; état antérieur enregistré ; rejeter à nouveau ne renouvelle pas la date de purge. |
@@ -111,8 +111,10 @@ Réponses HTTP réelles, complètes, produites avec un compte de test et la base
 - [Acceptation individuelle](examples/draft-accept.json).
 - [Acceptation en lot : accepted, already_accepted et not_found](examples/drafts-accept-batch.json).
 
-Dans le contrat actuel, l'identifiant de note est `note.id` dans chaque résultat réussi ; aucun champ explicite `noteId` n'existe encore. Le compteur fidèle inclut uniquement pending et exclut edited. Le lot fidèle est plafonné à 100, recalcule l'éligibilité et rapporte les résultats réels : il ne garantit pas d'accepter le compteur entier au-delà du plafond ou en cas d'erreur.
+L'identifiant de note est renvoyé dans `noteId` et `note.id`, pour accepted et already_accepted, en individuel comme en lot. Le compteur fidèle inclut uniquement pending et exclut edited. Le lot fidèle est plafonné à 100, recalcule l'éligibilité et rapporte les résultats réels : il ne garantit pas d'accepter le compteur entier au-delà du plafond ou en cas d'erreur.
 
 L'UI ne proposera aucun bouton de lot fidèle. Proposition en attente d'accord : cases à cocher, Maj+clic, sélection de la vue filtrée, acceptation/rejet des identifiants sélectionnés en lots de 100. Pour Mes cours uniquement, remplacer l'appel de GenerationDialog par génération persistée puis ouverture de Révision ; conserver les trois autres usages (catalogue, correction QCM, texte libre), les synthèses/QCM et la création manuelle visuelle.
 
-Le test de pagination ajouté retire une acceptation puis recharge le préfixe depuis offset 0 : aucun brouillon restant n'est sauté. La limite actuelle de 100 reste une restriction à résoudre avant les chargements de préfixes de 150 éléments et plus. Aucun code UI n'a été ajouté. Suites locales : flashcards 96, study 25, catalog-content 6, toutes vertes.
+Le test de pagination ajouté retire une acceptation puis recharge le préfixe depuis offset 0 : aucun brouillon restant n'est sauté. La limite de page est maintenant 500, bornes 0/1/500/501 testées. Au-delà, l’UI rechargera le préfixe de 500 puis les pages complémentaires depuis le début, sans réutiliser un offset devenu périmé. Aucun code UI n'a été ajouté. Suites locales : flashcards 96, study 25, catalog-content 6, toutes vertes.
+
+Bloc API validé : flashcards 98, study 25, catalog-content 6. CI précédente entièrement verte sur 5ebfc49.

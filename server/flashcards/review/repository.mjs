@@ -4,6 +4,7 @@ import {validateNote} from '../validation.mjs'
 import {draftContentHash,draftEvidenceSignals,isSafeDraft} from './policy.mjs'
 
 export const MAX_DRAFT_GENERATION_COUNT = 60
+export const MAX_DRAFT_PAGE_SIZE = 500
 export const MAX_DRAFT_BATCH_SIZE = 100
 const error = (status,message) => Object.assign(new Error(message),{status})
 const parse = value => JSON.parse(value)
@@ -15,7 +16,7 @@ const preview = (type,fields) => ({
 export class DraftReviewRepository {
   constructor(db,notes,now=Date.now) {this.db=db;this.notes=notes;this.now=now}
   document(userId,id) {
-    return this.db.prepare('SELECT id,title FROM study_documents WHERE id=? AND user_id=?').get(id,userId)
+    return this.db.prepare('SELECT id,title,page_count FROM study_documents WHERE id=? AND user_id=?').get(id,userId)
   }
   row(userId,id,documentId) {
     return documentId
@@ -45,15 +46,29 @@ export class DraftReviewRepository {
     return {drafts:filtered.slice(offset,offset+limit),counts,filteredTotal:filtered.length,limit,offset,
       nextOffset:offset+limit<filtered.length?offset+limit:null}
   }
-  generate(userId,documentId,{count=12,level='standard'}={}) {
+  generate(userId,documentId,{count=12,level='standard',sectionId,sectionIds,startPage,endPage}={}) {
     if(!Number.isSafeInteger(count)||count<1)throw error(400,'Le nombre demandé doit être un entier positif.')
     if(!['essential','standard','complete'].includes(level))throw error(400,'Niveau de génération invalide.')
     const doc=this.document(userId,documentId);if(!doc)throw error(404,'Document introuvable.')
     const requestedCount=Math.min(count,MAX_DRAFT_GENERATION_COUNT)
-    const sections=this.db.prepare('SELECT id,title,content,start_page AS startPage,end_page AS endPage FROM study_sections WHERE document_id=? AND user_id=? ORDER BY section_order').all(documentId,userId)
+    let sections=this.db.prepare('SELECT id,title,content,start_page AS startPage,end_page AS endPage FROM study_sections WHERE document_id=? AND user_id=? ORDER BY section_order,id').all(documentId,userId)
+    if(sectionId!==undefined && (typeof sectionId!=='string'||!sections.some(s=>s.id===sectionId)))throw error(404,'Section introuvable.')
+    if(sectionIds!==undefined && (!Array.isArray(sectionIds)||!sectionIds.length||sectionIds.length>100||sectionIds.some(id=>typeof id!=='string'||!sections.some(s=>s.id===id))))throw error(404,'Section introuvable.')
+    if(sectionId!==undefined && sectionIds!==undefined)throw error(400,'Choisissez sectionId ou sectionIds.')
+    if([startPage,endPage].some(p=>p!==undefined&&(!Number.isSafeInteger(p)||p<1||p>doc.page_count)) || (startPage!==undefined&&endPage!==undefined&&startPage>endPage))throw error(400,'La plage de pages est invalide.')
+    if(sectionId!==undefined)sections=sections.filter(s=>s.id===sectionId)
+    if(sectionIds!==undefined)sections=sections.filter(s=>sectionIds.includes(s.id))
+    if(startPage!==undefined||endPage!==undefined)sections=sections.filter(s=>s.endPage>=(startPage??1)&&s.startPage<=(endPage??doc.page_count))
     if(!sections.length)throw error(422,'Aucune section disponible pour générer des brouillons.')
-    const candidates=generateLocalNoteDrafts({text:sections.map(s=>s.content).join('\n'),level,requestedCount,
-      source:{type:'study_document',documentId},chapter:doc.title})
+    // Generate per section, then round-robin before the global cap. Later sections
+    // get the same opportunity as the first; source attribution stays exact.
+    const queues=sections.map(section=>generateLocalNoteDrafts({text:section.content,level,requestedCount,
+      source:{type:'study_document',documentId},chapter:doc.title}).map(draft=>({draft,section})))
+    const maximum=Math.min(requestedCount,level==='essential'?20:level==='standard'?35:60)
+    const candidates=[]
+    for(let index=0;candidates.length<maximum&&queues.some(q=>index<q.length);index++) {
+      for(const queue of queues)if(queue[index]&&candidates.length<maximum)candidates.push(queue[index])
+    }
     let created=0,ignored=0,unattributed=0
     const ids=[]
     this.db.exec('BEGIN IMMEDIATE')
@@ -62,10 +77,9 @@ export class DraftReviewRepository {
         (id,user_id,document_id,section_id,page,note_type,front,back,fields_json,source_excerpt,content_hash,
          subject,chapter,tags_json,confidence,verbatim_proof,created_at,updated_at)
         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
-      for(const draft of candidates) {
-        const section=sections.find(s=>draftEvidenceSignals(draft,s).verbatimProof)
+      for(const {draft,section} of candidates) {
         // Never attribute a quote assembled across sections to a fabricated page.
-        if(!section){unattributed++;continue}
+        if(!draftEvidenceSignals(draft,section).verbatimProof){unattributed++;continue}
         const signals=draftEvidenceSignals(draft,section),id=randomUUID(),time=this.now()
         const changes=insert.run(id,userId,documentId,section.id,section.startPage,draft.noteType,
           draft.front,draft.back,JSON.stringify(draft.fields),draft.source.excerpt,
@@ -109,7 +123,7 @@ export class DraftReviewRepository {
         if(row.status==='accepted'&&row.accepted_note_id) {
           const note=this.notes.note(userId,row.accepted_note_id)
           if(!note)throw error(409,'Note acceptée indisponible.')
-          result={id,status:'already_accepted',note}
+          result={id,status:'already_accepted',noteId:note.id,note}
         }else {
           if(row.status==='rejected')throw error(409,'Restaurez le brouillon avant de l’accepter.')
           if(faithfulOnly&&!this.view(userId,row).faithfulToCourse)throw error(409,'Ce brouillon ne remplit plus le critère de fidélité au cours.')
@@ -120,7 +134,7 @@ export class DraftReviewRepository {
           if(!noteValue)throw error(400,'Contenu du brouillon invalide.')
           const note=this.notes.createNoteRows(userId,noteValue)
           this.db.prepare("UPDATE flashcard_drafts SET status='accepted',accepted_note_id=?,rejected_from=NULL,rejected_at=NULL,updated_at=? WHERE id=? AND user_id=?").run(note.id,time,id,userId)
-          result={id,status:'accepted',note}
+          result={id,status:'accepted',noteId:note.id,note}
         }
       }else if(action==='reject') {
         if(row.status==='accepted')throw error(409,'Supprimez la note pour annuler une acceptation.')

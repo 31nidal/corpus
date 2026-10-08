@@ -8,7 +8,7 @@ import {DatabaseSync} from 'node:sqlite'
 import {createAccountHandler} from '../server/accounts.mjs'
 import {createFlashcardHandler} from '../server/flashcards/handler.mjs'
 import {createStudyHandler} from '../server/study.mjs'
-import {MAX_DRAFT_GENERATION_COUNT,MAX_DRAFT_BATCH_SIZE} from '../server/flashcards/review/repository.mjs'
+import {MAX_DRAFT_GENERATION_COUNT,MAX_DRAFT_BATCH_SIZE,MAX_DRAFT_PAGE_SIZE} from '../server/flashcards/review/repository.mjs'
 import {purgeRejectedDraftsOnStartup} from '../server/flashcards/review/startup.mjs'
 import {REJECTED_DRAFT_RETENTION_MS} from '../server/flashcards/review/policy.mjs'
 
@@ -277,5 +277,61 @@ test('brouillons API : recharger le préfixe après acceptation ne saute aucun b
     assert.equal(next.drafts.some(d=>d.id===removed),false)
     for(const draft of first.drafts.slice(1))assert.ok(next.drafts.some(d=>d.id===draft.id))
     assert.equal(new Set(next.drafts.map(d=>d.id)).size,59)
+  }finally{f.close()}
+})
+
+
+test('brouillons API : noteId individuel et lot, bornes pagination 0/1/500/501',async()=>{
+  const f=await fixture()
+  try {
+    assert.equal(MAX_DRAFT_PAGE_SIZE,500)
+    const {data:{ids}}=await f.generate()
+    for(const [limit,status] of [[0,400],[1,200],[500,200],[501,400]])assert.equal((await f.call(docRoute('doc-a')+`?limit=${limit}`,'GET',undefined,f.alice.cookie)).status,status)
+    const single=await f.call(`${draftRoute(ids[0])}/accept`,'POST',{deckId:f.deck.id},f.alice.cookie)
+    assert.equal(single.data.noteId,single.data.note.id)
+    const batch=await f.call(`${docRoute('doc-a')}/accept`,'POST',{ids:ids.slice(0,2),deckId:f.deck.id},f.alice.cookie)
+    for(const result of batch.data.results)assert.equal(result.noteId,result.note.id)
+    assert.equal(batch.data.results[0].noteId,single.data.noteId)
+  }finally{f.close()}
+})
+
+test('brouillons API : sections en base, propriété 404, pages et répartition entre cinq sections',async()=>{
+  const f=await fixture()
+  try {
+    f.db.prepare('DELETE FROM study_sections WHERE document_id=?').run('doc-a')
+    for(let i=0;i<5;i++)f.db.prepare('INSERT INTO study_sections(id,document_id,user_id,title,section_order,start_page,end_page,content,token_count) VALUES(?,?,?, ?,?,?,?, ?,100)').run(`s${i}`,'doc-a',f.alice.data.user.id,`Section ${i}`,i,i+1,i+1,Array.from({length:20},(_,j)=>`Le muscle groupe ${i} numéro ${j} permet la flexion de la partie ${j}.`).join(' '))
+    for(const sectionId of ['doc-b-section','absente'])assert.equal((await f.generate('doc-a',{sectionId})).status,404)
+    assert.equal((await f.call(`${docRoute('doc-a')}/generate`,'POST',{sectionId:'s0'},f.bob.cookie)).status,404)
+    const generated=await f.generate('doc-a',{count:60,level:'complete'})
+    assert.equal(generated.data.created,60)
+    const list=await f.list('?limit=500')
+    for(let i=0;i<5;i++)assert.equal(list.drafts.filter(d=>d.sectionId===`s${i}`).length,12)
+    const selected=await f.generate('doc-a',{sectionId:'s4',count:20})
+    assert.ok(selected.data.created>0)
+    for(const id of selected.data.ids)assert.equal(f.db.prepare('SELECT section_id FROM flashcard_drafts WHERE id=?').get(id).section_id,'s4')
+    assert.equal((await f.generate('doc-a',{sectionIds:['s0','doc-b-section']})).status,404)
+    assert.equal((await f.generate('doc-a',{startPage:6})).status,400)
+    const pages=await f.generate('doc-a',{sectionIds:['s1','s2'],startPage:3,endPage:3,count:20})
+    for(const id of pages.data.ids)assert.equal(f.db.prepare('SELECT section_id FROM flashcard_drafts WHERE id=?').get(id).section_id,'s2')
+  }finally{f.close()}
+})
+
+
+test('brouillons API : lien FSRS ciblé avant la limite de file, isolation et échéance conservées',async()=>{
+  const f=await fixture()
+  try {
+    const {data:{ids}}=await f.generate()
+    const accepted=await f.call(`${draftRoute(ids[0])}/accept`,'POST',{deckId:f.deck.id},f.alice.cookie)
+    const noteId=accepted.data.noteId
+    for(let i=0;i<40;i++)assert.equal((await f.call(`${root}/notes`,'POST',{noteType:'basic',defaultDeckId:f.deck.id,fields:{front:`Autre question ${i}`,back:'Autre réponse'},source:{type:'manual'}},f.alice.cookie)).status,201)
+    f.db.prepare('UPDATE flashcard_reviews SET due_at=? WHERE card_id IN (SELECT id FROM flashcards WHERE note_id!=?)').run(Date.now()-1000,noteId)
+    const general=await f.call(`${root}/review`,'GET',undefined,f.alice.cookie)
+    assert.equal(general.data.cards.some(c=>c.noteId===noteId),false)
+    const targeted=await f.call(`${root}/review?note=${noteId}`,'GET',undefined,f.alice.cookie)
+    assert.equal(targeted.data.cards.length,1)
+    assert.equal(targeted.data.cards[0].noteId,noteId)
+    assert.equal((await f.call(`${root}/review?note=${noteId}`,'GET',undefined,f.bob.cookie)).data.cards.length,0)
+    f.db.prepare('UPDATE flashcard_reviews SET due_at=? WHERE card_id IN (SELECT id FROM flashcards WHERE note_id=?)').run(Date.now()+86400000,noteId)
+    assert.equal((await f.call(`${root}/review?note=${noteId}`,'GET',undefined,f.alice.cookie)).data.cards.length,0)
   }finally{f.close()}
 })
