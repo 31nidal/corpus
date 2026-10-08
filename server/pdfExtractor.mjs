@@ -379,20 +379,24 @@ export function decodeAscii85(buffer) {
   if (encoded.startsWith('<~')) encoded = encoded.slice(2)
   if (!encoded.endsWith('~>')) throw new Error('Terminaison ASCII85 manquante.')
   encoded = encoded.slice(0, -2)
-  const output = [], group = []
+  // One allocation, rather than one Buffer per five encoded bytes (large PDFs).
+  let zeroGroups = 0
+  for (const character of encoded) if (character === 'z') zeroGroups++
+  const output = Buffer.alloc(Math.ceil((encoded.length - zeroGroups) / 5) * 4 + zeroGroups * 4)
+  const group = []
+  let offset = 0
   const flush = (length = 4) => {
     let value = 0
     for (const digit of group) value = value * 85 + digit
     if (value > 0xffffffff) throw new Error('Groupe ASCII85 hors limites.')
-    const bytes = Buffer.alloc(4)
-    bytes.writeUInt32BE(value)
-    output.push(bytes.subarray(0, length))
+    output.writeUInt32BE(value, offset)
+    offset += length
     group.length = 0
   }
   for (const character of encoded) {
     if (character === 'z') {
       if (group.length) throw new Error('Abréviation ASCII85 dans un groupe incomplet.')
-      output.push(Buffer.alloc(4)); continue
+      offset += 4; continue
     }
     const digit = character.charCodeAt(0) - 33
     if (digit < 0 || digit > 84) throw new Error('Caractère ASCII85 invalide.')
@@ -405,7 +409,7 @@ export function decodeAscii85(buffer) {
     while (group.length < 5) group.push(84)
     flush(length)
   }
-  return Buffer.concat(output)
+  return output.subarray(0, offset)
 }
 
 function decompressStream(streamData, dict, encountered = streamFilters(dict)) {

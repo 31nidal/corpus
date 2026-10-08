@@ -14,8 +14,8 @@ Les filtres des images ne bloquent pas l’extraction du texte : ils ne sont pas
 
 ## Vérifications
 
-Tests d’extraction et upload réel du backend pour ASCII85+Flate, Flate seul et non compressé ; extraction ASCII85 seul, vecteur connu, espaces/z/groupes partiels, rejets d’encodages invalides, distinction scan/filtre inconnu, non-régression sur une image DCTDecode accompagnant du texte.
+Exports réels Reportlab dans les trois variantes (texte identique vérifié). Tests d’extraction et upload réel du backend pour ASCII85+Flate, Flate seul et non compressé ; extraction ASCII85 seul, vecteur connu, espaces/z/groupes partiels, rejets d’encodages invalides, distinction scan/filtre inconnu, non-régression sur une image DCTDecode accompagnant du texte.
 
 ## Non vérifié
 
-Reportlab n’est pas installé dans cet environnement : les tests construisent des PDF avec la même chaîne de filtres, mais aucun export réel reportlab fourni par un utilisateur n’a été testé. Pas de benchmark sur un large corpus, pas d’OCR, pas de support ajouté pour les PDF chiffrés, LZW, les références indirectes de Filter ou les nouveaux DecodeParms.
+Les trois exports de test ont été produits avec Reportlab 5.0.1 dans un environnement Python temporaire, sans dépendance ajoutée au projet. Ils sont conservés en fixtures (environ 4,2 ko au total) et testés sans Python. Aucun PDF réel fourni par un utilisateur n’a été testé. Pas de benchmark sur un large corpus, pas d’OCR, pas de support ajouté pour les PDF chiffrés, LZW, les références indirectes de Filter ou les nouveaux DecodeParms.

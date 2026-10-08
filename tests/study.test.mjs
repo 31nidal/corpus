@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, rmSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { deflateSync } from 'node:zlib'
@@ -928,4 +928,16 @@ test('PDF : un filtre d’image inconnu ne bloque pas le texte ; flux corrompu d
     assert.deepEqual(error.filters,['ASCII85Decode'])
     return true
   })
+})
+
+
+test('PDF : vrais exports Reportlab ASCII85+Flate, Flate seul et non compressé',async()=>{
+  const {extractPdfPagesAndText}=await import('../server/pdfExtractor.mjs')
+  const expected='Le rein filtre le plasma sanguin et regule les electrolytes.\nLe coeur est situe dans le mediastin thoracique.'
+  for(const name of ['reportlab-a85-flate','reportlab-flate','reportlab-raw']) {
+    const pdf=readFileSync(new URL(`./fixtures/pdf-compression/${name}.pdf`,import.meta.url))
+    const result=extractPdfPagesAndText(pdf)
+    assert.equal(result.pageCount,1)
+    assert.equal(result.totalText,expected,name)
+  }
 })
