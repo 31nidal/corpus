@@ -138,3 +138,11 @@ test('qualité pédagogique : verbes nominaux et quantités sans chiffres ne dé
  ]
  for(const [text,subject] of examples){const [card]=generateLocalNoteDrafts({text});assert.ok(card);assert.ok(card.front.includes(subject));assert.ok(!card.front.startsWith('Quelle valeur'));assert.equal(card.source.excerpt,text)}
 })
+
+test('les cloze au même recto gardent le contexte jusque dans les champs FSRS',async()=>{
+ const {generateLocalNoteDrafts}=await import('../server/flashcards/generation.mjs')
+ const text='Le nerf traverse le canal obturateur.\nLe nerf traverse le canal carpien.'
+ const cards=generateLocalNoteDrafts({text,requestedCount:60})
+ assert.equal(cards.length,2)
+ for(const card of cards){assert.equal(card.noteType,'cloze');assert.ok(card.fields.text.includes('Passage'));assert.equal(card.fields.text.replace(/\{\{c1::.*?\}\}/g,'[...]'),card.front);assert.ok(text.includes(card.source.excerpt))}
+})
