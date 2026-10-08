@@ -383,3 +383,23 @@ test('brouillons API : collisions entre sections contextualisées, preuves sépa
   assert.equal((await f.list()).counts.total,2)
  }finally{f.close()}
 })
+
+test('brouillons API : améliorer un recto ne ressuscite pas une ancienne preuve éditée ou rejetée',async()=>{
+ const f=await fixture()
+ try {
+  f.db.prepare('UPDATE study_sections SET content=? WHERE id=?').run('Le rein filtre le plasma sanguin.','doc-a-section')
+  const old=await f.generate()
+  const id=old.data.ids[0]
+  await f.call(draftRoute(id),'PATCH',{front:'Question personnalisée',back:'Réponse personnalisée'},f.alice.cookie)
+  await f.call(`${draftRoute(id)}/reject`,'POST',{},f.alice.cookie)
+  f.db.prepare('INSERT INTO study_sections(id,document_id,user_id,title,section_order,start_page,end_page,content,token_count) VALUES(?,?,?,?,?,?,?,?,?)')
+   .run('doc-a-second','doc-a',f.alice.data.user.id,'Autre passage',1,5,5,'Le rein filtre les substances dissoutes.',30)
+  const again=await f.generate('doc-a',{level:'complete',count:60})
+  assert.equal(again.data.created,1);assert.equal(again.data.ignored,1)
+  const rows=(await f.list()).drafts
+  assert.equal(rows.length,2)
+  const retained=rows.find(d=>d.id===id)
+  assert.equal(retained.front,'Question personnalisée');assert.equal(retained.back,'Réponse personnalisée')
+  assert.equal(retained.status,'rejected')
+ }finally{f.close()}
+})

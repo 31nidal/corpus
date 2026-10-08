@@ -85,7 +85,7 @@ export class DraftReviewRepository {
       const existing=this.db.prepare('SELECT section_id,note_type,back,source_excerpt FROM flashcard_drafts WHERE user_id=? AND document_id=?').all(userId,documentId)
       for(const {draft,section} of candidates) {
         // Front improvements never resurrect rejected/edited or existing facts.
-        if(existing.some(row=>row.section_id===section.id&&row.note_type===draft.noteType&&row.back===draft.back&&row.source_excerpt===draft.source.excerpt)){ignored++;continue}
+        if(existing.some(row=>row.section_id===section.id&&row.source_excerpt===draft.source.excerpt)){ignored++;continue}
         // Never attribute a quote assembled across sections to a fabricated page.
         if(!draftEvidenceSignals(draft,section).verbatimProof){unattributed++;continue}
         const signals=draftEvidenceSignals(draft,section),id=randomUUID(),time=this.now()
