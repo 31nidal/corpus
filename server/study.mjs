@@ -320,8 +320,12 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
             return send(422, {
               error: err.message,
               code: 'ERR_NO_EXTRACTABLE_TEXT',
-              scanned: true
+              scanned: true,
+              filters: err.filters || []
             })
+          }
+          if (['ERR_UNSUPPORTED_PDF_FILTER', 'ERR_INVALID_PDF_STREAM'].includes(err.code)) {
+            return send(422, {error: err.message, code: err.code, scanned: false, filters: err.filters || []})
           }
           return send(400, { error: err.message || 'Impossible d’extraire le texte de ce document PDF.' })
         }
