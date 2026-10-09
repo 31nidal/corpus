@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, rmSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { deflateSync } from 'node:zlib'
@@ -22,17 +22,37 @@ test('la limite PDF reste à 25 Mo pour les nouveaux comptes et les quotas exist
   } finally { db.close() }
 })
 
-function makePdf(textLines) {
+function ascii85Encode(data) {
+  let result = ''
+  for (let i = 0; i < data.length; i += 4) {
+    const chunk = data.subarray(i, i + 4), padded = Buffer.alloc(4)
+    chunk.copy(padded)
+    let value = padded.readUInt32BE()
+    if (chunk.length === 4 && value === 0) { result += 'z'; continue }
+    let group = ''
+    for (let j = 0; j < 5; j++) { group = String.fromCharCode(value % 85 + 33) + group; value = Math.floor(value / 85) }
+    result += group.slice(0, chunk.length + 1)
+  }
+  return Buffer.from(result + '~>', 'ascii')
+}
+
+function makePdf(textLines, encoding = 'flate') {
   const streamContent = 'BT /F1 12 Tf 72 712 Td ' +
     textLines.map(l => `(${l.replace(/[()]/g, '')}) Tj T*`).join(' ') +
     ' ET'
-  const deflated = deflateSync(Buffer.from(streamContent))
+  const raw = Buffer.from(streamContent)
+  const deflated = encoding === 'ascii85-flate' ? ascii85Encode(deflateSync(raw))
+    : encoding === 'ascii85' ? ascii85Encode(raw)
+    : encoding === 'raw' ? raw : deflateSync(raw)
+  const filter = encoding === 'ascii85-flate' ? '/Filter [/ASCII85Decode /FlateDecode]'
+    : encoding === 'ascii85' ? '/Filter /ASCII85Decode'
+    : encoding === 'raw' ? '' : '/Filter /FlateDecode'
   const pdfParts = [
     '%PDF-1.4\n',
     '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
     '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
     '3 0 obj\n<< /Type /Page /Parent 2 0 R /Contents 4 0 R >>\nendobj\n',
-    '4 0 obj\n<< /Length ' + deflated.length + ' /Filter /FlateDecode >>\nstream\n'
+    '4 0 obj\n<< /Length ' + deflated.length + ' ' + filter + ' >>\nstream\n'
   ]
   return Buffer.concat([
     Buffer.from(pdfParts.join(''), 'latin1'),
@@ -830,4 +850,138 @@ test('Concurrence et réservation atomique : deux requêtes simultanées avec 1 
   } finally {
     try { rmSync(dir, { recursive: true, force: true }) } catch { /* cleanup */ }
   }
+})
+
+
+test('PDF : ASCII85+Flate, Flate seul, non compressé et ASCII85 seul extraient le même texte', async () => {
+  const {extractPdfPagesAndText,decodeAscii85} = await import('../server/pdfExtractor.mjs')
+  const lines = ['Le rein filtre le plasma sanguin et regule les electrolytes.', 'Le coeur est situe dans le mediastin thoracique.']
+  const expected = extractPdfPagesAndText(makePdf(lines, 'raw'))
+  for (const encoding of ['ascii85-flate', 'flate', 'raw', 'ascii85']) {
+    assert.deepEqual(extractPdfPagesAndText(makePdf(lines, encoding)), expected, encoding)
+  }
+  assert.equal(decodeAscii85(Buffer.from('87cURD_*#TDfTZ)+T~>')).toString(), 'Hello, world!')
+  assert.deepEqual(decodeAscii85(Buffer.from('<~ z \n !! ~>')), Buffer.alloc(5))
+  for (let size = 1; size <= 17; size++) {
+    const bytes = Buffer.from(Array.from({length:size},(_,i)=>(i*57+size)%256))
+    assert.deepEqual(decodeAscii85(ascii85Encode(bytes)),bytes)
+  }
+  for (const invalid of ['!~>','!z~>','v~>','uuuuu~>','!!!!!','!!!!!~>garbage']) {
+    assert.throws(()=>decodeAscii85(Buffer.from(invalid)),undefined,invalid)
+  }
+})
+
+test('PDF : compression inconnue distinguée du scan, avec filtres rencontrés', async () => {
+  const {extractPdfPagesAndText} = await import('../server/pdfExtractor.mjs')
+  const pdf = makePdf(['Le rein filtre le plasma sanguin. Le coeur assure la circulation sanguine.'],'ascii85-flate')
+  const unsupported = Buffer.from(pdf.toString('latin1').replace('/ASCII85Decode /FlateDecode','/ASCII85Decode /LZWDecode'),'latin1')
+  assert.throws(()=>extractPdfPagesAndText(unsupported), error=>{
+    assert.equal(error.code,'ERR_UNSUPPORTED_PDF_FILTER')
+    assert.equal(error.status,422)
+    assert.deepEqual(error.filters,['ASCII85Decode','LZWDecode'])
+    assert.match(error.message,/non supporté \(LZWDecode\)/)
+    assert.match(error.message,/ASCII85Decode, LZWDecode/)
+    return true
+  })
+  assert.throws(()=>extractPdfPagesAndText(makeScannedPdf()), error=>{
+    assert.equal(error.code,'ERR_NO_EXTRACTABLE_TEXT')
+    assert.match(error.message,/PDF scanné/)
+    assert.deepEqual(error.filters,[])
+    return true
+  })
+})
+
+test('Study API : upload des trois compressions et erreurs de filtre sans fausse classification scan', async () => {
+  const dir=mkdtempSync(path.join(tmpdir(),'mycorpus-study-ascii85-'))
+  const api=setupTestApi(dir)
+  try {
+    const reg=await api.call('/api/account/register',{email:'compression@fac.fr',name:'Compression',password:'mot-de-passe-securise-2026'})
+    assert.equal(reg.status,201)
+    const lines=['Chapitre 1 : Anatomie et physiologie du rein.', 'Le rein filtre le plasma sanguin et regule les electrolytes.', 'Le coeur est situe dans le mediastin thoracique.']
+    for(const encoding of ['ascii85-flate','flate','raw']) {
+      const response=await api.uploadPdf(reg.cookie,encoding,encoding+'.pdf',makePdf(lines,encoding))
+      assert.equal(response.status,201,JSON.stringify(response.data))
+    }
+    const unknown=Buffer.from(makePdf(lines).toString('latin1').replace('/FlateDecode','/LZWDecode'),'latin1')
+    const rejected=await api.uploadPdf(reg.cookie,'Inconnu','unknown.pdf',unknown)
+    assert.equal(rejected.status,422)
+    assert.equal(rejected.data.code,'ERR_UNSUPPORTED_PDF_FILTER')
+    assert.equal(rejected.data.scanned,false)
+    assert.deepEqual(rejected.data.filters,['LZWDecode'])
+    const scanned=await api.uploadPdf(reg.cookie,'Scan','scan.pdf',makeScannedPdf())
+    assert.equal(scanned.status,422)
+    assert.equal(scanned.data.scanned,true)
+    assert.equal(scanned.data.code,'ERR_NO_EXTRACTABLE_TEXT')
+  }finally{rmSync(dir,{recursive:true,force:true})}
+})
+
+test('PDF : un filtre d’image inconnu ne bloque pas le texte ; flux corrompu distinct du scan',async()=>{
+  const {extractPdfPagesAndText}=await import('../server/pdfExtractor.mjs')
+  const lines=['Le rein filtre le plasma sanguin et regule les electrolytes. Le coeur assure la circulation sanguine.']
+  const raw=makePdf(lines,'raw')
+  const withImage=Buffer.from(raw.toString('latin1').replace('xref\n',
+    '6 0 obj\n<< /Type /XObject /Subtype /Image /Filter /DCTDecode /Length 4 >>\nstream\nJPEG\nendstream\nendobj\nxref\n'),'latin1')
+  assert.deepEqual(extractPdfPagesAndText(withImage),extractPdfPagesAndText(raw))
+  const corrupt=Buffer.from(raw.toString('latin1').replace('/Length ','/Filter /ASCII85Decode /Length '),'latin1')
+  assert.throws(()=>extractPdfPagesAndText(corrupt),error=>{
+    assert.equal(error.code,'ERR_INVALID_PDF_STREAM')
+    assert.deepEqual(error.filters,['ASCII85Decode'])
+    return true
+  })
+})
+
+
+test('PDF : vrais exports Reportlab ASCII85+Flate, Flate seul et non compressé',async()=>{
+  const {extractPdfPagesAndText}=await import('../server/pdfExtractor.mjs')
+  const expected='Le rein filtre le plasma sanguin et regule les electrolytes.\nLe coeur est situe dans le mediastin thoracique.'
+  for(const name of ['reportlab-a85-flate','reportlab-flate','reportlab-raw']) {
+    const pdf=readFileSync(new URL(`./fixtures/pdf-compression/${name}.pdf`,import.meta.url))
+    const result=extractPdfPagesAndText(pdf)
+    assert.equal(result.pageCount,1)
+    assert.equal(result.totalText,expected,name)
+  }
+})
+
+// Reproduces the UNESS college stream dictionary: /Length 6 0 R /Filter /FlateDecode.
+test('PDF : longueur indirecte résolue avant la longueur directe, objet avant ou après le flux', async () => {
+  const {extractPdfPagesAndText} = await import('../server/pdfExtractor.mjs')
+  const lines = ['Le debit cardiaque depend du volume ejecte et de la frequence cardiaque.',
+    'Les barorecepteurs sont situes au niveau aortique et carotidien.']
+  for (const encoding of ['flate', 'ascii85-flate', 'raw']) {
+    const original = makePdf(lines, encoding).toString('latin1')
+    const length = original.match(/\/Length (\d+)/)[1]
+    for (const before of [false, true]) {
+      const indirect = original.replace(/\/Length \d+/, '/Length 6 0 R').replace('6 0 R /Filter', '6 0 R/Filter')
+        .replace(before ? '4 0 obj' : 'xref', `6 0 obj\n${length}\nendobj\n${before ? '4 0 obj' : 'xref'}`)
+      const result = extractPdfPagesAndText(Buffer.from(indirect, 'latin1'))
+      for (const line of lines) assert.ok(result.totalText.includes(line), `${encoding}, before=${before}`)
+    }
+  }
+})
+
+test('PDF : ToUnicode scoped par police, chaînes hex/littérales et ressources héritées', async () => {
+  const {extractPdfPagesAndText} = await import('../server/pdfExtractor.mjs')
+  const first='Le rein filtre le plasma sanguin.',second='Le coeur ejecte le sang vers les organes.'
+  const cmap=text=>`${text.length} beginbfchar\n`+[...text].map((c,i)=>`<${(i+1).toString(16).padStart(2,'0')}> <${c.charCodeAt(0).toString(16).padStart(4,'0')}>`).join('\n')+'\nendbfchar'
+  const hex=text=>[...text].map((_,i)=>(i+1).toString(16).padStart(2,'0')).join('')
+  const literal=text=>[...text].map((_,i)=>'\\'+(i+1).toString(8).padStart(3,'0')).join('')
+  const stream=(id,text)=>`${id} 0 obj\n<< /Length ${Buffer.byteLength(text)} >>\nstream\n${text}\nendstream\nendobj\n`
+  const pdf=Buffer.from('%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n'+
+    '2 0 obj\n<< /Type /Pages /Kids [3 0 R 8 0 R] /Count 2 /Resources << /Font << /F1 6 0 R /F2 7 0 R >> >> >>\nendobj\n'+
+    '3 0 obj\n<< /Type /Page /Parent 2 0 R /Contents 4 0 R >>\nendobj\n'+
+    stream(4,`BT /F1 12 Tf <${hex(first)}> Tj 0 -20 Td /F2 12 Tf (${literal(second)}) Tj ET`)+
+    '6 0 obj\n<< /Type /Font /Subtype /TrueType /ToUnicode 10 0 R >>\nendobj\n'+
+    '7 0 obj\n<< /Type /Font /Subtype /TrueType /ToUnicode 11 0 R >>\nendobj\n'+
+    '8 0 obj\n<< /Type /Page /Parent 2 0 R /Resources << /Font << /F1 7 0 R >> >> /Contents 9 0 R >>\nendobj\n'+
+    stream(9,`BT /F1 12 Tf <${hex(second)}> Tj ET`)+stream(10,cmap(first))+stream(11,cmap(second))+'%%EOF','latin1')
+  const result=extractPdfPagesAndText(pdf)
+  assert.equal(result.pageCount,2)
+  assert.equal(result.pages[0].text,first+'\n'+second)
+  assert.equal(result.pages[1].text,second)
+})
+
+test('PDF : accent TeX sur i sans point ne se déplace pas sur la lettre précédente',async()=>{
+ const {normalizeFrenchText}=await import('../server/pdfExtractor.mjs')
+ assert.equal(normalizeFrenchText('connaˆı t'),'connaî t')
+ assert.equal(normalizeFrenchText('conna^ıt'),'connaît')
 })

@@ -12,13 +12,13 @@ import { inflateSync, inflateRawSync } from 'node:zlib'
  *   2. getPageOrder() / walkPageTree()  — Détermine l'ordre des pages via
  *                                         /Catalog → /Pages → /Kids (correct même pour
  *                                         les PDFs avec objets réordonnés).
- *   3. decompressStream()               — FlateDecode (zlib) avec fallback raw-inflate.
+ *   3. decompressStream()               — ASCII85Decode et FlateDecode (zlib/raw-inflate), en chaîne.
  *   4. extractTextFromContentStream()   — Parser BT…ET : opérateurs Tj/TJ/Td/TD/Tm/T*,
  *                                         lookup CMap hex, fallback Win-1252 / TeX-OT1.
  *   5. normalizeFrenchText()            — Reconstruit les diacritiques TeX fragmentés.
  *   6. chunkIntoSections()              — Segmentation heuristique en sections d'étude.
  *
- * Supporté   : FlateDecode, ToUnicode CMap, ligatures TeX OT1, Win-1252, /Length indirect.
+ * Supporté   : ASCII85Decode, FlateDecode, ToUnicode CMap, ligatures TeX OT1, Win-1252, /Length indirect.
  * Non supporté: PDFs chiffrés, scannés/image-only (pas d'OCR), LZW/JBIG2/CCITT,
  *               XObject forms, fontes Type 3, CID composite sans ToUnicode.
  */
@@ -59,15 +59,16 @@ function decodeChar(code) {
  *
  * FIX : \f est un saut de page (form-feed U+000C), PAS la ligature fi du TeX OT1.
  */
-function decodeLiteralString(str) {
+function decodeLiteralString(str, cmap = null) {
   const ESCAPES = {
     n: '\n', r: '\r', t: '\t', b: '\b', f: '\f',
     '(': '(', ')': ')', '\\': '\\'
   }
   const unescaped = str.replace(/\\([0-7]{1,3}|[\\()nrtbf])/g, (_, seq) => {
-    if (/^[0-7]+$/.test(seq)) return decodeChar(parseInt(seq, 8))
+    if (/^[0-7]+$/.test(seq)) return cmap?.size ? String.fromCharCode(parseInt(seq, 8)) : decodeChar(parseInt(seq, 8))
     return seq in ESCAPES ? ESCAPES[seq] : seq
   })
+  if (cmap?.size) return decodeHexString(Buffer.from(unescaped, 'latin1').toString('hex'), cmap)
   let out = ''
   for (let i = 0; i < unescaped.length; i++) out += decodeChar(unescaped.charCodeAt(i))
   return out
@@ -182,6 +183,8 @@ export function normalizeFrenchText(text) {
     // Accent grave ` ou \u0060
     .replace(/[`\u0060]\s*([eEaAuUiI])/g, (_, v) => GRAVE[v] || v)
     .replace(/([eEaAuU])\s*[`\u0060]/g,   (_, v) => GRAVE[v] || v)
+    // TeX uses a dotless i under a separately positioned circumflex.
+    .replace(/[\^\u02C6]\s*\u0131/g, 'î')
     // Accent circonflexe ^ ou ˆ
     .replace(/[\^\u02C6]\s*([eEaAiIoOuU])/g, (_, v) => CIRC[v] || v)
     .replace(/([eEaAiIoOuU])\s*[\^\u02C6]/g, (_, v) => CIRC[v] || v)
@@ -240,21 +243,7 @@ function parseObjects(buffer, raw) {
       if      (buffer[dataStart] === 0x0D && buffer[dataStart + 1] === 0x0A) dataStart += 2
       else if (buffer[dataStart] === 0x0A || buffer[dataStart] === 0x0D)     dataStart += 1
 
-      // Cas 1 : /Length direct — le plus fiable
-      const lenDirect = dict.match(/\/Length\s+(\d+)\b/)
-      if (lenDirect) {
-        const dataEnd = Math.min(dataStart + parseInt(lenDirect[1], 10), buffer.length)
-        objects.set(id, { num, gen, id, dict, streamData: buffer.subarray(dataStart, dataEnd), isStream: true })
-        // Avancer le regex après endobj pour ne pas re-scanner le stream binaire
-        const esOff = raw.indexOf('endstream', dataStart)
-        if (esOff !== -1) {
-          const eoOff = raw.indexOf('endobj', esOff)
-          if (eoOff !== -1) objRe.lastIndex = eoOff + 6
-        }
-        continue
-      }
-
-      // Cas 2 : /Length indirect (/Length N G R) — résolution en 2ème passe
+      // Cas 1 : /Length indirect (/Length N G R) — résolution en 2ème passe
       const lenIndirect = dict.match(/\/Length\s+(\d+)\s+(\d+)\s+R/)
       if (lenIndirect) {
         objects.set(id, {
@@ -263,6 +252,20 @@ function parseObjects(buffer, raw) {
           indirectLength: `${lenIndirect[1]}_${lenIndirect[2]}`,
           isStream: true, pending: true
         })
+        const esOff = raw.indexOf('endstream', dataStart)
+        if (esOff !== -1) {
+          const eoOff = raw.indexOf('endobj', esOff)
+          if (eoOff !== -1) objRe.lastIndex = eoOff + 6
+        }
+        continue
+      }
+
+      // Cas 2 : /Length direct — uniquement après exclusion des références.
+      const lenDirect = dict.match(/\/Length\s+(\d+)\b/)
+      if (lenDirect) {
+        const dataEnd = Math.min(dataStart + parseInt(lenDirect[1], 10), buffer.length)
+        objects.set(id, { num, gen, id, dict, streamData: buffer.subarray(dataStart, dataEnd), isStream: true })
+        // Avancer le regex après endobj pour ne pas re-scanner le stream binaire
         const esOff = raw.indexOf('endstream', dataStart)
         if (esOff !== -1) {
           const eoOff = raw.indexOf('endobj', esOff)
@@ -360,19 +363,78 @@ function walkPageTree(node, objects, pages, depth) {
 
 // ─── 5. Décompression de stream ───────────────────────────────────────────────
 
-/**
- * Décompresse un buffer de stream en FlateDecode (zlib inflate),
- * avec fallback raw-inflate pour les streams sans en-tête zlib.
- * Retourne une chaîne latin1.
- */
-function decompressStream(streamData, dict) {
-  if (!streamData || streamData.length === 0) return ''
-  if (!/\/Filter/.test(dict)) return streamData.toString('latin1')
+/** PDF filters are applied in their declared order, never just Flate first. */
+function streamFilters(dict) {
+  const match = dict.match(/\/Filter\s*(\[[^\]]*\]|\/[A-Za-z0-9]+)/)
+  return match ? [...match[1].matchAll(/\/([A-Za-z0-9]+)/g)].map(value => value[1]) : []
+}
 
+function streamError(code, message, filters) {
+  const error = new Error(`${message} Filtres rencontrés : ${filters.join(', ') || 'aucun'}.`)
+  error.code = code
+  error.status = 422
+  error.filters = filters
+  return error
+}
+
+export function decodeAscii85(buffer) {
+  let encoded = buffer.toString('latin1').replace(/[\x00\t\n\f\r ]/g, '')
+  if (encoded.startsWith('<~')) encoded = encoded.slice(2)
+  if (!encoded.endsWith('~>')) throw new Error('Terminaison ASCII85 manquante.')
+  encoded = encoded.slice(0, -2)
+  // One allocation, rather than one Buffer per five encoded bytes (large PDFs).
+  let zeroGroups = 0
+  for (const character of encoded) if (character === 'z') zeroGroups++
+  const output = Buffer.alloc(Math.ceil((encoded.length - zeroGroups) / 5) * 4 + zeroGroups * 4)
+  const group = []
+  let offset = 0
+  const flush = (length = 4) => {
+    let value = 0
+    for (const digit of group) value = value * 85 + digit
+    if (value > 0xffffffff) throw new Error('Groupe ASCII85 hors limites.')
+    output.writeUInt32BE(value, offset)
+    offset += length
+    group.length = 0
+  }
+  for (const character of encoded) {
+    if (character === 'z') {
+      if (group.length) throw new Error('Abréviation ASCII85 dans un groupe incomplet.')
+      offset += 4; continue
+    }
+    const digit = character.charCodeAt(0) - 33
+    if (digit < 0 || digit > 84) throw new Error('Caractère ASCII85 invalide.')
+    group.push(digit)
+    if (group.length === 5) flush()
+  }
+  if (group.length === 1) throw new Error('Dernier groupe ASCII85 invalide.')
+  if (group.length) {
+    const length = group.length - 1
+    while (group.length < 5) group.push(84)
+    flush(length)
+  }
+  return output.subarray(0, offset)
+}
+
+function decompressStream(streamData, dict, encountered = streamFilters(dict)) {
+  const filters = streamFilters(dict)
+  // Validate the whole chain first so unsupported compression is never called a scan.
+  for (const filter of filters) {
+    if (!['ASCII85Decode', 'A85', 'FlateDecode', 'Fl'].includes(filter)) {
+      throw streamError('ERR_UNSUPPORTED_PDF_FILTER', `Filtre de compression PDF non supporté (${filter}).`, encountered)
+    }
+  }
+  if (!streamData || streamData.length === 0) return ''
   let data = streamData
-  if (/\/Filter\s*\/FlateDecode/.test(dict) || /\/Filter\s*\[[^\]]*\/FlateDecode/.test(dict)) {
-    try         { data = inflateSync(data) }
-    catch       { try { data = inflateRawSync(data) } catch { return data.toString('latin1') } }
+  for (const filter of filters) {
+    try {
+      if (filter === 'ASCII85Decode' || filter === 'A85') data = decodeAscii85(data)
+      else {
+        try { data = inflateSync(data) }
+        catch { data = inflateRawSync(data) }
+      }
+    } catch {
+      throw streamError('ERR_INVALID_PDF_STREAM', `Flux PDF invalide pour le filtre ${filter}.`, encountered)
+    }
   }
   return data.toString('latin1')
 }
@@ -394,7 +456,8 @@ function decompressStream(streamData, dict) {
  *   [2][3] = Td/TD dx, dy
  *   [4..9] = paramètres Tm : a b c d e f  (f = translation y)
  */
-export function extractTextFromContentStream(content, cmap = null) {
+export function extractTextFromContentStream(content, cmap = null, fontMaps = new Map()) {
+  let activeCmap = cmap, literalCmap = null
   const pieces = []
   const btRe = /BT([\s\S]*?)ET/g
   let btM
@@ -405,11 +468,16 @@ export function extractTextFromContentStream(content, cmap = null) {
     let lastTy   = null   // Dernière position y absolue connue (Tm)
 
     // Regex combiné (l'ordre compte : Tj avant TJ avant Td avant Tm avant T*)
-    const opRe = /(?:\((?:[^\\()]|\\.)*\)|<[0-9A-Fa-f\s]+>)\s*(?:Tj|'|")|(\[(?:[^\[\]]|\((?:[^\\()]|\\.)*\)|<[0-9A-Fa-f\s]+>)*\])\s*TJ|(-?[0-9.]+)\s+(-?[0-9.]+)\s+(?:Td|TD)|(-?[0-9.]+)\s+(-?[0-9.]+)\s+(-?[0-9.]+)\s+(-?[0-9.]+)\s+(-?[0-9.]+)\s+(-?[0-9.]+)\s+Tm|T\*/g
+    const opRe = /(?:\((?:[^\\()]|\\.)*\)|<[0-9A-Fa-f\s]+>)\s*(?:Tj|'|")|(\[(?:[^\[\]]|\((?:[^\\()]|\\.)*\)|<[0-9A-Fa-f\s]+>)*\])\s*TJ|(-?[0-9.]+)\s+(-?[0-9.]+)\s+(?:Td|TD)|(-?[0-9.]+)\s+(-?[0-9.]+)\s+(-?[0-9.]+)\s+(-?[0-9.]+)\s+(-?[0-9.]+)\s+(-?[0-9.]+)\s+Tm|T\*|\/([^\s/<>\[\]()]+)\s+(-?[0-9.]+)\s+Tf/g
     let opM
 
     while ((opM = opRe.exec(block)) !== null) {
       const token = opM[0]
+      if (opM[10] !== undefined) {
+        literalCmap = fontMaps.get(opM[10]) ?? null
+        activeCmap = fontMaps.has(opM[10]) ? fontMaps.get(opM[10]) : cmap
+        continue
+      }
 
       // T* — retour à la ligne explicite
       if (token === 'T*') {
@@ -452,9 +520,9 @@ export function extractTextFromContentStream(content, cmap = null) {
         while ((el = elemRe.exec(opM[1])) !== null) {
           const item = el[0]
           if (item.startsWith('(') && item.endsWith(')')) {
-            word += decodeLiteralString(item.slice(1, -1))
+            word += decodeLiteralString(item.slice(1, -1), literalCmap)
           } else if (item.startsWith('<') && item.endsWith('>')) {
-            word += decodeHexString(item.slice(1, -1), cmap)
+            word += decodeHexString(item.slice(1, -1), activeCmap)
           } else if (el[1] !== undefined && parseFloat(el[1]) < -200) {
             // Crénage très négatif = coupure de mot
             if (!word.endsWith(' ')) word += ' '
@@ -467,9 +535,9 @@ export function extractTextFromContentStream(content, cmap = null) {
       // Tj / ' / " — chaîne unique (littérale ou hexadécimale)
       const rawStr = token.replace(/\s*(?:Tj|'|")$/, '')
       if (rawStr.startsWith('(') && rawStr.endsWith(')')) {
-        lineText += decodeLiteralString(rawStr.slice(1, -1))
+        lineText += decodeLiteralString(rawStr.slice(1, -1), literalCmap)
       } else if (rawStr.startsWith('<') && rawStr.endsWith('>')) {
-        lineText += decodeHexString(rawStr.slice(1, -1), cmap)
+        lineText += decodeHexString(rawStr.slice(1, -1), activeCmap)
       }
     }
 
@@ -481,6 +549,30 @@ export function extractTextFromContentStream(content, cmap = null) {
       .replace(/[\u0000-\u0008\u000E-\u0011\u0015-\u0017\u001F]/g, ' ')
       .replace(/[ \t]+/g, ' ')
   )
+}
+
+// Resolve font resources in page scope; names such as /F1 are local, not global.
+function pageFontMaps(page, objects, cmaps) {
+  const maps = new Map(), visited = new Set()
+  for (let node = page; node && !visited.has(node.id);) {
+    visited.add(node.id)
+    const resource = node.dict.match(/\/Resources\s*(?:(\d+)\s+(\d+)\s+R|<<)/)
+    if (resource) {
+      const dict = resource[1] ? objects.get(`${resource[1]}_${resource[2]}`)?.dict : node.dict
+      const fonts = dict?.match(/\/Font\s*(?:(\d+)\s+(\d+)\s+R|<<([\s\S]*?)>>)/)
+      const fontDict = fonts?.[1] ? objects.get(`${fonts[1]}_${fonts[2]}`)?.dict : fonts?.[3]
+      for (const ref of (fontDict ?? '').matchAll(/\/([^\s/<>\[\]()]+)\s+(\d+)\s+(\d+)\s+R/g)) {
+        const font = objects.get(`${ref[2]}_${ref[3]}`)
+        const unicode = font?.dict.match(/\/ToUnicode\s+(\d+)\s+(\d+)\s+R/)
+        if (!font) continue
+        maps.set(ref[1], unicode ? cmaps.get(`${unicode[1]}_${unicode[2]}`) ?? null : null)
+      }
+      break
+    }
+    const parent = node.dict.match(/\/Parent\s+(\d+)\s+(\d+)\s+R/)
+    node = parent ? objects.get(`${parent[1]}_${parent[2]}`) : null
+  }
+  return maps
 }
 
 // ─── 7. Point d'entrée principal ──────────────────────────────────────────────
@@ -501,15 +593,30 @@ export function extractPdfPagesAndText(buffer) {
 
   const raw     = buffer.toString('latin1')
   const objects = parseObjects(buffer, raw)
+  const encounteredFilters = [...new Set([...objects.values()].flatMap(obj => streamFilters(obj.dict)))]
+  const unicodeRefs = new Set([...objects.values()].flatMap(obj =>
+    [...obj.dict.matchAll(/\/ToUnicode\s+(\d+)\s+(\d+)\s+R/g)].map(match => `${match[1]}_${match[2]}`)))
+  const decode = obj => decompressStream(obj.streamData, obj.dict, encounteredFilters)
 
   // Collecter toutes les entrées CMap (ToUnicode) depuis chaque stream.
   // Fusionnées dans une map globale — suffisant pour les documents à encodage unique.
-  const globalCmap = new Map()
+  const globalCmap = new Map(), cmaps = new Map()
   for (const obj of objects.values()) {
     if (!obj.isStream) continue
-    const text = decompressStream(obj.streamData, obj.dict)
+    // Image/attachment compression is irrelevant to text extraction. Required
+    // ToUnicode streams must still report unsupported filters explicitly.
+    if (/\/Subtype\s*\/Image\b/.test(obj.dict)) continue
+    let text
+    try { text = decode(obj) }
+    catch (error) {
+      if ([...unicodeRefs].some(ref => objects.get(ref) === obj)) throw error
+      if (error.code === 'ERR_UNSUPPORTED_PDF_FILTER') continue
+      throw error
+    }
     if (text.includes('beginbfchar') || text.includes('beginbfrange')) {
-      for (const [k, v] of parseCMap(text)) globalCmap.set(k, v)
+      const map = parseCMap(text)
+      cmaps.set(obj.id, map)
+      for (const [k, v] of map) globalCmap.set(k, v)
     }
   }
 
@@ -520,6 +627,8 @@ export function extractPdfPagesAndText(buffer) {
   for (let i = 0; i < pageObjects.length; i++) {
     const pageObj = pageObjects[i]
     let pageText  = ''
+    const fontMaps = pageFontMaps(pageObj, objects, cmaps)
+    const fallbackCmap = globalCmap
 
     // Résoudre /Contents — référence unique ou tableau de références
     const cm = pageObj.dict.match(/\/Contents\s*(?:(\d+)\s+(\d+)\s+R|\[([^\]]+)\])/)
@@ -529,7 +638,7 @@ export function extractPdfPagesAndText(buffer) {
         const cObj = objects.get(`${cm[1]}_${cm[2]}`)
         if (cObj?.streamData) {
           pageText = extractTextFromContentStream(
-            decompressStream(cObj.streamData, cObj.dict), globalCmap
+            decode(cObj), fallbackCmap, fontMaps
           )
         }
       } else if (cm[3]) {
@@ -539,7 +648,7 @@ export function extractPdfPagesAndText(buffer) {
           const cObj = objects.get(`${ref[1]}_${ref[2]}`)
           if (cObj?.streamData) {
             parts.push(extractTextFromContentStream(
-              decompressStream(cObj.streamData, cObj.dict), globalCmap
+              decode(cObj), fallbackCmap, fontMaps
             ))
           }
         }
@@ -555,7 +664,8 @@ export function extractPdfPagesAndText(buffer) {
     let n = 1
     for (const obj of objects.values()) {
       if (!obj.isStream) continue
-      const text = decompressStream(obj.streamData, obj.dict)
+      if (/\/Subtype\s*\/Image\b/.test(obj.dict)) continue
+      const text = decode(obj)
       if (text.includes('BT') && text.includes('ET')) {
         const extracted = extractTextFromContentStream(text, globalCmap)
         if (extracted.trim().length > 10) pages.push({ pageNumber: n++, text: extracted.trim() })
@@ -566,13 +676,9 @@ export function extractPdfPagesAndText(buffer) {
   // Rejeter les PDFs scannés / sans texte extractible
   const totalChars = pages.map(p => p.text).join('\n').replace(/\s+/g, '').length
   if (totalChars < 50) {
-    const err = new Error(
-      'Ce document PDF contient trop peu de texte extractible. MyCorpus Study V1 ne prend pas ' +
-      'en charge les documents scannés ou images (pas d\'OCR en V1). ' +
-      'Veuillez utiliser un cours PDF avec texte sélectionnable.'
-    )
-    err.code   = 'ERR_NO_EXTRACTABLE_TEXT'
-    err.status = 422
+    const err = streamError('ERR_NO_EXTRACTABLE_TEXT',
+      'PDF scanné ou sans texte extractible suffisant (pas d’OCR). Les documents scannés nécessitent un cours PDF avec texte sélectionnable.',
+      encounteredFilters)
     throw err
   }
 
