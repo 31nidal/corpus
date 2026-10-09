@@ -1,3 +1,4 @@
+import {handleDraftReview} from './review/handler.mjs'
 import {DatabaseSync} from 'node:sqlite'
 import {createHash, randomUUID} from 'node:crypto'
 import {existsSync, mkdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync} from 'node:fs'
@@ -84,6 +85,8 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
       if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) && (req.headers['x-mycorpus-request'] !== '1' || (req.headers.origin && req.headers.origin !== origin))) return send(403, {error: 'Origine de la requête refusée.'})
       const assetsDir = getAssetsDir()
       const url = new URL(req.url, 'http://localhost'), subpath = url.pathname.replace('/api/flashcards/', '').replace(/\/$/, ''), repo = new FlashcardRepository(d, assetsDir)
+
+      if (await handleDraftReview({db:d,notes:repo,userId:user.id,subpath,url,req,readJson,send,now:dependencies.now||Date.now})) return
 
       // Assets routes
       if (req.method === 'POST' && subpath === 'assets/upload') {
@@ -686,7 +689,7 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
       }
       if (req.method === 'GET' && subpath === 'review') {
         const timeZone = cleanText(req.headers['x-timezone'] || url.searchParams.get('timezone'), 60) || 'Europe/Paris'
-        const cards = repo.reviewQueue(user.id, cleanText(url.searchParams.get('deck'), 100), Number(url.searchParams.get('limit')) || 30, timeZone)
+        const cards = repo.reviewQueue(user.id, cleanText(url.searchParams.get('deck'), 100), Number(url.searchParams.get('limit')) || 30, timeZone, undefined, cleanText(url.searchParams.get('note'), 100))
         return send(200, {cards})
       }
       if (req.method === 'GET' && subpath === 'stats') {

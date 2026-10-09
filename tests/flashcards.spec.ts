@@ -207,30 +207,23 @@ test('génération et persistance : PDF Study (front/back non vides, dialogue et
   await expect(page.getByRole('heading', { name: 'respiration' })).toBeVisible({ timeout: 20000 })
   await page.getByRole('button', { name: 'Générer des flashcards' }).click()
 
-  const dialog = page.getByRole('dialog', { name: 'Générer des flashcards' })
-  await expect(dialog).toBeVisible()
-  await dialog.getByRole('button', { name: 'Générer les brouillons' }).click()
-
-  const articles = dialog.locator('.flash-draft-list article')
+  const review = page.getByRole('region', {name:'Révision des brouillons',exact:true})
+  await expect(review).toBeVisible()
+  await review.getByRole('button', { name: 'Générer les brouillons' }).click()
+  const articles = review.locator('.draft-review-card')
   await expect(articles.first()).toBeVisible()
   const count = await articles.count()
   expect(count).toBeGreaterThan(0)
-
   const capturedCards: { front: string; back: string }[] = []
-  for (let i = 0; i < count; i++) {
-    const art = articles.nth(i)
-    const front = await art.getByLabel('Recto').inputValue()
-    const back = await art.getByLabel('Verso').inputValue()
-    expect(front.trim().length).toBeGreaterThan(0)
-    expect(back.trim().length).toBeGreaterThan(0)
-    capturedCards.push({ front, back })
+  for (let i=0;i<count;i++) {
+    const art=articles.nth(i)
+    capturedCards.push({front:await art.locator('h3').innerText(),back:await art.locator('p').first().innerText()})
   }
-
-  await dialog.getByLabel('Deck de destination').selectOption({ label: 'Poumons' })
-  await dialog.getByRole('button', { name: 'Enregistrer la sélection' }).click()
-  await expect(dialog).not.toBeVisible()
-
-  await expect(page.locator('.flash-toast')).toContainText(new RegExp(`${count} carte.*Poumons`))
+  await review.getByLabel('Deck de destination').selectOption({label:'Poumons'})
+  await review.getByRole('button',{name:'Tout sélectionner sur la vue filtrée'}).click()
+  await review.getByRole('button',{name:'Accepter la sélection'}).click()
+  await expect(articles).toHaveCount(0)
+  await expect(review.getByText('Acceptation terminée.',{exact:true})).toBeVisible()
 
   await page.goto('/#tab=flashcards')
   await page.getByRole('button', { name: 'Toutes mes cartes' }).click()

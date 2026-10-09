@@ -9,7 +9,8 @@ interface PdfCropSelectorProps {
   documentId: string
   documentTitle?: string
   initialPage?: number
-  onSelectCrop: (data: {
+  readOnly?: boolean
+  onSelectCrop?: (data: {
     blob: Blob
     pageNumber: number
     crop: {x: number; y: number; width: number; height: number} | null
@@ -23,6 +24,7 @@ export const PdfCropSelector: React.FC<PdfCropSelectorProps> = ({
   initialPage = 1,
   onSelectCrop,
   onCancel,
+  readOnly = false,
 }) => {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -39,9 +41,27 @@ export const PdfCropSelector: React.FC<PdfCropSelectorProps> = ({
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
 
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const closeRef = useRef(onCancel)
+  closeRef.current = onCancel
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null
+    dialogRef.current?.querySelector<HTMLButtonElement>('button[data-pdf-close]')?.focus()
+    return () => previous?.focus()
+  }, [])
+  const dialogKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if(event.key==='Escape'){event.preventDefault();event.stopPropagation();closeRef.current();return}
+    if(event.key!=='Tab')return
+    const buttons=[...dialogRef.current!.querySelectorAll<HTMLElement>('button:not(:disabled),input:not(:disabled),[tabindex="0"]')]
+    const first=buttons[0],last=buttons[buttons.length-1]
+    if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus()}
+    else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus()}
+  }
+
   // 1. Load PDF document
   useEffect(() => {
     let cancelled = false
+    let loadingTask: ReturnType<typeof pdfjsLib.getDocument> | null = null
     setLoading(true)
     setError(null)
 
@@ -51,13 +71,14 @@ export const PdfCropSelector: React.FC<PdfCropSelectorProps> = ({
           credentials: 'same-origin',
         })
         if (!response.ok) {
-          throw new Error('Impossible de charger le document PDF source.')
+          throw new Error(response.status===404?'Le PDF source est introuvable ou a été supprimé.':'Impossible de charger le PDF source. Vérifiez votre connexion.')
         }
         const data = await response.arrayBuffer()
         if (cancelled) return
 
-        const doc = await pdfjsLib.getDocument({data}).promise
-        if (cancelled) return
+        loadingTask = pdfjsLib.getDocument({data})
+        const doc = await loadingTask.promise
+        if (cancelled) {void loadingTask.destroy();return}
 
         setPdfDoc(doc)
         setTotalPages(doc.numPages)
@@ -74,6 +95,7 @@ export const PdfCropSelector: React.FC<PdfCropSelectorProps> = ({
     loadPdf()
     return () => {
       cancelled = true
+      void loadingTask?.destroy()
     }
   }, [documentId, initialPage])
 
@@ -101,7 +123,7 @@ export const PdfCropSelector: React.FC<PdfCropSelectorProps> = ({
         await renderTask.promise
       } catch (err: any) {
         if (!cancelled && err.name !== 'RenderingCancelledException') {
-          console.error('Error rendering PDF page:', err)
+          setError('Impossible d’afficher cette page du PDF source.')
         }
       }
     }
@@ -157,14 +179,14 @@ export const PdfCropSelector: React.FC<PdfCropSelectorProps> = ({
 
   // Handle final selection
   const handleValidate = () => {
-    if (!canvasRef.current) return
+    if (readOnly || !canvasRef.current) return
     const canvas = canvasRef.current
 
     if (!cropRect) {
       // Full page export
       canvas.toBlob(blob => {
         if (blob) {
-          onSelectCrop({blob, pageNumber: currentPage, crop: null})
+          onSelectCrop?.({blob, pageNumber: currentPage, crop: null})
         }
       }, 'image/png')
       return
@@ -185,7 +207,7 @@ export const PdfCropSelector: React.FC<PdfCropSelectorProps> = ({
     ctx.drawImage(canvas, sx, sy, sw, sh, 0, 0, sw, sh)
     cropCanvas.toBlob(blob => {
       if (blob) {
-        onSelectCrop({
+        onSelectCrop?.({
           blob,
           pageNumber: currentPage,
           crop: {
@@ -200,7 +222,7 @@ export const PdfCropSelector: React.FC<PdfCropSelectorProps> = ({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-slate-900/95 backdrop-blur-sm text-slate-100">
+    <div ref={dialogRef} data-read-only={readOnly} role="dialog" aria-modal="true" aria-label={readOnly ? 'Consultation du cours' : 'Sélection du PDF'} onKeyDown={dialogKeyDown} className="pdf-source-dialog fixed inset-0 z-50 flex flex-col bg-slate-900/95 backdrop-blur-sm text-slate-100">
       {/* Top Header */}
       <header className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-900/80">
         <div className="flex items-center gap-3">
@@ -209,7 +231,7 @@ export const PdfCropSelector: React.FC<PdfCropSelectorProps> = ({
           </div>
           <div>
             <h2 className="text-base font-semibold text-white">
-              Sélectionner la zone à masquer (Image Occlusion)
+              {readOnly ? 'Consulter le cours source' : 'Sélectionner la zone à masquer (Image Occlusion)'}
             </h2>
             <p className="text-xs text-slate-400">
               {documentTitle ? `${documentTitle} — ` : ''}Page {currentPage} sur {totalPages}
@@ -245,12 +267,13 @@ export const PdfCropSelector: React.FC<PdfCropSelectorProps> = ({
         <div className="flex items-center gap-3">
           <button
             type="button"
+            data-pdf-close
             onClick={onCancel}
             className="px-3.5 py-2 text-xs font-medium text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition"
           >
-            Annuler
+            {readOnly ? 'Fermer' : 'Annuler'}
           </button>
-          <button
+          {!readOnly && <button
             type="button"
             onClick={handleValidate}
             disabled={loading || !!error}
@@ -258,7 +281,7 @@ export const PdfCropSelector: React.FC<PdfCropSelectorProps> = ({
           >
             <Check className="w-4 h-4" />
             {cropRect ? 'Valider le recadrage' : 'Utiliser la page entière'}
-          </button>
+          </button>}
         </div>
       </header>
 
@@ -290,14 +313,14 @@ export const PdfCropSelector: React.FC<PdfCropSelectorProps> = ({
         {!loading && !error && (
           <div
             className="relative inline-block shadow-2xl rounded border border-slate-700 overflow-hidden cursor-crosshair"
-            onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
+            onMouseDown={readOnly ? undefined : handleMouseDown}
+            onMouseMove={readOnly ? undefined : handleMouseMove}
+            onMouseUp={readOnly ? undefined : handleMouseUp}
           >
             <canvas ref={canvasRef} className="block max-h-[78vh] w-auto h-auto" />
 
             {/* Crop Overlay */}
-            {cropRect && (
+            {!readOnly && cropRect && (
               <div
                 className="absolute border-2 border-indigo-400 bg-indigo-500/20 pointer-events-none transition-all"
                 style={{
@@ -317,11 +340,11 @@ export const PdfCropSelector: React.FC<PdfCropSelectorProps> = ({
       </div>
 
       {/* Bottom hint bar */}
-      <footer className="px-6 py-2.5 border-t border-slate-800 bg-slate-900/60 text-xs text-slate-400 flex items-center justify-between">
+      {!readOnly && <footer className="px-6 py-2.5 border-t border-slate-800 bg-slate-900/60 text-xs text-slate-400 flex items-center justify-between">
         <p>
           Glissez avec la souris pour recadrer un schéma ou diagramme spécifique, ou cliquez directement sur « Utiliser la page entière ».
         </p>
-        {cropRect && (
+        {!readOnly && cropRect && (
           <button
             type="button"
             onClick={() => setCropRect(null)}
@@ -330,7 +353,7 @@ export const PdfCropSelector: React.FC<PdfCropSelectorProps> = ({
             Réinitialiser la sélection
           </button>
         )}
-      </footer>
+      </footer>}
     </div>
   )
 }

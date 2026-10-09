@@ -1175,11 +1175,13 @@ export class FlashcardRepository {
 
   // --- REVIEW QUEUE WITH DETERMINISTIC SIBLING BURYING ---
 
-  reviewQueue(userId, deckId, limit = 30, timeZone = 'Europe/Paris', now = Date.now()) {
+  reviewQueue(userId, deckId, limit = 30, timeZone = 'Europe/Paris', now = Date.now(), noteId = null) {
     const midnightIana = getStartOfDayIana(now, timeZone)
     const args = [userId, now]
     const deckFilter = deckId ? ' AND c.deck_id=?' : ''
     if (deckId) args.push(deckId)
+    const noteFilter = noteId ? ' AND c.note_id=?' : ''
+    if (noteId) args.push(noteId)
     args.push(userId, midnightIana)
     const maxLimit = Number.isFinite(limit) ? Math.min(100, Math.max(1, Math.floor(limit))) : 30
     args.push(maxLimit)
@@ -1198,6 +1200,7 @@ export class FlashcardRepository {
         WHERE c.user_id=?
           AND r.due_at<=?
           ${deckFilter}
+          ${noteFilter}
           AND NOT EXISTS (
             SELECT 1 FROM flashcards sibling
             JOIN flashcard_review_logs l ON l.card_id=sibling.id

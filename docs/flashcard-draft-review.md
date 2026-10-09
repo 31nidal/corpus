@@ -1,0 +1,163 @@
+# Révision des flashcards de Mes cours — contrat de migration 5
+
+Schéma, API et UI de révision implémentés pour les flashcards de Mes cours. Synthèses et QCM gardent leur flux actuel. Le catalogue, les corrections QCM et le texte libre conservent GenerationDialog.
+
+## Stockage durable
+
+`flashcard_drafts` conserve l’identité permanente, le propriétaire, le document, la section, la page, le type réel de note, recto/verso/champs structurés, extrait de preuve, matière/chapitre/tags, confiance et preuve verbatim. Statuts : `pending`, `accepted`, `rejected`, `edited`. Suppression du compte/document en cascade ; suppression d’une section : référence mise à NULL, preuve et page conservées.
+
+`content_hash` est un SHA-256 des deux chaînes [recto généré, extrait source] sérialisées séparément en JSON après normalisation NFC, minuscules françaises et compactage des espaces. Accents et ponctuation conservés. Index UNIQUE `(user_id, document_id, content_hash)`. Cette empreinte d’origine doit rester immuable après édition : une génération répétée doit retrouver le même brouillon, même modifié ou rejeté. La génération utilise `INSERT OR IGNORE` et renvoie `created`, `ignored`, ainsi que `unattributed` pour les extraits non attribuables à une section.
+
+`accepted_note_id` est UNIQUE et référence `flashcard_notes` avec `ON DELETE SET NULL`. Tant que la note existe, une nouvelle acceptation renvoie cette note. Si elle a été supprimée, le brouillon reste `accepted` avec référence NULL ; une acceptation explicite recrée une note et ses cartes FSRS dans une transaction, puis enregistrer la nouvelle référence. Les tests de schéma et de routes exercent ce scénario, y compris deux appels rapprochés via deux handlers.
+
+Le CHECK `note_type` reprend la liste commune réelle : `basic`, `reverse`, `bidirectional`, `cloze`, `typed`, `image_occlusion`, `atlas_3d`. La génération textuelle actuelle ne produit pas de notes visuelles. `rejected_from` n’accepte que NULL, `pending`, `edited`.
+
+Les dates `created_at`, `updated_at`, `rejected_at` sont des millisecondes Unix entières, comme les reçus, assets et échéances FSRS. Les notes/cartes historiques utilisent aussi des dates ISO textuelles : ne pas confondre ces formats. Aucun timestamp existant n’est converti. `REJECTED_DRAFT_RETENTION_MS` vaut 30 × 86 400 000 ; la purge automatique s’exécute uniquement au démarrage du serveur Node, du serveur Vite de développement ou de preview. Aucun GET ni autre accès HTTP ne purge les brouillons. L’horloge est injectable ; la frontière stricte « plus de 30 jours » est testée.
+
+## Critère « fidèle au cours » calculé
+
+`SAFE_DRAFT_RULE` dans `server/flashcards/review/policy.mjs` est l’unique configuration : confiance ≥ 0,95, preuve verbatim, type `basic`, `reverse` ou `cloze`, statut `pending`. Les statuts édités, rejetés et déjà acceptés sont exclus du lot automatique ; la réacceptation après suppression reste une action explicite.
+
+La confiance vient exclusivement d’un fait typé déjà reconnu dans la même section, avec preuve identique. Pas de score inventé à partir d’un simple type de carte. La vérification verbatim compacte les espaces et normalise NFC, sans changer casse, accents, mots ou ponctuation. Le libellé utilisateur doit être « fidèles au cours » : une preuve verbatim ne garantit pas que le cours soit médicalement juste. Aucun bouton « Accepter les fidèles » n’est proposé dans cette itération ; le critère reste uniquement côté serveur. Le critère n’est jamais stocké ; seule la confiance et `verbatim_proof` le sont. Les cartes à réponses chiffrées et équivalences ne sont pas automatiquement couvertes par les faits typés actuels.
+
+## Mesure du seuil 0,95
+
+Générateur réel `generateLocalNoteDrafts`, mode `standard`, cible 12, source synthétique de type document ; aucun PDF importé ni appel fournisseur. Les sections du catalogue sont assemblées comme le fait la route de génération, avec leurs titres, texte et puces. Les numéros de pages de mesure sont uniquement des repères synthétiques, le catalogue n’étant pas un PDF.
+
+Texte d’exemple existant des tests : « Le débit cardiaque est le produit de la fréquence cardiaque par le volume d’éjection systolique. La pression artérielle dépend du débit cardiaque et des résistances périphériques. Le nœud sinusal assure normalement le rythme du cœur. »
+
+| Source | Générés | Preuve verbatim | Fait typé reconnu | Sûrs ≥ 0,95 |
+| --- | ---: | ---: | ---: | ---: |
+| Exemple ci-dessus | 2 | 2 | 0 | 0/2 : 0 % |
+| `anat-diaphragm-muscle` — Diaphragme thoraco-abdominal : coupoles, centre tendineux et orifices de passage | 7 | 7 | 0 | 0/7 : 0 % |
+
+Ce seuil ne permet aucun lot automatique sur ces deux exemples : les faits typés existants ne couvrent que certaines innervations, vascularisations et localisations conservatrices. Baisser légèrement le seuil ne corrigerait pas une absence de fait reconnu (confiance 0). Le test positif contrôlé « Le nerf médian innerve le muscle pronateur rond. » produit une confiance 0,97 et passe le critère. L’extracteur et le filtre d’atomisation et/ou restent inchangés.
+
+## Validation du schéma
+
+`test:flashcards` : 86 réussis ; `test:study` : 25 ; `test:catalog-content` : 6. Le contrôle de versions de migration est explicitement `[1, 2, 3, 4, 5]`.
+
+Les tests couvrent dédoublonnage (y compris rejet et isolation des espaces de stockage), conservation des accents, cascades, types/statuts/dates, unicité de note et remplacement après suppression, ainsi que les signaux et exclusions du critère sûr. Les contrôles HTTP de propriété, génération et purge sont également couverts par les tests API ajoutés à l’étape suivante.
+
+
+## Mesure sur 20 cours avant l’API
+
+Échantillon déterministe de 20 cours espacés régulièrement dans la liste des 305 IDs triés ; pas de sélection selon le score obtenu. Script :
+
+```sh
+node --experimental-strip-types --experimental-loader=./scripts/ts-loader.mjs scripts/measure-draft-confidence.mjs
+```
+
+Mode standard, cible 12 par cours, texte et puces des sections réelles. Distribution sur 139 brouillons : confiance 0 → 139 ; 0,93 → 0 ; 0,95 → 0 ; 0,97 → 0. Aucun ne passe le critère.
+
+`generateLocalNoteDrafts` ne dérive pas ses cartes des faits typés. Ce critère ne deviendra réellement discriminant qu’une fois les brouillons dérivés de ces faits, dans le chantier d’atomisation hors périmètre. Le rapprochement actuel d’un extrait avec un fait peut fonctionner sur un exemple contrôlé, mais ne fournit pas aujourd’hui une couverture du catalogue. Ni le seuil ni l’extracteur et/ou n’ont été modifiés.
+
+| ID du cours | Brouillons | Confiance 0 | ≥ 0,95 |
+| --- | ---: | ---: | ---: |
+| `anat-arm-compartments` | 7 | 7 | 0 |
+| `anat-ear` | 12 | 12 | 0 |
+| `anat-intercostal-space-vessels` | 6 | 6 | 0 |
+| `anat-pelvis` | 12 | 12 | 0 |
+| `anat-trunk-muscles` | 10 | 10 | 0 |
+| `biochem-glycogen-metabolism` | 4 | 4 | 0 |
+| `cell-mitochondria-peroxisomes` | 4 | 4 | 0 |
+| `chem-organic-functions-isomery` | 4 | 4 | 0 |
+| `embryo-implantation-decidualization` | 4 | 4 | 0 |
+| `FMA7148` | 12 | 12 | 0 |
+| `genetics-replication-repair` | 7 | 7 | 0 |
+| `immuno-adaptive` | 12 | 12 | 0 |
+| `odonto-saliva-caries-pathophysiology` | 3 | 3 | 0 |
+| `pharma-renal-biliary-clearance` | 6 | 6 | 0 |
+| `phys-renal` | 12 | 12 | 0 |
+| `physics-mri-sequences-spatial` | 7 | 7 | 0 |
+| `public-health-prevention-strategies` | 2 | 2 | 0 |
+| `soc-drug-pricing-reimbursement` | 2 | 2 | 0 |
+| `stats-comparison-means-z-t` | 3 | 3 | 0 |
+| `tissues` | 10 | 10 | 0 |
+
+
+## Contrat API
+
+Préfixe `/api/flashcards`. Authentification et protection d’origine existantes conservées. Un document ou brouillon absent ou appartenant à autrui retourne 404. Dans un lot sur un document autorisé, chaque ID étranger/inconnu retourne `not_found` avec `httpStatus: 404`, sans empêcher les autres éléments du lot.
+
+| Méthode | Route | Contrat |
+| --- | --- | --- |
+| POST | `/documents/:id/drafts/generate` | Corps `{count, level, sectionId?, sectionIds?, startPage?, endPage?}` ; aucun texte client. Sections/pages sélectionnées et contrôlées en base ; génération par section puis tour de rôle avant plafond global. Sections relues en base, page = start_page. Maximum nommé/testé 60. |
+| GET | `/documents/:id/drafts` | Filtres `status`, `limit` (1–500, constante `MAX_DRAFT_PAGE_SIZE`), `offset`. Liste paginée, compteurs globaux du document, total filtré. |
+| PATCH | `/drafts/:id` | `front`, `back`, `noteType`, `fields`. Validation existante de notes ; 409 sur accepted. Un rejected édité reste rejected, restored vers edited. Empreinte et preuve d’origine inchangées. |
+| POST | `/drafts/:id/accept` | `{deckId}` ; transaction par brouillon ; accepted ou already_accepted, sans reçu ni requestId. |
+| POST | `/drafts/:id/reject` | Refus 409 sur accepted ; état antérieur enregistré ; rejeter à nouveau ne renouvelle pas la date de purge. |
+| POST | `/drafts/:id/restore` | Rejected uniquement, sinon 409 ; retour à rejected_from. |
+| POST | `/documents/:id/drafts/accept` | `{ids, deckId}` ou `{faithfulOnly: true, deckId}`. Maximum nommé/testé 100 ; résultat par ID. Fidélité recalculée avec les sections présentes. |
+| POST | `/documents/:id/drafts/reject` | `{ids}` ; traitement par brouillon, résultats explicites. |
+| POST | `/documents/:id/drafts/restore` | `{ids}` ; traitement par brouillon, résultats explicites. |
+
+Les lots d’acceptation renvoient `accepted / already_accepted / not_found / invalid`, avec les compteurs réellement obtenus. Les lots de rejet/restauration renvoient `rejected / restored / not_found / invalid`. Un identifiant invalide, un deck absent ou une panne d’insertion n’annule que le brouillon concerné. Les résultats invalides incluent un code HTTP et un message. Le mode faithfulOnly renvoie aussi eligibleBefore, remainingFaithful et batchLimit afin de ne pas masquer une limite ou un traitement partiel.
+
+La fidélité n’est pas une colonne : `faithfulToCourse` est calculé lors de la lecture et revérifié lors de l’acceptation automatique. Une preuve disparue de la section ne reste pas éligible. Les brouillons édités sont exclus, y compris lorsqu’ils sont rejetés puis restaurés.
+
+## Extension ultérieure
+
+Étendre la validation aux synthèses/QCM nécessiterait des statuts et une identité durable pour ces objets, leurs propres actions de validation et l’adaptation des lecteurs/entraînements pour n’utiliser que les éléments acceptés. Aucun changement de ce flux n’est inclus ici.
+
+## Validation API
+
+`test:flashcards` : 95 tests réussis (dont 9 nouveaux tests API) ; `test:study` : 25 ; `test:catalog-content` : 6. Build production et TypeScript réussis. UI et Playwright du nouveau parcours restent à faire ; aucune CI distante lancée à cette étape non poussée.
+
+## Point de contrôle avant UI
+
+Réponses HTTP réelles, complètes, produites avec un compte de test et la base isolée :
+- [Liste avec basic rejeté, cloze et typed édités](examples/drafts-list.json).
+- [Acceptation individuelle](examples/draft-accept.json).
+- [Acceptation en lot : accepted, already_accepted et not_found](examples/drafts-accept-batch.json).
+
+L'identifiant de note est renvoyé dans `noteId` et `note.id`, pour accepted et already_accepted, en individuel comme en lot. Le compteur fidèle inclut uniquement pending et exclut edited. Le lot fidèle est plafonné à 100, recalcule l'éligibilité et rapporte les résultats réels : il ne garantit pas d'accepter le compteur entier au-delà du plafond ou en cas d'erreur.
+
+L'UI ne proposera aucun bouton de lot fidèle. Proposition en attente d'accord : cases à cocher, Maj+clic, sélection de la vue filtrée, acceptation/rejet des identifiants sélectionnés en lots de 100. Pour Mes cours uniquement, remplacer l'appel de GenerationDialog par génération persistée puis ouverture de Révision ; conserver les trois autres usages (catalogue, correction QCM, texte libre), les synthèses/QCM et la création manuelle visuelle.
+
+Le test de pagination ajouté retire une acceptation puis recharge le préfixe depuis offset 0 : aucun brouillon restant n'est sauté. La limite de page est maintenant 500, bornes 0/1/500/501 testées. Au-delà, l’UI rechargera le préfixe de 500 puis les pages complémentaires depuis le début, sans réutiliser un offset devenu périmé. Aucun code UI n'a été ajouté. Suites locales : flashcards 96, study 25, catalog-content 6, toutes vertes.
+
+Bloc API validé : flashcards 98, study 25, catalog-content 6. CI précédente entièrement verte sur 5ebfc49.
+
+
+## UI livrée
+
+`src/study/review/` contient l’API cliente, les paramètres de génération, les cartes et l’espace de révision. L’ancien branchement de GenerationDialog dans Mes cours a été remplacé, sans changer les trois autres usages. Le nouveau paramétrage garde la sélection multiple de sections et la plage de pages (pas de génération de passage sélectionné dans l’ancien dialogue de Mes cours).
+
+La sélection comprend cases, Maj+clic et sélection de toute la vue filtrée, y compris les pages non encore chargées. Acceptation et rejet en lots séquentiels de 100 : progression, résultat par identifiant, verrou contre doubles clics, rollback de la requête en échec et reprise du suffixe non terminé. L’édition conserve le texte saisi si le serveur refuse. Le bandeau de rejet reste affiché jusqu’à annulation ou fermeture explicite ; les restaurations réussies remettent immédiatement les cartes et les compteurs à jour.
+
+Les raccourcis A/E/R/flèches et ? sont locaux à la liste, ignorés dans les champs/édition/dialogues, et désactivables. Compteurs, progression et annulation utilisent aria-live. La preuve est mise en évidence dans le contexte de la section.
+
+PdfCropSelector a un mode readOnly sans recadrage/export : page de preuve, piège de focus, Échap et retour au déclencheur ; PDF introuvable affiché explicitement. La route PDF avec contrôle de propriétaire reste utilisée. Les liens de cartes ciblent noteId ; le filtre serveur de la file FSRS s’applique avant LIMIT, sans modifier échéances, règles de cartes sœurs ou calcul FSRS.
+
+Validation finale locale : build/TypeScript réussis ; flashcards 99, study 25, catalog-content 6. Les 23 E2E concernés ont passé en une session séquentielle (dont 3 nouveaux), puis les 4 nouveaux tests ont repassé après ajout du cas de régénération et du filtre FSRS ciblé. Les tests de lots volumineux/pannes utilisent des réponses HTTP contrôlées ; import PDF, édition, acceptation et arrivée dans la file FSRS sont testés avec le vrai backend. Pas de vérification manuelle avec Safari/iPhone ou lecteur d’écran réel.
+
+CI de départ entièrement verte sur 5ebfc49 : validate et e2e (1/2/3). La branche est poussée sans merge pour validation distante du résultat final.
+
+## Non vérifié manuellement
+
+- Safari sur macOS et Safari sur iPhone réel (dont navigation tactile et clavier virtuel). Les captures à 390 px et les tests responsive utilisent Chromium, pas un appareil iPhone.
+- Lecteur d’écran réel (VoiceOver, NVDA ou équivalent). Le test Playwright vérifie une seule région aria-live active pour les compteurs, chargement, progression, résultat et annulation, y compris sur erreur ; cela ne remplace pas l’écoute des annonces sur ces lecteurs.
+
+## Suites possibles
+
+- Étendre la révision aux synthèses et QCM : identité durable et statuts propres à ces objets, routes de validation isolées par propriétaire, interfaces dédiées et adaptation des lecteurs/entraînements pour ne consommer que les contenus acceptés. Leurs flux actuels restent inchangés.
+- Dériver les brouillons depuis les faits typés, plutôt que rapprocher après génération leurs preuves avec ces faits. Ce chantier rendrait le critère de fidélité à 0,95 réellement discriminant. Ni le seuil, ni l’atomisation et/ou, ni l’extraction PDF ne sont modifiés ici.
+
+## Refactor et captures avant Ready for review
+
+Le composant ReviewWorkspace compose désormais la barre d’actions/destination, la liste, les messages et le bandeau d’annulation. Les hooks séparent orchestration, navigation/sélection clavier et lots séquentiels. Le commit de refactor ne modifie ni routes ni tests existants ; le commit d’accessibilité ajoute une seule région active et un test de non-régression.
+
+Recréer les captures sur une instance et une base locales isolées :
+
+```sh
+node scripts/capture-flashcard-review.mjs
+```
+
+Le script crée dix PNG (1440 px et 390 px) et une galerie `index.html` dans `tests/artifacts/design/flashcard-review/` : liste basic/cloze/typed, édition cloze, PDF ouvert à la preuve page 2, annulation du rejet et état vide. Il utilise le vrai backend avec des données de démonstration, puis supprime sa base temporaire. Les cloze et typed sont préparés via PATCH sur des brouillons persistés ; leur état édité est visible. Les PNG de revue restent ignorés par git, avec le script et la documentation conservés pour les recréer.
+
+Validation de cette passe : build/TypeScript, 99 tests flashcards, 25 study, 6 catalog-content et 25 E2E ciblés verts. Les E2E et tests API préexistants sont conservés sans modification ; un test aria-live est ajouté. Les captures de composant masquent temporairement la navigation externe et retirent le clipping des ancêtres pour montrer toute la liste, sans modifier sa largeur responsive ni le CSS du produit.
+
+## Collisions entre sections d’un document
+
+Le flux persisté contextualise désormais les rectos identiques à l’échelle du document avant la sélection des sections et le plafond global. Les réponses distinctes restent des brouillons distincts ; section, page et extrait sont conservés sans citation concaténée. La sélection d’une section seule donne le même contexte qu’une génération du document entier. Une régénération reconnaît aussi les faits déjà stockés avant cette amélioration, y compris rejetés ou édités ; les données existantes ne sont pas réécrites. Les anciens rectos déjà dupliqués ne sont pas modifiés automatiquement.

@@ -15,8 +15,8 @@ import { isCorrect } from './questions'
 import { nextReview, validReview, type ReviewRecord } from './reviewSchedule'
 import { buildDocumentAnkiCsv, downloadAnkiCsv, documentAnkiFilename } from './ankiExport'
 import './myCourses.css'
-import GenerationDialog from '../flashcards/GenerationDialog'
-import type {FlashcardDeck, GenerationSource} from '../flashcards/flashcardsTypes'
+import ReviewWorkspace from './review/ReviewWorkspace'
+import type {FlashcardDeck} from '../flashcards/flashcardsTypes'
 import {listDecks} from '../flashcards/flashcardsApi'
 import {PdfCropSelector} from '../flashcards/PdfCropSelector'
 import {ImageOcclusionEditor} from '../flashcards/ImageOcclusionEditor'
@@ -61,7 +61,8 @@ export default function MyCoursesWorkspace(props: {
   const [targetPassage, setTargetPassage] = useState<{ title: string; pages: string; text: string } | null>(null)
   const [questionAnswers, setQuestionAnswers] = useState<Record<string, number>>({})
   const [revealedQuestions, setRevealedQuestions] = useState<Record<string, boolean>>({})
-  const [flashGeneration,setFlashGeneration]=useState<GenerationSource|null>(null)
+  const [flashReview,setFlashReview]=useState<'generate'|'review'|null>(null)
+  const [generationRequest,setGenerationRequest]=useState(0)
   const [visualCropDoc, setVisualCropDoc] = useState<StudyDocument | null>(null)
   const [cropResult, setCropResult] = useState<{
     blob: Blob
@@ -334,7 +335,8 @@ export default function MyCoursesWorkspace(props: {
           </div>
 
           <div className="mycourses-action-bar">
-            <button className="mycourses-action-btn mycourses-action-primary" onClick={()=>setFlashGeneration({kind:'study',title:currentDoc.title,documentId:currentDoc.id,pageCount:currentDoc.pageCount,chapter:currentDoc.title,sections:(currentDoc.sections||[]).map(section=>({id:section.id,title:section.title,startPage:section.startPage,endPage:section.endPage}))})}><Sparkles size={16}/>Générer des flashcards</button>
+            <button className="mycourses-action-btn mycourses-action-primary" onClick={()=>{setFlashReview('generate');setGenerationRequest(value=>value+1)}}><Sparkles size={16}/>Générer des flashcards</button>
+            <button className="mycourses-action-btn" onClick={()=>setFlashReview('review')}>Réviser les brouillons</button>
             <button className="mycourses-action-btn mycourses-action-secondary" onClick={()=>void openVisualCrop(currentDoc)} title="Créer une flashcard d’occlusion d’image à partir d’une page de ce PDF"><Crop size={16}/>Flashcard visuelle</button>
             {!currentDoc.summary ? (
               <button
@@ -835,7 +837,7 @@ export default function MyCoursesWorkspace(props: {
             onCancel={() => setCropResult(null)}
           />
         )}
-        {flashGeneration&&<GenerationDialog source={flashGeneration} onClose={()=>setFlashGeneration(null)} onSaved={info=>info&&setToast(`${info.count} carte${info.count>1?'s':''} enregistrée${info.count>1?'s':''} dans le deck « ${info.deckName} »`)}/>}
+        {flashReview&&currentDoc&&<ReviewWorkspace key={currentDoc.id} document={currentDoc} initialGenerate={flashReview==='generate'} generationRequest={generationRequest} onClose={()=>setFlashReview(null)}/>}
         {toast&&<div className="flash-toast" role="status"><Check size={16}/><span>{toast}</span></div>}
       </section>
     )

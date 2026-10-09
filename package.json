@@ -17,7 +17,7 @@
     "test:catalog-content": "node --experimental-strip-types --experimental-loader=./scripts/ts-loader.mjs --test tests/canonical-content.test.mjs",
     "test:course-quality-sample": "node --experimental-strip-types --experimental-loader=./scripts/ts-loader.mjs --test tests/course-quality-sample.test.mjs",
     "audit:catalog": "node --experimental-strip-types --experimental-loader=./scripts/ts-loader.mjs scripts/audit-canonical-catalog.mjs",
-    "test:flashcards": "node --test tests/flashcards.test.mjs tests/flashcard-fsrs.test.mjs tests/flashcard-migration.test.mjs tests/flashcard-scheduler.test.mjs tests/flashcard-generation.test.mjs tests/flashcard-cloze.test.mjs tests/flashcard-derivation.test.mjs tests/flashcard-notes.test.mjs tests/flashcard-burying.test.mjs tests/flashcard-generation-notes.test.mjs tests/flashcard-image-occlusion.test.mjs tests/flashcard-atlas-3d.test.mjs",
+    "test:flashcards": "node --test tests/flashcards.test.mjs tests/flashcard-fsrs.test.mjs tests/flashcard-migration.test.mjs tests/flashcard-scheduler.test.mjs tests/flashcard-generation.test.mjs tests/flashcard-cloze.test.mjs tests/flashcard-derivation.test.mjs tests/flashcard-notes.test.mjs tests/flashcard-burying.test.mjs tests/flashcard-generation-notes.test.mjs tests/flashcard-image-occlusion.test.mjs tests/flashcard-atlas-3d.test.mjs tests/flashcard-draft-api.test.mjs",
     "dashboard:index": "node --experimental-strip-types --experimental-loader=./scripts/ts-loader.mjs scripts/build-dashboard-index.mjs",
     "test:student-progress": "node --test tests/student-progress.test.mjs"
   },
