@@ -192,6 +192,7 @@ export type FlashcardDraft = {
 }
 
 export type FlashcardNoteDraft = {
+  evidence?: string
   temporaryId: string
   noteType: NoteType
   title?: string

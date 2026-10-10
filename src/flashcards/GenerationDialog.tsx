@@ -1,6 +1,8 @@
+import {GenerationNotice,useGenerationProvider} from '../study/ai/GenerationNotice'
+import type {GenerationInfo} from '../study/ai/GenerationNotice'
 import {useEffect, useRef, useState} from 'react'
 import {Check, Plus, Sparkles, Trash2, X} from 'lucide-react'
-import {createDeck, createNotesBulk, generateDrafts, listDecks} from './flashcardsApi'
+import {createDeck, createNotesBulk, generateDrafts, listDecks, regenerateGeneratedDraft} from './flashcardsApi'
 import type {FlashcardDeck, FlashcardNoteDraft, GenerationSource, NoteType} from './flashcardsTypes'
 
 const extractKeys = (text: string) => {
@@ -47,6 +49,8 @@ export default function GenerationDialog({
   const [generationId, setGenerationId] = useState<string | undefined>()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const provider=useGenerationProvider()
+  const [generation,setGeneration]=useState<GenerationInfo|null>(null)
   const [newDeck, setNewDeck] = useState('')
 
   useEffect(() => {
@@ -71,6 +75,7 @@ export default function GenerationDialog({
         selectedSections,
         source.kind === 'study' ? {startPage, endPage} : undefined
       )
+      setGeneration(result.generation)
       setDrafts(result.drafts)
       setGenerationId(result.generationId)
       setPreview(result.drafts.length > 0)
@@ -83,6 +88,17 @@ export default function GenerationDialog({
       lock.current = false
       setBusy(false)
     }
+  }
+
+  const regenerate = async (index:number) => {
+    if(lock.current||!generationId)return
+    lock.current=true;setBusy(true);setError('')
+    try {
+      const result=await regenerateGeneratedDraft(generationId,drafts[index])
+      setGeneration(result.generation)
+      if(result.draft)setDrafts(items=>items.map((item,i)=>i===index?{...result.draft!,selected:item.selected}:item))
+      else setError(result.generation.message||'La carte a été conservée. Réessayez.')
+    }catch(problem){setError((problem as Error).message)}finally{lock.current=false;setBusy(false)}
   }
 
   const addDeck = async () => {
@@ -245,6 +261,7 @@ export default function GenerationDialog({
           </button>
         </header>
 
+        <GenerationNotice generation={generation} provider={provider}/>
         {!preview ? (
           <div className="flash-generator-settings">
             {source.sections?.length ? (
@@ -529,10 +546,11 @@ export default function GenerationDialog({
                       </p>
                     )}
 
-                    {draft.source.excerpt && (
+                    {provider?.mode==='gemini'&&generationId&&<button disabled={busy} onClick={()=>void regenerate(index)}>Régénérer cette carte avec l’IA</button>}
+                    {(draft.source.excerpt||draft.evidence) && (
                       <details style={{fontSize: '12px', color: '#657a82'}}>
                         <summary>Passage source</summary>
-                        <p style={{margin: '4px 0', fontStyle: 'italic'}}>« {draft.source.excerpt} »</p>
+                        <p style={{margin: '4px 0', fontStyle: 'italic'}}>« {draft.source.excerpt||draft.evidence} »</p>
                       </details>
                     )}
 
@@ -616,7 +634,7 @@ export default function GenerationDialog({
             </div>
           </div>
         )}
-        {error && (
+      {error && (
           <p className="flash-error" role="alert">
             {error}
           </p>

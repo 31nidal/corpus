@@ -2,7 +2,7 @@ import {useEffect,useRef,useState} from 'react'
 import type {NoteType} from '../../flashcards/flashcardsTypes'
 import type {Draft} from './api'
 const labels:Record<string,string>={basic:'Carte simple',reverse:'Inversée',bidirectional:'Bidirectionnelle',cloze:'Texte à trous',typed:'Réponse à saisir'}
-export function DraftCard({draft,index,selected,busy,editing,sourceText,onSelect,onEdit,onSave,onCancel,onAction,onView,onFocus,register}:{draft:Draft;index:number;selected:boolean;busy:boolean;editing:boolean;sourceText:string;onSelect:(shift:boolean)=>void;onEdit:()=>void;onSave:(type:NoteType,fields:Record<string,unknown>)=>void;onCancel:()=>void;onAction:(action:'accept'|'reject'|'restore')=>void;onView:(button:HTMLButtonElement)=>void;onFocus:()=>void;register:(node:HTMLElement|null)=>void}) {
+export function DraftCard({draft,index,selected,busy,editing,sourceText,onSelect,onEdit,onRegenerate,onSave,onCancel,onAction,onView,onFocus,register}:{draft:Draft;index:number;selected:boolean;busy:boolean;editing:boolean;sourceText:string;onSelect:(shift:boolean)=>void;onEdit:()=>void;onRegenerate?:()=>void;onSave:(type:NoteType,fields:Record<string,unknown>)=>void;onCancel:()=>void;onAction:(action:'accept'|'reject'|'restore')=>void;onView:(button:HTMLButtonElement)=>void;onFocus:()=>void;register:(node:HTMLElement|null)=>void}) {
   const [type,setType]=useState(draft.noteType)
   const [front,setFront]=useState(draft.front),[back,setBack]=useState(draft.back)
   const [text,setText]=useState(String(draft.fields.text||draft.back))
@@ -23,6 +23,7 @@ export function DraftCard({draft,index,selected,busy,editing,sourceText,onSelect
       <button disabled={busy} onClick={event=>onView(event.currentTarget)}>Voir dans le cours · p. {draft.page}</button>
       {draft.status!=='accepted'&&!editing&&<button disabled={busy} onClick={onEdit}>Modifier</button>}
       {['pending','edited'].includes(draft.status)&&<><button disabled={busy} onClick={()=>onAction('accept')}>Accepter</button><button disabled={busy} onClick={()=>onAction('reject')}>Rejeter</button></>}
+      {draft.status!=='accepted'&&!editing&&onRegenerate&&<button disabled={busy} onClick={onRegenerate}>Régénérer avec l’IA</button>}
       {draft.status==='rejected'&&<button disabled={busy} onClick={()=>onAction('restore')}>Restaurer</button>}
       {draft.acceptedNoteId&&<a href={`#tab=flashcards&revision=due&note=${encodeURIComponent(draft.acceptedNoteId)}`}>Réviser cette carte</a>}
     </div>

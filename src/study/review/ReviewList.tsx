@@ -24,6 +24,7 @@ export function ReviewList({ document, review }: { document: StudyDocument; revi
           }
           onSelect={(shift) => review.select(draft.id, shift)}
           onEdit={() => review.setEditing(draft.id)}
+          onRegenerate={review.provider?.mode==='gemini'?()=>review.regenerate(draft.id):undefined}
           onCancel={() => review.cancelEditing(draft.id)}
           onSave={(type, fields) => review.save(draft, type, fields)}
           onAction={(action) => review.batch(action, [draft.id])}
