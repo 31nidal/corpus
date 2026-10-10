@@ -1,4 +1,5 @@
 import {handleDraftReview} from './review/handler.mjs'
+import {generateWithQuota} from '../ai/generation.mjs'
 import {DatabaseSync} from 'node:sqlite'
 import {createHash, randomUUID} from 'node:crypto'
 import {existsSync, mkdirSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync} from 'node:fs'
@@ -86,7 +87,23 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
       const assetsDir = getAssetsDir()
       const url = new URL(req.url, 'http://localhost'), subpath = url.pathname.replace('/api/flashcards/', '').replace(/\/$/, ''), repo = new FlashcardRepository(d, assetsDir)
 
-      if (await handleDraftReview({db:d,notes:repo,userId:user.id,subpath,url,req,readJson,send,now:dependencies.now||Date.now})) return
+      if(req.method==='GET'&&subpath==='generation-status')return send(200,{mode:provider?.name==='gemini'?'gemini':provider?'provider':'local',...(provider?.name==='gemini'?{model:provider.client.model}:{})})
+
+      if (await handleDraftReview({db:d,notes:repo,userId:user.id,subpath,url,req,readJson,send,now:dependencies.now||Date.now,provider,config})) return
+
+      const regenerateMatch=subpath.match(/^generations\/([^/]+)\/regenerate$/)
+      if(req.method==='POST'&&regenerateMatch){
+        const receipt=repo.getGenerationReceipt(user.id,regenerateMatch[1])
+        if(!receipt)return send(404,{error:'Génération introuvable ou expirée.'})
+        if(provider?.name!=='gemini')return send(503,{error:'La régénération IA nécessite Gemini. Vous pouvez modifier la carte manuellement.'})
+        const body=await readJson(req),excerpt=cleanText(body.sourceExcerpt,2000,true)
+        if(!excerpt||excerpt.length<15||!normalize(receipt.sourceText).includes(normalize(excerpt))||!['basic','reverse','bidirectional','cloze','typed'].includes(body.noteType))return send(400,{error:'Type ou passage source invalide.'})
+        const fallback={text:excerpt,requestedCount:1,level:'standard',source:receipt.source}
+        const result=await generateWithQuota({db:d,userId:user.id,provider,config,task:'flashcards',context:{...fallback,noteType:body.noteType},local:()=>null})
+        const draft=result.value?sanitizeGeneratedNoteDrafts(result.value,fallback,excerpt)[0]:null
+        if(!draft){if(result.value)result.refund?.();return send(200,{draft:null,generation:result.generation,unchanged:true})}
+        return send(200,{draft:{...draft,evidence:result.value[0].sourceExcerpt},generation:result.generation})
+      }
 
       // Assets routes
       if (req.method === 'POST' && subpath === 'assets/upload') {
@@ -763,6 +780,15 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
         repo.saveGenerationReceipt(user.id, generationId, kind, source, text)
 
         const fallback = {text, level, requestedCount, source, subject, chapter, tags}; let drafts = [], usedProvider = false, reserved = false
+        if(provider?.name==='gemini'){
+          const result=await generateWithQuota({db:d,userId:user.id,provider,config,task:'flashcards',context:{...fallback,sections:sourceSegments.map(s=>({...s,content:s.text}))},local:()=>generateLocalNoteDrafts(fallback)})
+          drafts=result.generation.mode==='gemini'?result.value.flatMap(item=>sanitizeGeneratedNoteDrafts([item],{...fallback,requestedCount:1},text).map(draft=>{
+            const segment=sourceSegments.find(s=>s.id===item.sourceSectionId&&normalize(s.text).includes(normalize(item.sourceExcerpt)))
+            return {...draft,evidence:item.sourceExcerpt,source:segment?{...draft.source,sectionId:segment.id,locator:kind==='study'?{pages:[segment.startPage,segment.endPage]}:{route:`#tab=cours&cours=${source.courseId}&section=${segment.id}`}}:draft.source}
+          })):result.value
+          if(!drafts.length)result.refund?.()
+          return send(200,{drafts,generationId,generation:{...result.generation,level,requestedCount,produced:drafts.length,persisted:false}})
+        }
         if (provider?.generateFlashcards) {
           reserveGenerationQuota(user.id, d); reserved = true
           try {

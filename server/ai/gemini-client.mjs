@@ -71,7 +71,13 @@ export class GeminiClient {
             body: JSON.stringify({
               systemInstruction: {parts: [{text: instruction}]},
               contents: [{role: 'user', parts: [{text: JSON.stringify(data)}, ...(inlinePdf ? [{inlineData: {mimeType: 'application/pdf', data: inlinePdf.toString('base64')}}] : [])]}],
-              generationConfig: {temperature: .2, maxOutputTokens: AI_LIMITS.outputTokens, responseMimeType: 'application/json', responseJsonSchema: schema, thinkingConfig: {thinkingBudget: 0}},
+              generationConfig: {
+                temperature: .2,
+                maxOutputTokens: AI_LIMITS.outputTokens,
+                responseMimeType: 'application/json',
+                responseJsonSchema: schema,
+                ...(!this.model.includes('3.5-flash-lite') ? {thinkingConfig: {thinkingBudget: 0}} : {})
+              },
             }),
           })
         } catch {

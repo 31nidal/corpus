@@ -47,7 +47,7 @@ export class DraftReviewRepository {
     return {drafts:filtered.slice(offset,offset+limit),counts,filteredTotal:filtered.length,limit,offset,
       nextOffset:offset+limit<filtered.length?offset+limit:null}
   }
-  generate(userId,documentId,{count=12,level='standard',sectionId,sectionIds,startPage,endPage}={}) {
+  generationContext(userId,documentId,{count=12,level='standard',sectionId,sectionIds,startPage,endPage}={}) {
     if(!Number.isSafeInteger(count)||count<1)throw error(400,'Le nombre demandé doit être un entier positif.')
     if(!['essential','standard','complete'].includes(level))throw error(400,'Niveau de génération invalide.')
     const doc=this.document(userId,documentId);if(!doc)throw error(404,'Document introuvable.')
@@ -62,9 +62,13 @@ export class DraftReviewRepository {
     if(sectionIds!==undefined)sections=sections.filter(s=>sectionIds.includes(s.id))
     if(startPage!==undefined||endPage!==undefined)sections=sections.filter(s=>s.endPage>=(startPage??1)&&s.startPage<=(endPage??doc.page_count))
     if(!sections.length)throw error(422,'Aucune section disponible pour générer des brouillons.')
+    return {doc,requestedCount,sections,allSections,level}
+  }
+  generate(userId,documentId,options={},provided=null) {
+    const {doc,requestedCount,sections,allSections,level}=this.generationContext(userId,documentId,options)
     // Generate per section, then round-robin before the global cap. Later sections
     // get the same opportunity as the first; source attribution stays exact.
-    const allQueues=allSections.map(section=>generateLocalNoteDrafts({text:section.content,level,requestedCount,
+    const allQueues=provided ? allSections.map(section=>provided.filter(draft=>draft.source.sectionId===section.id).map(draft=>({draft,section}))) : allSections.map(section=>generateLocalNoteDrafts({text:section.content,level,requestedCount,
       source:{type:'study_document',documentId,sectionId:section.id,sectionTitle:section.title},chapter:doc.title}).map(draft=>({draft,section})))
     // Resolve collisions across the whole document, including section-only runs.
     disambiguateDraftFronts(allQueues.flat().map(item=>item.draft))

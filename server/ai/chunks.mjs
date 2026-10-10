@@ -28,6 +28,10 @@ export function planChunks(sections, {chunkCharacters = AI_LIMITS.chunkCharacter
 }
 
 export function evenlySelect(queues, maximum) {
+  queues = queues.filter(queue => queue.length)
+  if (maximum < queues.length && maximum > 0) {
+    return Array.from({length: maximum}, (_, i) => queues[maximum === 1 ? Math.floor(queues.length / 2) : Math.round(i * (queues.length - 1) / (maximum - 1))][0])
+  }
   const result = []
   for (let index = 0; result.length < maximum && queues.some(queue => queue.length > index); index++) {
     for (const queue of queues) if (queue[index] && result.length < maximum) result.push(queue[index])
