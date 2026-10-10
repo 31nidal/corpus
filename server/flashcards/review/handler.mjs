@@ -1,8 +1,9 @@
 import {DraftReviewRepository,MAX_DRAFT_PAGE_SIZE} from './repository.mjs'
+import {generateReviewDrafts,regenerateReviewDraft} from './generation.mjs'
 const statuses=new Set(['pending','edited','accepted','rejected'])
-export async function handleDraftReview({db,notes,userId,subpath,url,req,readJson,send,now=Date.now}) {
+export async function handleDraftReview({db,notes,userId,subpath,url,req,readJson,send,now=Date.now,provider,config}) {
   const docMatch=subpath.match(/^documents\/([^/]+)\/drafts(?:\/(generate|accept|reject|restore))?$/)
-  const draftMatch=subpath.match(/^drafts\/([^/]+)(?:\/(accept|reject|restore))?$/)
+  const draftMatch=subpath.match(/^drafts\/([^/]+)(?:\/(accept|reject|restore|regenerate))?$/)
   if(!docMatch&&!draftMatch)return false
   const repo=new DraftReviewRepository(db,notes,now)
   if(docMatch) {
@@ -23,7 +24,7 @@ export async function handleDraftReview({db,notes,userId,subpath,url,req,readJso
       }
       if(action==='generate') {
         if(Object.keys(body).some(k=>!['count','level','sectionId','sectionIds','startPage','endPage'].includes(k))){send(400,{error:'La génération lit uniquement les sections du document ; seuls les paramètres de génération et filtres de sections/pages sont autorisés.'});return true}
-        send(201,repo.generate(userId,documentId,body))
+        send(201,await generateReviewDrafts({repo,userId,documentId,options:body,provider,config}))
       }else send(200,repo.batch(userId,documentId,action,body))
       return true
     }
@@ -34,6 +35,7 @@ export async function handleDraftReview({db,notes,userId,subpath,url,req,readJso
     if(action&&req.method==='POST') {
       const body=await readJson(req)
       if(!body||typeof body!=='object'||Array.isArray(body)){send(400,{error:'Requête invalide.'});return true}
+      if(action==='regenerate'){send(200,await regenerateReviewDraft({repo,userId,id,provider,config}));return true}
       if(action==='accept') {
         if(typeof body.deckId!=='string'||!body.deckId.trim()){send(400,{error:'Deck de destination requis.'});return true}
         if(!notes.deck(userId,body.deckId)){send(400,{error:'Deck de destination introuvable.'});return true}

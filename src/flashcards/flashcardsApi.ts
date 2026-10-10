@@ -1,3 +1,4 @@
+import type {GenerationInfo} from '../study/ai/GenerationNotice'
 import type {Flashcard, FlashcardDeck, FlashcardNoteDraft, FlashcardNoteFields, FlashcardSource, NoteType, FlashcardPreview, FlashcardStats, FlashcardReview, GenerationSource, FlashcardNote, FlashcardAsset} from './flashcardsTypes'
 
 const headers = {'Content-Type': 'application/json', 'x-mycorpus-request': '1'}
@@ -14,7 +15,7 @@ async function request<T>(path: string, options: RequestInit = {}) {
   try {
     response = await fetch('/api/flashcards/' + path, {
       credentials: 'same-origin',
-      signal: AbortSignal.timeout(45000),
+      signal: AbortSignal.timeout(210000),
       ...options,
       headers: {...headers, ...options.headers},
     })
@@ -178,7 +179,7 @@ export async function generateDrafts(
   return request<{
     drafts: FlashcardNoteDraft[]
     generationId?: string
-    generation: {mode: string; produced: number; persisted: boolean}
+    generation: GenerationInfo & {produced: number; persisted: boolean}
   }>(`generate/${source.kind}`, {method: 'POST', body: JSON.stringify(payload)})
 }
 
@@ -243,3 +244,5 @@ export async function uploadFlashcardAsset(
 
 export const getFlashcardAssetUrl = (assetId: string) => `/api/flashcards/assets/${encodeURIComponent(assetId)}`
 
+
+export const regenerateGeneratedDraft = (generationId:string, draft:FlashcardNoteDraft) => request<{draft:FlashcardNoteDraft|null;generation:GenerationInfo;unchanged?:boolean}>(`generations/${encodeURIComponent(generationId)}/regenerate`,{method:'POST',body:JSON.stringify({noteType:draft.noteType,sourceExcerpt:draft.evidence||draft.source?.excerpt||draft.fields.back||draft.fields.answer||draft.fields.text?.replace(/\{\{c\d+::(.*?)\}\}/g,'$1')})})

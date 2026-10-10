@@ -1,0 +1,10 @@
+.generation-notice {padding: .8rem 1rem; border: 1px solid var(--mc-border, #d9e4e4); border-radius: 12px; background: var(--mc-surface, #fff); margin: .8rem 0; font-size: .9rem}
+.generation-notice p {margin: .3rem 0}
+.support-preview {width: min(850px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow-y: auto; padding: 1.25rem}
+.support-preview-items {display: grid; gap: 1rem; margin: 1rem 0}
+.support-preview label {display: grid; gap: .4rem}
+.support-preview textarea {min-height: 80px; width: 100%; box-sizing: border-box}
+.support-preview input,.support-preview textarea,.support-preview select {color: var(--mc-text); background: var(--mc-surface); border: 1px solid var(--mc-border, #b6cccc); border-radius: 8px; padding: .6rem}
+.support-preview .support-option {display: flex; align-items: center; margin-top: .5rem}
+.support-option input:last-child {flex: 1; min-width: 0}
+.support-preview :focus-visible {outline: 3px solid var(--mc-brand, #087e84); outline-offset: 3px}

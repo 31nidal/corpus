@@ -1,3 +1,4 @@
+import {GenerationNotice} from '../ai/GenerationNotice';
 import { PdfCropSelector } from "../../flashcards/PdfCropSelector";
 import { GenerationOptions } from "./GenerationOptions";
 import { ReviewActions, ReviewDestination, ReviewSelectionActions } from "./ReviewActions";
@@ -22,6 +23,7 @@ export default function ReviewWorkspace(props: ReviewOptions & { onClose: () => 
           Fermer la révision
         </button>
       </header>
+      <GenerationNotice generation={review.generation} provider={review.provider} />
       <ReviewActions review={review} />
       {review.showGeneration && (
         <GenerationOptions document={document} busy={review.busy} onGenerate={review.generate} />

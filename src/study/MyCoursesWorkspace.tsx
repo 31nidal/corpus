@@ -16,6 +16,7 @@ import { nextReview, validReview, type ReviewRecord } from './reviewSchedule'
 import { buildDocumentAnkiCsv, downloadAnkiCsv, documentAnkiFilename } from './ankiExport'
 import './myCourses.css'
 import ReviewWorkspace from './review/ReviewWorkspace'
+import {SupportPreview, type SupportTask} from './ai/SupportPreview'
 import type {FlashcardDeck} from '../flashcards/flashcardsTypes'
 import {listDecks} from '../flashcards/flashcardsApi'
 import {PdfCropSelector} from '../flashcards/PdfCropSelector'
@@ -62,6 +63,7 @@ export default function MyCoursesWorkspace(props: {
   const [questionAnswers, setQuestionAnswers] = useState<Record<string, number>>({})
   const [revealedQuestions, setRevealedQuestions] = useState<Record<string, boolean>>({})
   const [flashReview,setFlashReview]=useState<'generate'|'review'|null>(null)
+  const [supportTask,setSupportTask]=useState<SupportTask|null>(null)
   const [generationRequest,setGenerationRequest]=useState(0)
   const [visualCropDoc, setVisualCropDoc] = useState<StudyDocument | null>(null)
   const [cropResult, setCropResult] = useState<{
@@ -337,6 +339,7 @@ export default function MyCoursesWorkspace(props: {
           <div className="mycourses-action-bar">
             <button className="mycourses-action-btn mycourses-action-primary" onClick={()=>{setFlashReview('generate');setGenerationRequest(value=>value+1)}}><Sparkles size={16}/>Générer des flashcards</button>
             <button className="mycourses-action-btn" onClick={()=>setFlashReview('review')}>Réviser les brouillons</button>
+            <button className="mycourses-action-btn" onClick={()=>setSupportTask('summary')} title="Synthèse, fiche de révision ou QCM à relire et modifier avant enregistrement">Préparer un support à relire</button>
             <button className="mycourses-action-btn mycourses-action-secondary" onClick={()=>void openVisualCrop(currentDoc)} title="Créer une flashcard d’occlusion d’image à partir d’une page de ce PDF"><Crop size={16}/>Flashcard visuelle</button>
             {!currentDoc.summary ? (
               <button
@@ -838,6 +841,7 @@ export default function MyCoursesWorkspace(props: {
           />
         )}
         {flashReview&&currentDoc&&<ReviewWorkspace key={currentDoc.id} document={currentDoc} initialGenerate={flashReview==='generate'} generationRequest={generationRequest} onClose={()=>setFlashReview(null)}/>}
+        {supportTask&&currentDoc&&<SupportPreview document={currentDoc} task={supportTask} onClose={()=>setSupportTask(null)} onSaved={task=>{setToast(task==='questions'?'QCM relus enregistrés':'Support relu enregistré');void loadDoc(currentDoc.id)}}/>}
         {toast&&<div className="flash-toast" role="status"><Check size={16}/><span>{toast}</span></div>}
       </section>
     )

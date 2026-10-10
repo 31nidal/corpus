@@ -1,8 +1,10 @@
+import {useGenerationProvider} from '../ai/GenerationNotice';
+import type {GenerationInfo} from '../ai/GenerationNotice';
 import { useEffect, useRef, useState } from "react";
 import type { StudyDocument } from "../myCoursesTypes";
 import type { FlashcardDeck, NoteType } from "../../flashcards/flashcardsTypes";
 import { createDeck, listDecks } from "../../flashcards/flashcardsApi";
-import { generateDocumentDrafts, loadDraftPrefix, patchDraft } from "./api";
+import { generateDocumentDrafts, loadDraftPrefix, patchDraft, regenerateDraft } from "./api";
 import type { ActionResult, Draft, DraftList, DraftStatus, GenerationOptions } from "./api";
 import { useSequentialDraftBatches } from "./useSequentialDraftBatches";
 import { useReviewListNavigation } from "./useReviewListNavigation";
@@ -31,6 +33,8 @@ export function useDraftReview({
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [message, setMessage] = useState("");
+  const provider = useGenerationProvider();
+  const [generation, setGeneration] = useState<GenerationInfo|null>(null);
   const [showGeneration, setShowGeneration] = useState(initialGenerate);
   useEffect(() => {
     if (generationRequest > 0) setShowGeneration(true);
@@ -223,7 +227,8 @@ export function useDraftReview({
   const generate = (options: GenerationOptions) =>
     void perform(async () => {
       const result = await generateDocumentDrafts(document.id, options);
-      const messages = [];
+      setGeneration(result.generation||null);
+      const messages: string[] = [];
       if (result.generated === 0)
         messages.push("Aucun brouillon généré, ce cours contient peu de phrases exploitables.");
       if (result.created) messages.push(`${result.created} brouillons générés, à réviser.`);
@@ -239,6 +244,13 @@ export function useDraftReview({
       setSelected(new Set());
       await refresh(50, "pending");
     });
+  const regenerate = (id: string) => void perform(async () => {
+    const result = await regenerateDraft(id);
+    setGeneration(result.generation);
+    setMessage(result.unchanged ? (result.generation.message||"La carte a été conservée.") : "Carte régénérée par IA. Vérifiez-la avant acceptation.");
+    setFilter(result.draft.status); filterRef.current=result.draft.status;
+    await refresh(50,result.draft.status);
+  });
   const closeViewer = () => {
     setViewer(null);
     requestAnimationFrame(() => opener.current?.focus());
@@ -291,6 +303,9 @@ export function useDraftReview({
     changeFilter,
     selectAll,
     generate,
+    regenerate,
+    generation,
+    provider,
     batch,
     save,
     select,
