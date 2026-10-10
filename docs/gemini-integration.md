@@ -31,3 +31,11 @@ Risques prioritaires : provenance inventée, réponse JSON tronquée, silence su
 - https://ai.google.dev/gemini-api/docs/document-processing
 
 Le JSON structuré ne prouve pas la fidélité sémantique ni la validité médicale. La validation de provenance et la revue humaine restent nécessaires.
+
+## Vérification avant déploiement — 11 octobre 2026
+
+La clé locale accède aux métadonnées de `gemini-2.5-flash-lite`, mais `generateContent` renvoie 404 : ce modèle n'est plus disponible pour les nouveaux utilisateurs. Google recommande `gemini-3.5-flash-lite`. Trois appels réels avec ce modèle ont réussi : flashcards, synthèse et QCM, avec preuves validées et sans fuite de clé. Les paramètres retirés (`temperature`, `thinkingBudget`) sont omis pour ce modèle ; le défaut historique reste configurable, sans changement silencieux de modèle.
+
+Pour activer Gemini en production, configurer côté Railway `GEMINI_API_KEY`, `GEMINI_MODEL=gemini-3.5-flash-lite` et `AI_GENERATION_PROVIDER=gemini`. Ne jamais versionner la clé. Le coût estimé par défaut de ce modèle est de 0,30 USD / million de tokens en entrée et 2,50 USD en sortie ; les variables tarifaires explicites restent prioritaires. Ces tarifs sont des estimations, pas une facture.
+
+Références : https://ai.google.dev/gemini-api/docs/generate-content/whats-new-gemini-3.6 et https://ai.google.dev/gemini-api/docs/pricing.

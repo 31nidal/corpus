@@ -52,8 +52,9 @@ export class GeminiClient {
     this.sleep = sleep
     this.timeout = bounded(config.GEMINI_TIMEOUT_MS, 45000, 1000, 90000)
     this.concurrency = Math.floor(bounded(config.GEMINI_CONCURRENCY, 2, 1, 4))
-    this.inputPrice = bounded(config.GEMINI_INPUT_USD_PER_MILLION, .10, 0, 100)
-    this.outputPrice = bounded(config.GEMINI_OUTPUT_USD_PER_MILLION, .40, 0, 100)
+    const is35Lite = this.model.includes('3.5-flash-lite')
+    this.inputPrice = bounded(config.GEMINI_INPUT_USD_PER_MILLION, is35Lite ? .30 : .10, 0, 100)
+    this.outputPrice = bounded(config.GEMINI_OUTPUT_USD_PER_MILLION, is35Lite ? 2.50 : .40, 0, 100)
   }
   async json({instruction, data, schema, signal: parentSignal, onUsage = () => {}, inlinePdf}) {
     if (!this.key) throw aiError('AI_CONFIGURATION', 'La clé Gemini n’est pas configurée sur le serveur.')
@@ -72,7 +73,7 @@ export class GeminiClient {
               systemInstruction: {parts: [{text: instruction}]},
               contents: [{role: 'user', parts: [{text: JSON.stringify(data)}, ...(inlinePdf ? [{inlineData: {mimeType: 'application/pdf', data: inlinePdf.toString('base64')}}] : [])]}],
               generationConfig: {
-                temperature: .2,
+                ...(!this.model.includes('3.5-flash-lite') ? {temperature: .2} : {}),
                 maxOutputTokens: AI_LIMITS.outputTokens,
                 responseMimeType: 'application/json',
                 responseJsonSchema: schema,
