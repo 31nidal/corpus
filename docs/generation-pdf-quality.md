@@ -44,7 +44,7 @@ Le nombre de caractères change avec les espacements et la reconstruction ; ce n
 ## Validation et limites
 
 - Build TypeScript/Vite : vert ; Study 56/56, flashcards 109/109, catalogue 6/6 ; comptes, sécurité, feedback, progression, taxonomie et qualité du catalogue également verts.
-- Playwright ciblé : 8 parcours verts, puis 2 revérifications après correction visuelle de la modale ; import → brouillons → édition → acceptation → FSRS, prévisualisation de synthèse, lecture complète et impression PDF réextraite. Vue 390 px sans débordement.
+- Playwright ciblé : 8 parcours verts, puis 3 revérifications incluant la connexion depuis Mes cours et le rechargement du moteur Gemini après authentification ; import → brouillons → édition → acceptation → FSRS, prévisualisation de synthèse, lecture complète et impression PDF réextraite. Vue 390 px sans débordement.
 - Captures de validation générées localement, non versionnées. Résultats détaillés : [JSON du benchmark](quality/generation-pdf-2026-10-11.json).
 - Non vérifiés manuellement : Safari/iPhone, lecteur d’écran, PDF précis de l’utilisateur non fourni, mise en page identique au document original pour toutes les colonnes/tableaux, toutes les pages des 4 documents.
 - Une preuve verbatim et un contrôle de nombres ne certifient pas la sémantique ou la validité médicale. La relecture demeure nécessaire. Les OCR incertains restent signalés.

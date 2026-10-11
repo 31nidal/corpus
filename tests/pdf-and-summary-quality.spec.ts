@@ -1,6 +1,21 @@
 import {test,expect} from '@playwright/test'
 import {extractStudyPdf} from '../server/study/pdf-layout.mjs'
 
+test('Connexion depuis Mes cours : le moteur Gemini est rechargé après authentification',async({page})=>{
+  await page.route('**/api/flashcards/generation-status',route=>route.fulfill(route.request().headers().cookie?.includes('mycorpus_session=')?{json:{mode:'gemini',model:'gemini-test'}}:{status:401,json:{error:'Connexion requise'}}))
+  await page.goto('/#tab=mes-cours')
+  await page.getByRole('button',{name:'Mon compte',exact:true}).click()
+  await page.getByRole('button',{name:'Créer un compte',exact:true}).click()
+  await page.getByLabel('Prénom ou pseudonyme').fill('Qualité après connexion')
+  await page.getByLabel('Adresse e-mail').fill(`login-quality-${crypto.randomUUID()}@example.test`)
+  await page.getByLabel('Mot de passe',{exact:true}).fill('Quality-test-solide-2026')
+  await page.getByRole('button',{name:'Créer mon compte',exact:true}).click()
+  await expect(page.getByRole('heading',{name:/Bonjour/})).toBeVisible()
+  await page.getByRole('button',{name:'J’ai conservé mon code'}).click()
+  await page.getByRole('button',{name:'Fermer le profil'}).click()
+  await expect(page.getByRole('checkbox',{name:/Transcrire aussi les pages scannées/})).toBeVisible()
+})
+
 test('Export PDF : texte lisible en thème sombre, A4, formules et tableaux sans interface superposée',async({page})=>{
   await page.goto('/#tab=cours&cours=FMA7088')
   await expect(page.getByRole('button',{name:'Exporter en PDF',exact:true})).toBeVisible()
