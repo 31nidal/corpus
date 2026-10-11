@@ -4,7 +4,12 @@
   body[data-course-print=true]>:not(#course-print-document){display:none!important}
   body[data-course-print=true]{height:auto!important;overflow:visible!important;background:white!important;color:#172c35!important}
   #course-print-document{display:block!important;position:static!important;width:auto!important;margin:0!important;padding:0!important;background:white!important;color:#172c35!important;font:11pt/1.55 Arial,sans-serif;overflow:visible!important}
-  #course-print-document *{color:#172c35!important;box-shadow:none!important;text-shadow:none!important;animation:none!important;transition:none!important;transform:none!important;opacity:1!important;overflow:visible!important;max-width:100%!important}
+  #course-print-document *{color:#172c35!important;box-shadow:none!important;text-shadow:none!important;animation:none!important;transition:none!important;opacity:1!important;overflow:visible!important;max-width:100%!important}
+  #course-print-document :not(svg):not(svg *){background:transparent!important;background-image:none!important;position:static!important;transform:none!important}
+  #course-print-document .medical-plate{--med-wash-bg:#fff;--med-wash:#eaf4f7;break-inside:auto!important;padding:4mm!important}
+  #course-print-document :is(.medical-drawing,.diagram-transform-layer,.diagram-canvas){min-width:0!important;height:auto!important;aspect-ratio:auto!important}
+  #course-print-document :is(.medical-svg-root,.diagram-canvas>svg){position:static!important;display:block!important;width:100%!important;height:auto!important;max-height:none!important}
+  #course-print-document .medical-drawing text{stroke:#fff!important;fill:#234b5a!important}
   #course-print-document h1{font-size:23pt!important;line-height:1.2!important;letter-spacing:normal!important;margin:0 0 8mm!important}
   #course-print-document h2{font-size:15pt!important;margin:7mm 0 3mm!important;break-after:avoid}
   #course-print-document h3{font-size:12pt!important;break-after:avoid}
@@ -17,7 +22,8 @@
   #course-print-document :is(th,td){border:1px solid #cbd5dc;padding:2mm;overflow-wrap:anywhere}
   #course-print-document thead{display:table-header-group}
   #course-print-document tr{break-inside:avoid}
-  #course-print-document :is(img,svg,figure){max-height:220mm;break-inside:avoid;object-fit:contain}
+  #course-print-document :is(img,svg){max-height:220mm;break-inside:avoid;object-fit:contain}
+  #course-print-document figure{max-height:none!important;break-inside:auto!important}
   #course-print-document .course-source a{display:block;overflow-wrap:anywhere}
   #course-print-document a[href^=http]::after{content:' (' attr(href) ')';font-size:8pt}
 }

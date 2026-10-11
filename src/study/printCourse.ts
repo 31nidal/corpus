@@ -7,7 +7,7 @@ export async function printCourse(article: HTMLElement, title: string) {
   copy.id = 'course-print-document'
   copy.className = 'course-print-document'
   if(!copy.querySelector('h1')){const heading=document.createElement('h1');heading.textContent=title;copy.prepend(heading)}
-  copy.querySelectorAll('button,textarea,input,.course-document-actions,.course-feedback-panel,.course-notebook,.course-completion,.next-chapter,.reading-progress,.diagram-header-controls,.diagram-pan-hint,.diagram-navigation').forEach(node => node.remove())
+  copy.querySelectorAll('button,textarea,input,.course-document-actions,.course-feedback-panel,.course-notebook,.course-completion,.next-chapter,.reading-progress,.diagram-header-controls,.diagram-pan-hint,.diagram-navigation,.diagram-view-controls,.medical-toolbar,.medical-scroll-bar-hint').forEach(node => node.remove())
   copy.querySelectorAll('details').forEach(node => {node.open = true})
   document.body.append(copy)
   document.body.dataset.coursePrint = 'true'

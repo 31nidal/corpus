@@ -10,7 +10,7 @@
 - Pages et avertissements sont persistés sous propriété utilisateur, avec cascades document/compte. Les preuves sont recherchées sur la page exacte ; les anciennes données conservent leur page de section. Aucun historique FSRS modifié.
 - Les sections peuvent être ouvertes entièrement. Les pages vides et reconstructions incertaines sont signalées. Un OCR explicite des pages vides d’un PDF mixte conserve le texte déjà lisible (40 pages / 10 Mo). Un échec intégral rembourse le quota mensuel.
 - La prévisualisation est une modale autonome rendue dans le body, avec fond inerte, focus restauré et styles disponibles sans ouvrir Flashcards.
-- L’export PDF imprime une copie dédiée du cours ou de la synthèse : A4, une colonne, couleurs claires, tableaux adaptables et interface exclue. Les longs paragraphes se paginent sans imposer une page entière par section.
+- L’export PDF imprime une copie dédiée du cours ou de la synthèse : A4, une colonne, couleurs claires, tableaux adaptables et interface exclue. Les longs paragraphes se paginent sans imposer une page entière par section. Les figures ne sont plus plafonnées avec leur légende ; leurs fonds et textes restent lisibles en thème sombre, sans chevauchement du contenu suivant. Des assertions vérifient la géométrie de la figure, du SVG et de la légende.
 - Le modèle par défaut et l’exemple de configuration utilisent 3.5 Flash-Lite, car la clé locale reçoit 404 en génération pour 2.5. La clé reste hors du dépôt.
 
 ## Évaluation réelle limitée
