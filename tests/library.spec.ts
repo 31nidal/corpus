@@ -30,7 +30,10 @@ test('chapitre complet : schéma, raisonnement, favoris et notes conservées sé
  await page.evaluate(()=>{Object.defineProperty(window,'print',{configurable:true,value:()=>document.body.dataset.printRequested='yes'})})
  await page.getByRole('button',{name:'Exporter en PDF'}).click()
  await expect.poll(()=>page.evaluate(()=>document.body.dataset.printRequested)).toBe('yes')
- await expect(page).toHaveTitle('MyCorpus - Cycle cardiaque, débits et régulation')
+ await expect(page).toHaveTitle('MyCorpus — Cycle cardiaque, débits et régulation')
+ // Le faux dialogue d’impression doit aussi signaler sa fermeture avant de poursuivre la lecture.
+ await page.evaluate(()=>window.dispatchEvent(new Event('afterprint')))
+ await expect(page.locator('#course-print-document')).toHaveCount(0)
  await expect(page.locator('.medical-plate')).toBeVisible()
  await page.locator('.course-case summary').click();await expect(page.locator('.course-case details')).toContainText('5,25 L/min')
  await page.getByLabel('Mes notes de cours').fill('Le Golgi trie les protéines. À revoir demain.')
