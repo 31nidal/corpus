@@ -1,0 +1,23 @@
+.course-print-document{display:none}
+@media print{
+  @page{size:A4;margin:16mm 15mm 18mm}
+  body[data-course-print=true]>:not(#course-print-document){display:none!important}
+  body[data-course-print=true]{height:auto!important;overflow:visible!important;background:white!important;color:#172c35!important}
+  #course-print-document{display:block!important;position:static!important;width:auto!important;margin:0!important;padding:0!important;background:white!important;color:#172c35!important;font:11pt/1.55 Arial,sans-serif;overflow:visible!important}
+  #course-print-document *{color:#172c35!important;box-shadow:none!important;text-shadow:none!important;animation:none!important;transition:none!important;transform:none!important;opacity:1!important;overflow:visible!important;max-width:100%!important}
+  #course-print-document h1{font-size:23pt!important;line-height:1.2!important;letter-spacing:normal!important;margin:0 0 8mm!important}
+  #course-print-document h2{font-size:15pt!important;margin:7mm 0 3mm!important;break-after:avoid}
+  #course-print-document h3{font-size:12pt!important;break-after:avoid}
+  #course-print-document p,#course-print-document li{font-size:11pt!important;line-height:1.55!important;max-width:none!important;orphans:3;widows:3;overflow-wrap:anywhere}
+  #course-print-document :is(section,article,aside,div){break-inside:auto!important}
+  #course-print-document :is(.course-section,.course-learning-tools){display:block!important}
+  #course-print-document .course-section>span{display:none}
+  #course-print-document :is(.course-formula,.objectives,.exam-trap,.course-review){border:1px solid #cbd5dc!important;background:white!important;padding:4mm!important;margin:4mm 0!important}
+  #course-print-document table{width:100%!important;min-width:0!important;border-collapse:collapse;font-size:10pt;table-layout:fixed}
+  #course-print-document :is(th,td){border:1px solid #cbd5dc;padding:2mm;overflow-wrap:anywhere}
+  #course-print-document thead{display:table-header-group}
+  #course-print-document tr{break-inside:avoid}
+  #course-print-document :is(img,svg,figure){max-height:220mm;break-inside:avoid;object-fit:contain}
+  #course-print-document .course-source a{display:block;overflow-wrap:anywhere}
+  #course-print-document a[href^=http]::after{content:' (' attr(href) ')';font-size:8pt}
+}

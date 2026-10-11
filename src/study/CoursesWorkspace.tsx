@@ -1,4 +1,5 @@
 import {saveReading} from '../dashboard/reading'
+import {printCourse} from './printCourse'
 import {storageScope,useAccount} from '../account/store'
 import {useEffect,useRef,useState,type FormEvent} from 'react'
 import {ArrowLeft,ArrowRight,BookOpen,Check,CheckCircle2,Box,Bookmark,GraduationCap,PenLine,ShieldAlert,FileDown,Sparkles} from 'lucide-react'
@@ -111,7 +112,7 @@ export default function CoursesWorkspace(p:{initial:string|null;completed:string
  const returnToLibrary=(subject='')=>{setQuery('');setFilter('all');browse(subject);p.navigate(null)}
  const toggleSave=(id:string)=>{const next=saved.includes(id)?saved.filter(x=>x!==id):[...saved,id];setSaved(next);try{accountStorage.setItem('corpus-saved-courses',JSON.stringify(next));setToast(next.includes(id)?'Cours enregistré':'Cours retiré des favoris')}catch{setToast('Enregistrement indisponible. Réessayez.')}}
  const questionCount=(id:string)=>questions.filter(q=>q.course===id).length
- const exportPdf=()=>{if(!course)return;const previous=document.title;document.title=`MyCorpus - ${course.title}`;window.addEventListener('afterprint',()=>{document.title=previous},{once:true});window.print()}
+ const exportPdf=()=>{if(!course)return;const article=document.querySelector<HTMLElement>('.courses-workspace .course-article');if(article)void printCourse(article,course.title)}
  return <section ref={workspace} onScroll={e=>updateReading(e.currentTarget)} className="study-workspace courses-workspace" aria-label="Cours de première année">
  {routeResolution.kind==='legacy-hub'?<LegacyHubView hub={routeResolution.hub} children={routeResolution.children} completed={p.completed} saved={saved} toggleSave={toggleSave} returnToLibrary={returnToLibrary} navigate={p.navigate} practice={p.practice}/>:course?<>
   <div className="reading-progress" role="progressbar" aria-label="Progression de lecture" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}><span style={{width:progress+'%'}}/></div>

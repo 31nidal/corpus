@@ -1,4 +1,5 @@
 import {useEffect,useRef,useState} from 'react'
+import {createPortal} from 'react-dom'
 import {PdfCropSelector} from '../../flashcards/PdfCropSelector'
 import {GenerationNotice,useGenerationProvider} from './GenerationNotice'
 import type {GenerationInfo} from './GenerationNotice'
@@ -20,19 +21,25 @@ export function SupportPreview({document,task:initialTask,count=5,replace=false,
   const [page,setPage]=useState<number|null>(null)
   const lock=useRef(false),dialog=useRef<HTMLElement>(null),opener=useRef<HTMLElement|null>(null),proofButton=useRef<HTMLButtonElement|null>(null)
   const provider=useGenerationProvider()
-  useEffect(()=>{opener.current=window.document.activeElement as HTMLElement;dialog.current?.focus();return()=>{opener.current?.focus()}},[])
+  useEffect(()=>{
+    opener.current=window.document.activeElement as HTMLElement
+    const root=window.document.getElementById('root'),wasInert=root?.inert
+    if(root)root.inert=true
+    dialog.current?.focus()
+    return()=>{if(root)root.inert=wasInert||false;opener.current?.focus()}
+  },[])
   const run=async(save=false)=>{
     if(lock.current)return
     lock.current=true;setBusy(true);setError('');setMessage(save?'Enregistrement…':'Analyse du cours et préparation du support…')
     try {
       const result=await request(document.id,save?{action:'save',previewId:preview!.previewId,items:preview!.items}:{action:'generate',task,count,replace})
       if(save){onSaved(task);onClose()}
-      else{setPreview(result);setMessage(`${result.items.length} éléments prêts à relire. Aucun support enregistré.`)}
+      else{setPreview(result);setMessage(`${result.items.length} élément${result.items.length===1?'':'s'} prêt${result.items.length===1?'':'s'} à relire. Aucun support enregistré.`)}
     }catch(e){setError(e instanceof Error?e.message:'Erreur réseau. Réessayez.');setMessage('La demande a échoué. Vos modifications restent affichées.')}
     finally{lock.current=false;setBusy(false)}
   }
   const update=(id:string,patch:Partial<Item>)=>setPreview(value=>value?{...value,items:value.items.map(i=>i.id===id?{...i,...patch}:i)}:value)
-  return <div className="flash-modal-backdrop"><section ref={dialog} tabIndex={-1} className="flash-modal support-preview" role="dialog" aria-modal="true" aria-label="Prévisualisation du support" onKeyDown={event=>{
+  return createPortal(<div className="support-preview-backdrop"><section ref={dialog} tabIndex={-1} className="support-preview" role="dialog" aria-modal="true" aria-label="Prévisualisation du support" onKeyDown={event=>{
     if(page!==null)return
     if(event.key==='Escape'&&!busy){event.stopPropagation();onClose()}
     if(event.key==='Tab'){
@@ -56,5 +63,5 @@ export function SupportPreview({document,task:initialTask,count=5,replace=false,
     {preview&&<button className="study-primary" disabled={busy||!preview.items.length} onClick={()=>void run(true)}>{busy?'Enregistrement…':'Valider et enregistrer le support'}</button>}
     {error&&<button disabled={busy} onClick={()=>void run(Boolean(preview))}>Réessayer</button>}
     {page!==null&&<PdfCropSelector documentId={document.id} documentTitle={document.title} initialPage={page} readOnly onCancel={()=>{setPage(null);requestAnimationFrame(()=>proofButton.current?.focus())}}/>}
-  </section></div>
+  </section></div>,window.document.body)
 }

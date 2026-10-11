@@ -15,6 +15,7 @@ export type StudyDocument = {
   hasSummary: boolean
   sections?: StudySection[]
   summary?: StudySummary | null
+  extraction?: {method:string;warnings:string[]} | null
 }
 
 export type StudySection = {
