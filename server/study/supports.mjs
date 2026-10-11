@@ -1,6 +1,7 @@
 import {randomUUID,createHash} from 'node:crypto'
 import {generateWithQuota} from '../ai/generation.mjs'
 import {normalize} from '../flashcards/generation.mjs'
+import {sourcePage} from './source-page.mjs'
 
 const fail=(status,message)=>Object.assign(new Error(message),{status})
 const fingerprint=sections=>createHash('sha256').update(JSON.stringify(sections.map(s=>[s.id,s.content]))).digest('hex')
@@ -17,7 +18,8 @@ const toRows=(value,task,sections)=>{
   return value.chapters.flatMap(chapter=>{
     const section=sections.find(s=>s.id===chapter.id)||sections.find(s=>s.title===chapter.title)
     if(!section)return []
-    return (chapter.keyPoints||[]).filter(text=>normalize(section.content).includes(normalize(text))).map(text=>({id:randomUUID(),sectionId:section.id,text,sourceExcerpt:text}))
+    if(chapter.proofs?.length)return chapter.proofs.map(point=>({id:randomUUID(),sectionId:section.id,text:point.text,sourceExcerpt:point.sourceExcerpt,category:point.category||''}))
+    return (chapter.keyPoints||[]).filter(text=>normalize(section.content).includes(normalize(text))).map(text=>({id:randomUUID(),sectionId:section.id,text,sourceExcerpt:text,category:''}))
   })
 }
 export async function handleStudySupports({db,userId,doc,body,provider,config,localSummary,localQuestions}) {
@@ -62,7 +64,8 @@ export async function handleStudySupports({db,userId,doc,body,provider,config,lo
       }else{
         const summary={title:doc.title,overview:`${preview.task==='revision'?'Fiche de révision':'Synthèse'} relue — ${doc.title}`,sectionCount:sections.length,kind:preview.task,generation,chapters:sections.flatMap(section=>{
           const points=items.filter(i=>i.sectionId===section.id)
-          return points.length?[{id:section.id,title:section.title,pages:`${section.startPage}–${section.endPage}`,keyPoints:points.map(i=>i.text),excerpt:points[0].sourceExcerpt,proofs:points.map(i=>({text:i.text,sourceExcerpt:i.sourceExcerpt,edited:i.edited})),categories:[]}]:[]
+          const labels=[...new Set(points.map(point=>point.category).filter(Boolean))]
+          return points.length?[{id:section.id,title:section.title,pages:`${section.startPage}–${section.endPage}`,keyPoints:points.map(i=>i.text),excerpt:points[0].sourceExcerpt,proofs:points.map(i=>({text:i.text,sourceExcerpt:i.sourceExcerpt,edited:i.edited})),categories:labels.map((label,index)=>({id:`category-${index}`,label,items:points.filter(point=>point.category===label).map(point=>point.text)}))}]:[]
         })}
         db.prepare('DELETE FROM study_summaries WHERE document_id=? AND user_id=?').run(doc.id,userId)
         db.prepare('INSERT INTO study_summaries VALUES(?,?,?,?,?)').run(randomUUID(),doc.id,userId,JSON.stringify(summary),now)
@@ -83,7 +86,7 @@ export async function handleStudySupports({db,userId,doc,body,provider,config,lo
   const rows=toRows(result.value,task,selected).filter(row=>{
     const section=selected.find(s=>s.id===row.sectionId)
     return section&&typeof row.sourceExcerpt==='string'&&row.sourceExcerpt.length>=15&&normalize(section.content).includes(normalize(row.sourceExcerpt))
-  }).map(row=>({...row,startPage:selected.find(s=>s.id===row.sectionId).startPage,endPage:selected.find(s=>s.id===row.sectionId).endPage}))
+  }).map(row=>({...row,startPage:sourcePage(db,userId,doc.id,row.sourceExcerpt,selected.find(s=>s.id===row.sectionId).startPage),endPage:selected.find(s=>s.id===row.sectionId).endPage}))
   if(!rows.length){result.refund?.();throw fail(422,'Aucun support suffisamment étayé n’a été généré. Essayez une autre section.')}
   const payload={previewId:randomUUID(),task,items:rows,generation:result.generation,replace:body.replace===true,persisted:false}
   try {

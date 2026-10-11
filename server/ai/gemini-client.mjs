@@ -1,5 +1,5 @@
 const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/'
-export const GEMINI_DEFAULT_MODEL = 'gemini-2.5-flash-lite'
+export const GEMINI_DEFAULT_MODEL = 'gemini-3.5-flash-lite'
 export const AI_LIMITS = Object.freeze({chunkCharacters: 16000, inputCharacters: 500000, chunks: 32, outputTokens: 6144, responseBytes: 512000, concurrency: 2, queue: 8, retries: 1})
 export const aiError = (code, message, status = 503) => Object.assign(new Error(message), {code, status})
 const bounded = (value, fallback, min, max) => Number.isFinite(Number(value)) && String(value ?? '').trim() ? Math.max(min, Math.min(max, Number(value))) : fallback

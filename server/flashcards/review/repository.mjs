@@ -1,4 +1,5 @@
 import {randomUUID} from 'node:crypto'
+import {sourcePage} from '../../study/source-page.mjs'
 import {disambiguateDraftFronts} from '../draftFronts.mjs'
 import {generateLocalNoteDrafts} from '../generation.mjs'
 import {validateNote} from '../validation.mjs'
@@ -93,7 +94,7 @@ export class DraftReviewRepository {
         // Never attribute a quote assembled across sections to a fabricated page.
         if(!draftEvidenceSignals(draft,section).verbatimProof){unattributed++;continue}
         const signals=draftEvidenceSignals(draft,section),id=randomUUID(),time=this.now()
-        const changes=insert.run(id,userId,documentId,section.id,section.startPage,draft.noteType,
+        const changes=insert.run(id,userId,documentId,section.id,sourcePage(this.db,userId,documentId,draft.source.excerpt,section.startPage),draft.noteType,
           draft.front,draft.back,JSON.stringify(draft.fields),draft.source.excerpt,
           draftContentHash(draft.front,draft.source.excerpt),draft.subject||'',draft.chapter||'',
           JSON.stringify(draft.tags||[]),signals.confidence,Number(signals.verbatimProof),time,time).changes
