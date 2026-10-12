@@ -9,9 +9,42 @@ import {chunkIntoSections} from '../server/pdfExtractor.mjs'
 import {initStudySchema} from '../server/study.mjs'
 import {sourcePage} from '../server/study/source-page.mjs'
 import {transcribeMissingPages} from '../server/study/ocr-pages.mjs'
+import {recoverMathText} from '../server/study/pdf-text.mjs'
 import {getOrResetStudyQuota} from '../server/study/quota.mjs'
 
 const run=(str,x,y,width=200,height=12)=>({str,transform:[height,0,0,height,x,y],width,height})
+test('PDF : colonnes non alignées et lignes courtes ne mélangent pas les paragraphes',()=>{
+  const items=[]
+  for(let i=0;i<5;i++) {
+    items.push(run(`Paragraphe de gauche : explication détaillée numéro ${i}.`,40,700-i*32,230))
+    items.push(run(`Paragraphe de droite : explication détaillée numéro ${i}.`,320,700-i*32,230))
+    items.push(run('suite à gauche.',40,684-i*32,95))
+  }
+  const text=layoutText(items,600).text
+  assert.ok(text.indexOf('numéro 4.')<text.indexOf('Paragraphe de droite'))
+  assert.equal((text.match(/suite à gauche/g)||[]).length,5)
+})
+test('PDF : indentation et lignes du code conservées jusque dans les sections',()=>{
+  const styles={mono:{fontFamily:'monospace'}}
+  const code=(text,x,y)=>({...run(text,x,y,text.length*6),fontName:'mono'})
+  const layout=layoutText([code('for i in range(3):',40,700),code('print(i)',64,684),code('print("fin")',40,668)],600,styles)
+  assert.equal(layout.text,'```\nfor i in range(3):\n    print(i)\nprint("fin")\n```')
+  const sections=chunkIntoSections([{pageNumber:1,text:layout.text,headings:[]}])
+  assert.match(sections[0].content,/\n    print\(i\)/)
+})
+test('PDF : indices attachés, glyphes AMS corrigés sans changer les chiffres ordinaires',()=>{
+  const layout=layoutText([run('Soit x',40,700,30),run('0',70,697,5,8),run(' dans I.',75,700,50)],600)
+  assert.match(layout.text,/x_\{0\}/)
+  assert.equal(recoverMathText('x 6 M','ABCDEF+MSAM10'),'x ⩽ M')
+  assert.equal(recoverMathText('6 > 3','Helvetica'),'6 > 3')
+})
+test('PDF : métadonnées de titres excluent les formules et ne tronquent pas Dérivée ou L’essentiel',()=>{
+  const text='Dérivée d’une fonction\n\n'+('Une explication claire de la dérivée. '.repeat(12))+'\n\n| 0\n\nL’essentiel\n\n'+('Une autre explication claire. '.repeat(12))
+  const sections=chunkIntoSections([{pageNumber:1,text,headings:['Dérivée d’une fonction','L’essentiel']}])
+  assert.equal(sections[0].title,'Dérivée d’une fonction')
+  assert.equal(sections[1].title,'L’essentiel')
+  assert.ok(!sections.some(s=>s.title==='| 0'))
+})
 test('PDF : ordre visuel, paragraphes, titre, ligatures et formule intacte',()=>{
   const result=layoutText([run('dans le cytoplasme.',40,680),run('La glycolyse se déroule',40,700),run('MÉTABOLISME',40,740,200,20),run('E = mc² ; ∫ f(x) dx ; Na⁺',40,630)],600)
   assert.equal(result.text,'MÉTABOLISME\n\nLa glycolyse se déroule dans le cytoplasme.\n\nE = mc² ; ∫ f(x) dx ; Na⁺')
