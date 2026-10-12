@@ -1,7 +1,8 @@
 import {saveReading} from '../dashboard/reading'
+import DownloadPdfButton from './DownloadPdfButton'
 import {storageScope,useAccount} from '../account/store'
 import {useEffect,useRef,useState,type FormEvent} from 'react'
-import {ArrowLeft,ArrowRight,BookOpen,Check,CheckCircle2,Box,Bookmark,GraduationCap,PenLine,ShieldAlert,FileDown,Sparkles} from 'lucide-react'
+import {ArrowLeft,ArrowRight,BookOpen,Check,CheckCircle2,Box,Bookmark,GraduationCap,PenLine,ShieldAlert,Sparkles} from 'lucide-react'
 import {courses,type Course} from './curriculum'
 import {questions} from './questions'
 import CourseDiagram from './CourseDiagram'
@@ -10,7 +11,6 @@ import {subjectFor} from './subjects'
 import diseases from '../data/diseases.json'
 import {lessons} from '../learning'
 import {feedbackUrl} from './feedback'
-import AnkiExportMenu from './AnkiExportMenu'
 import GenerationDialog from '../flashcards/GenerationDialog'
 import type{GenerationSource}from'../flashcards/flashcardsTypes'
 import {resolveCourseRoute, isValidCourseOrHubId, type LegacyHub, type CanonicalCourseMetadata} from './taxonomy'
@@ -111,11 +111,10 @@ export default function CoursesWorkspace(p:{initial:string|null;completed:string
  const returnToLibrary=(subject='')=>{setQuery('');setFilter('all');browse(subject);p.navigate(null)}
  const toggleSave=(id:string)=>{const next=saved.includes(id)?saved.filter(x=>x!==id):[...saved,id];setSaved(next);try{accountStorage.setItem('corpus-saved-courses',JSON.stringify(next));setToast(next.includes(id)?'Cours enregistré':'Cours retiré des favoris')}catch{setToast('Enregistrement indisponible. Réessayez.')}}
  const questionCount=(id:string)=>questions.filter(q=>q.course===id).length
- const exportPdf=()=>{if(!course)return;const previous=document.title;document.title=`MyCorpus - ${course.title}`;window.addEventListener('afterprint',()=>{document.title=previous},{once:true});window.print()}
  return <section ref={workspace} onScroll={e=>updateReading(e.currentTarget)} className="study-workspace courses-workspace" aria-label="Cours de première année">
  {routeResolution.kind==='legacy-hub'?<LegacyHubView hub={routeResolution.hub} children={routeResolution.children} completed={p.completed} saved={saved} toggleSave={toggleSave} returnToLibrary={returnToLibrary} navigate={p.navigate} practice={p.practice}/>:course?<>
   <div className="reading-progress" role="progressbar" aria-label="Progression de lecture" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress}><span style={{width:progress+'%'}}/></div>
-  <div className="study-breadcrumb"><button onClick={()=>returnToLibrary()}><ArrowLeft size={16}/>Tous les cours</button><span>/</span><button onClick={()=>returnToLibrary(subjectFor(course).id)}>{course.category}</button><span>/</span><span>{course.tag}</span><div className="course-document-actions"><button className="study-secondary" onClick={()=>setGeneration({kind:'catalog',title:course.title,courseId:course.id,subject:course.category,chapter:course.title,sections:course.sections.map((section,index)=>({id:sectionSlug(section.title,index),title:section.title,text:[section.text,...(section.bullets||[])].join(' ')}))})}><Sparkles size={15}/>Générer des flashcards</button><button className="export-course" onClick={exportPdf}><FileDown size={15}/>Exporter en PDF</button><AnkiExportMenu course={course} storage={accountStorage}/><button className="bookmark-course" aria-pressed={saved.includes(course.id)} onClick={()=>toggleSave(course.id)}><Bookmark size={15}/>{saved.includes(course.id)?'Enregistré':'Garder pour plus tard'}</button></div></div>
+  <div className="study-breadcrumb"><button onClick={()=>returnToLibrary()}><ArrowLeft size={16}/>Tous les cours</button><span>/</span><button onClick={()=>returnToLibrary(subjectFor(course).id)}>{course.category}</button><span>/</span><span>{course.tag}</span><div className="course-document-actions"><button className="study-secondary" onClick={()=>setGeneration({kind:'catalog',title:course.title,courseId:course.id,subject:course.category,chapter:course.title,sections:course.sections.map((section,index)=>({id:sectionSlug(section.title,index),title:section.title,text:[section.text,...(section.bullets||[])].join(' ')}))})}><Sparkles size={15}/>Générer des flashcards</button><DownloadPdfButton title={course.title} selector=".courses-workspace .course-article" className="export-course"/><button className="bookmark-course" aria-pressed={saved.includes(course.id)} onClick={()=>toggleSave(course.id)}><Bookmark size={15}/>{saved.includes(course.id)?'Enregistré':'Garder pour plus tard'}</button></div></div>
   <div className="reading-layout"><article className="course-article" onMouseUp={()=>{const text=window.getSelection()?.toString().trim()||'';setSelectedPassage(text.length>=20&&text.length<=8000?text:'')}}>
    <div className="study-eyebrow">{course.category} · {course.caseStudy?'COURS & APPLICATIONS':'REPÈRES ANATOMIQUES'}</div><h1>{course.title}</h1>
    <div className="course-meta"><span><BookOpen size={14}/>{course.readingMinutes?`${course.readingMinutes} min de lecture · exercices en plus`:`${course.minutes} min avec exercices`}</span><span><GraduationCap size={15}/>Première année</span><span>{questionCount(course.id)} questions associées</span>{p.completed.includes(course.id)&&<span><CheckCircle2 size={15}/>Terminé</span>}</div>

@@ -658,7 +658,7 @@ test('phase 2A : création via éditeur UI d’une note Bidirectionnelle', async
   await expect(page.getByText('Inversée')).toBeVisible()
 })
 
-test('phase 3A : image occlusion (upload asset, création de note, hide_one review, sibling burying et Anki warning)', async ({ page }) => {
+test('phase 3A : image occlusion (upload asset, création de note, hide_one review, sibling burying sans export Anki)', async ({ page }) => {
   await register(page)
   const headers = { 'x-mycorpus-request': '1' }
   const deck = (await (await page.request.post('/api/flashcards/decks', { headers, data: { name: 'Anatomie Cardiaque' } })).json()).deck
@@ -713,11 +713,9 @@ test('phase 3A : image occlusion (upload asset, création de note, hide_one revi
   await expect(page.getByText('Image Occlusion').first()).toBeVisible()
   await expect(page.getByText('Identifier la structure cardiaque').first()).toBeVisible()
 
-  // 4. Vérifier l'avertissement dans la modale d'export Anki
+  // 4. L’export Anki est temporairement retiré ; les cartes restent révisables.
   await page.getByRole('button', { name: 'Statistiques' }).click()
-  await page.getByRole('button', { name: 'Exporter vers Anki' }).click()
-  await expect(page.getByText(/Information sur les cartes visuelles/)).toBeVisible()
-  await page.locator('.flash-modal header button').click()
+  await expect(page.getByRole('button', { name: /Anki/ })).toHaveCount(0)
 
   // 5. Révision interactive : semantic hide_one & sibling burying
   await page.getByRole('button', { name: 'Aujourd’hui' }).click()

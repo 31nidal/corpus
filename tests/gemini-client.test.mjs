@@ -21,7 +21,7 @@ test('Gemini 3.5 Flash-Lite : omet les paramètres retirés et conserve le JSON 
 
 test('Gemini : endpoint officiel, clé uniquement en en-tête, JSON structuré et comptage des tokens', async () => {
   const usage=[]
-  const client = new GeminiClient({GEMINI_API_KEY:'test-secret'}, {fetchImpl:async(url,options)=>{
+  const client = new GeminiClient({GEMINI_API_KEY:'test-secret',GEMINI_MODEL:'gemini-2.5-flash-lite'}, {fetchImpl:async(url,options)=>{
     assert.equal(url,'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent')
     assert.equal(options.headers['x-goog-api-key'],'test-secret')
     assert.ok(!options.body.includes('test-secret'))

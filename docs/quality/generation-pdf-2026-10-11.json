@@ -1,0 +1,970 @@
+{
+  "date": "2026-10-11",
+  "model": "gemini-3.5-flash-lite",
+  "subjects": [
+    {
+      "subject": "Anatomie",
+      "localCount": 3,
+      "localCards": [
+        {
+          "type": "basic",
+          "fields": {
+            "front": "Quelle relation anatomique est décrite pour « Le nerf phrénique » ?",
+            "back": "Le nerf phrénique innerve le diaphragme."
+          }
+        },
+        {
+          "type": "basic",
+          "fields": {
+            "front": "Quelle relation anatomique est décrite pour « Le nerf médian » ?",
+            "back": "Le nerf médian innerve le muscle pronateur rond."
+          }
+        },
+        {
+          "type": "basic",
+          "fields": {
+            "front": "Quelle localisation ou quel trajet est indiqué pour « Le cœur » ?",
+            "back": "Le cœur est situé dans le médiastin thoracique."
+          }
+        }
+      ],
+      "count": 3,
+      "cards": [
+        {
+          "type": "basic",
+          "fields": {
+            "front": "Quel muscle est innervé par le nerf phrénique ?",
+            "back": "le diaphragme"
+          },
+          "proof": "Le nerf phrénique innerve le diaphragme."
+        },
+        {
+          "type": "basic",
+          "fields": {
+            "front": "Quel muscle est innervé par le nerf médian ?",
+            "back": "le muscle pronateur rond"
+          },
+          "proof": "Le nerf médian innerve le muscle pronateur rond."
+        },
+        {
+          "type": "basic",
+          "fields": {
+            "front": "Où est situé le cœur ?",
+            "back": "dans le médiastin thoracique"
+          },
+          "proof": "Le cœur est situé dans le médiastin thoracique."
+        }
+      ],
+      "summary": [
+        {
+          "id": "s1",
+          "title": "Anatomie",
+          "pages": "1–1",
+          "keyPoints": [
+            "Le nerf phrénique assure l'innervation du diaphragme.",
+            "Le nerf médian assure l'innervation du muscle pronateur rond.",
+            "Le cœur se trouve dans le médiastin thoracique."
+          ],
+          "proofs": [
+            {
+              "text": "Le nerf phrénique assure l'innervation du diaphragme.",
+              "sourceExcerpt": "Le nerf phrénique innerve le diaphragme.",
+              "category": "Innervation"
+            },
+            {
+              "text": "Le nerf médian assure l'innervation du muscle pronateur rond.",
+              "sourceExcerpt": "Le nerf médian innerve le muscle pronateur rond.",
+              "category": "Innervation"
+            },
+            {
+              "text": "Le cœur se trouve dans le médiastin thoracique.",
+              "sourceExcerpt": "Le cœur est situé dans le médiastin thoracique.",
+              "category": "Localisation"
+            }
+          ],
+          "excerpt": "Le nerf phrénique innerve le diaphragme.",
+          "categories": [
+            {
+              "id": "category-0",
+              "label": "Innervation",
+              "items": [
+                "Le nerf phrénique assure l'innervation du diaphragme.",
+                "Le nerf médian assure l'innervation du muscle pronateur rond."
+              ]
+            },
+            {
+              "id": "category-1",
+              "label": "Localisation",
+              "items": [
+                "Le cœur se trouve dans le médiastin thoracique."
+              ]
+            }
+          ]
+        }
+      ],
+      "generation": {
+        "mode": "gemini",
+        "model": "gemini-3.5-flash-lite",
+        "task": "flashcards",
+        "usage": {
+          "attempts": 1,
+          "inputTokens": 696,
+          "outputTokens": 154,
+          "estimatedUsd": 0.0005937999999999999,
+          "usageKnown": true
+        },
+        "coverage": {
+          "sectionsTotal": 1,
+          "sectionsAnalyzed": 1,
+          "chunksTotal": 1,
+          "chunksAnalyzed": 1,
+          "charactersAnalyzed": 137
+        },
+        "rejected": 0,
+        "rejectionReasons": {}
+      },
+      "summaryGeneration": {
+        "mode": "gemini",
+        "model": "gemini-3.5-flash-lite",
+        "task": "summary",
+        "usage": {
+          "attempts": 1,
+          "inputTokens": 516,
+          "outputTokens": 201,
+          "estimatedUsd": 0.0006573,
+          "usageKnown": true
+        },
+        "coverage": {
+          "sectionsTotal": 1,
+          "sectionsAnalyzed": 1,
+          "chunksTotal": 1,
+          "chunksAnalyzed": 1,
+          "charactersAnalyzed": 137
+        },
+        "rejected": 0,
+        "rejectionReasons": {}
+      }
+    },
+    {
+      "subject": "Physiologie",
+      "localCount": 2,
+      "localCards": [
+        {
+          "type": "basic",
+          "fields": {
+            "front": "Que précise le cours à propos de « Le débit cardiaque » ?",
+            "back": "Le débit cardiaque est égal au produit de la fréquence cardiaque par le volume d’éjection systolique."
+          }
+        },
+        {
+          "type": "basic",
+          "fields": {
+            "front": "Que précise le cours à propos de « Au repos, un débit cardiaque de 5 L/min et une fréquence de 70 battements/min » ?",
+            "back": "Au repos, un débit cardiaque de 5 L/min et une fréquence de 70 battements/min correspondent à un volume d’éjection systolique d’environ 71 mL."
+          }
+        }
+      ],
+      "count": 2,
+      "cards": [
+        {
+          "type": "basic",
+          "fields": {
+            "front": "Quelle est la formule du débit cardiaque selon le texte ?",
+            "back": "produit de la fréquence cardiaque par le volume d’éjection systolique"
+          },
+          "proof": "Le débit cardiaque est égal au produit de la fréquence cardiaque par le volume d’éjection systolique."
+        },
+        {
+          "type": "typed",
+          "fields": {
+            "front": "Quel est le volume d’éjection systolique correspondant à un débit cardiaque de 5 L/min et une fréquence de 70 battements/min au repos ?",
+            "answer": "environ 71 mL",
+            "acceptedAnswers": []
+          },
+          "proof": "Au repos, un débit cardiaque de 5 L/min et une fréquence de 70 battements/min correspondent à un volume d’éjection systolique d’environ 71 mL."
+        }
+      ],
+      "summary": [
+        {
+          "id": "s1",
+          "title": "Physiologie",
+          "pages": "1–1",
+          "keyPoints": [
+            "Le débit cardiaque est égal au produit de la fréquence cardiaque par le volume d’éjection systolique.",
+            "Au repos, un débit cardiaque de 5 L/min et une fréquence de 70 battements/min correspondent à un volume d’éjection systolique d’environ 71 mL."
+          ],
+          "proofs": [
+            {
+              "text": "Le débit cardiaque est égal au produit de la fréquence cardiaque par le volume d’éjection systolique.",
+              "sourceExcerpt": "Le débit cardiaque est égal au produit de la fréquence cardiaque par le volume d’éjection systolique.",
+              "category": "Débit cardiaque"
+            },
+            {
+              "text": "Au repos, un débit cardiaque de 5 L/min et une fréquence de 70 battements/min correspondent à un volume d’éjection systolique d’environ 71 mL.",
+              "sourceExcerpt": "Au repos, un débit cardiaque de 5 L/min et une fréquence de 70 battements/min correspondent à un volume d’éjection systolique d’environ 71 mL.",
+              "category": "Valeurs de repos"
+            }
+          ],
+          "excerpt": "Le débit cardiaque est égal au produit de la fréquence cardiaque par le volume d’éjection systolique.",
+          "categories": [
+            {
+              "id": "category-0",
+              "label": "Débit cardiaque",
+              "items": [
+                "Le débit cardiaque est égal au produit de la fréquence cardiaque par le volume d’éjection systolique."
+              ]
+            },
+            {
+              "id": "category-1",
+              "label": "Valeurs de repos",
+              "items": [
+                "Au repos, un débit cardiaque de 5 L/min et une fréquence de 70 battements/min correspondent à un volume d’éjection systolique d’environ 71 mL."
+              ]
+            }
+          ]
+        }
+      ],
+      "generation": {
+        "mode": "gemini",
+        "model": "gemini-3.5-flash-lite",
+        "task": "flashcards",
+        "usage": {
+          "attempts": 2,
+          "inputTokens": 1582,
+          "outputTokens": 325,
+          "estimatedUsd": 0.0012871,
+          "usageKnown": true
+        },
+        "coverage": {
+          "sectionsTotal": 1,
+          "sectionsAnalyzed": 1,
+          "chunksTotal": 1,
+          "chunksAnalyzed": 1,
+          "charactersAnalyzed": 244
+        },
+        "rejected": 0,
+        "rejectionReasons": {}
+      },
+      "summaryGeneration": {
+        "mode": "gemini",
+        "model": "gemini-3.5-flash-lite",
+        "task": "summary",
+        "usage": {
+          "attempts": 1,
+          "inputTokens": 545,
+          "outputTokens": 217,
+          "estimatedUsd": 0.000706,
+          "usageKnown": true
+        },
+        "coverage": {
+          "sectionsTotal": 1,
+          "sectionsAnalyzed": 1,
+          "chunksTotal": 1,
+          "chunksAnalyzed": 1,
+          "charactersAnalyzed": 244
+        },
+        "rejected": 0,
+        "rejectionReasons": {}
+      }
+    },
+    {
+      "subject": "Biochimie",
+      "localCount": 0,
+      "localCards": [],
+      "count": 3,
+      "cards": [
+        {
+          "type": "basic",
+          "fields": {
+            "front": "Où se déroule la glycolyse ?",
+            "back": "dans le cytoplasme"
+          },
+          "proof": "La glycolyse se déroule dans le cytoplasme."
+        },
+        {
+          "type": "basic",
+          "fields": {
+            "front": "Quel est le bilan net en ATP de la glycolyse par molécule de glucose ?",
+            "back": "un bilan net de 2 ATP"
+          },
+          "proof": "Elle transforme une molécule de glucose en deux molécules de pyruvate et produit un bilan net de 2 ATP."
+        },
+        {
+          "type": "basic",
+          "fields": {
+            "front": "Où se déroule le cycle de Krebs ?",
+            "back": "dans la matrice mitochondriale"
+          },
+          "proof": "Le cycle de Krebs se déroule dans la matrice mitochondriale."
+        }
+      ],
+      "summary": [
+        {
+          "id": "s1",
+          "title": "Biochimie",
+          "pages": "1–1",
+          "keyPoints": [
+            "La glycolyse se déroule dans le cytoplasme et transforme une molécule de glucose en deux molécules de pyruvate, ce qui produit un bilan net de deux ATP.",
+            "Le cycle de Krebs se déroule spécifiquement dans la matrice mitochondriale."
+          ],
+          "proofs": [
+            {
+              "text": "La glycolyse se déroule dans le cytoplasme et transforme une molécule de glucose en deux molécules de pyruvate, ce qui produit un bilan net de deux ATP.",
+              "sourceExcerpt": "La glycolyse se déroule dans le cytoplasme. Elle transforme une molécule de glucose en deux molécules de pyruvate et produit un bilan net de 2 ATP.",
+              "category": "Glycolyse"
+            },
+            {
+              "text": "Le cycle de Krebs se déroule spécifiquement dans la matrice mitochondriale.",
+              "sourceExcerpt": "Le cycle de Krebs se déroule dans la matrice mitochondriale.",
+              "category": "Cycle de Krebs"
+            }
+          ],
+          "excerpt": "La glycolyse se déroule dans le cytoplasme. Elle transforme une molécule de glucose en deux molécules de pyruvate et produit un bilan net de 2 ATP.",
+          "categories": [
+            {
+              "id": "category-0",
+              "label": "Glycolyse",
+              "items": [
+                "La glycolyse se déroule dans le cytoplasme et transforme une molécule de glucose en deux molécules de pyruvate, ce qui produit un bilan net de deux ATP."
+              ]
+            },
+            {
+              "id": "category-1",
+              "label": "Cycle de Krebs",
+              "items": [
+                "Le cycle de Krebs se déroule spécifiquement dans la matrice mitochondriale."
+              ]
+            }
+          ]
+        }
+      ],
+      "generation": {
+        "mode": "gemini",
+        "model": "gemini-3.5-flash-lite",
+        "task": "flashcards",
+        "usage": {
+          "attempts": 1,
+          "inputTokens": 709,
+          "outputTokens": 275,
+          "estimatedUsd": 0.0009002000000000001,
+          "usageKnown": true
+        },
+        "coverage": {
+          "sectionsTotal": 1,
+          "sectionsAnalyzed": 1,
+          "chunksTotal": 1,
+          "chunksAnalyzed": 1,
+          "charactersAnalyzed": 208
+        },
+        "rejected": 0,
+        "rejectionReasons": {}
+      },
+      "summaryGeneration": {
+        "mode": "gemini",
+        "model": "gemini-3.5-flash-lite",
+        "task": "summary",
+        "usage": {
+          "attempts": 1,
+          "inputTokens": 529,
+          "outputTokens": 187,
+          "estimatedUsd": 0.0006262,
+          "usageKnown": true
+        },
+        "coverage": {
+          "sectionsTotal": 1,
+          "sectionsAnalyzed": 1,
+          "chunksTotal": 1,
+          "chunksAnalyzed": 1,
+          "charactersAnalyzed": 208
+        },
+        "rejected": 0,
+        "rejectionReasons": {}
+      }
+    },
+    {
+      "subject": "Pharmacologie",
+      "localCount": 2,
+      "localCards": [
+        {
+          "type": "basic",
+          "fields": {
+            "front": "Quel rôle est décrit pour « L’aldostérone » ?",
+            "back": "L’aldostérone agit sur le tube collecteur et augmente la réabsorption de sodium."
+          }
+        },
+        {
+          "type": "basic",
+          "fields": {
+            "front": "Quel effet est décrit pour « Les inhibiteurs de l’enzyme de conversion » ?",
+            "back": "Les inhibiteurs de l’enzyme de conversion diminuent la formation d’angiotensine II."
+          }
+        }
+      ],
+      "count": 5,
+      "cards": [
+        {
+          "type": "basic",
+          "fields": {
+            "front": "Sur quelle structure anatomique l'aldostérone agit-elle ?",
+            "back": "le tube collecteur"
+          },
+          "proof": "L’aldostérone agit sur le tube collecteur et augmente la réabsorption de sodium."
+        },
+        {
+          "type": "basic",
+          "fields": {
+            "front": "Quel est l'effet de l'aldostérone sur la réabsorption de sodium ?",
+            "back": "augmente la réabsorption de sodium"
+          },
+          "proof": "L’aldostérone agit sur le tube collecteur et augmente la réabsorption de sodium."
+        },
+        {
+          "type": "basic",
+          "fields": {
+            "front": "Quel est l'effet des inhibiteurs de l'enzyme de conversion sur la formation d'angiotensine II ?",
+            "back": "diminuent la formation d’angiotensine II"
+          },
+          "proof": "Les inhibiteurs de l’enzyme de conversion diminuent la formation d’angiotensine II."
+        },
+        {
+          "type": "basic",
+          "fields": {
+            "front": "Pendant quelle période les inhibiteurs de l'enzyme de conversion sont-ils contre-indiqués ?",
+            "back": "la grossesse"
+          },
+          "proof": "Ils sont contre-indiqués pendant la grossesse."
+        },
+        {
+          "type": "cloze",
+          "fields": {
+            "text": "L’aldostérone agit sur le tube collecteur et augmente la réabsorption de {{c1::sodium}}."
+          },
+          "proof": "L’aldostérone agit sur le tube collecteur et augmente la réabsorption de sodium."
+        }
+      ],
+      "summary": [
+        {
+          "id": "s1",
+          "title": "Pharmacologie",
+          "pages": "1–1",
+          "keyPoints": [
+            "L'aldostérone exerce son action sur le tube collecteur en augmentant la réabsorption de sodium.",
+            "Les inhibiteurs de l'enzyme de conversion réduisent la formation d'angiotensine II et font l'objet d'une contre-indication pendant la grossesse."
+          ],
+          "proofs": [
+            {
+              "text": "L'aldostérone exerce son action sur le tube collecteur en augmentant la réabsorption de sodium.",
+              "sourceExcerpt": "L’aldostérone agit sur le tube collecteur et augmente la réabsorption de sodium.",
+              "category": "Mécanisme"
+            },
+            {
+              "text": "Les inhibiteurs de l'enzyme de conversion réduisent la formation d'angiotensine II et font l'objet d'une contre-indication pendant la grossesse.",
+              "sourceExcerpt": "Les inhibiteurs de l’enzyme de conversion diminuent la formation d’angiotensine II. Ils sont contre-indiqués pendant la grossesse.",
+              "category": "Contre-indication"
+            }
+          ],
+          "excerpt": "L’aldostérone agit sur le tube collecteur et augmente la réabsorption de sodium.",
+          "categories": [
+            {
+              "id": "category-0",
+              "label": "Mécanisme",
+              "items": [
+                "L'aldostérone exerce son action sur le tube collecteur en augmentant la réabsorption de sodium."
+              ]
+            },
+            {
+              "id": "category-1",
+              "label": "Contre-indication",
+              "items": [
+                "Les inhibiteurs de l'enzyme de conversion réduisent la formation d'angiotensine II et font l'objet d'une contre-indication pendant la grossesse."
+              ]
+            }
+          ]
+        }
+      ],
+      "generation": {
+        "mode": "gemini",
+        "model": "gemini-3.5-flash-lite",
+        "task": "flashcards",
+        "usage": {
+          "attempts": 1,
+          "inputTokens": 712,
+          "outputTokens": 502,
+          "estimatedUsd": 0.0014685999999999998,
+          "usageKnown": true
+        },
+        "coverage": {
+          "sectionsTotal": 1,
+          "sectionsAnalyzed": 1,
+          "chunksTotal": 1,
+          "chunksAnalyzed": 1,
+          "charactersAnalyzed": 211
+        },
+        "rejected": 0,
+        "rejectionReasons": {}
+      },
+      "summaryGeneration": {
+        "mode": "gemini",
+        "model": "gemini-3.5-flash-lite",
+        "task": "summary",
+        "usage": {
+          "attempts": 1,
+          "inputTokens": 532,
+          "outputTokens": 202,
+          "estimatedUsd": 0.0006646,
+          "usageKnown": true
+        },
+        "coverage": {
+          "sectionsTotal": 1,
+          "sectionsAnalyzed": 1,
+          "chunksTotal": 1,
+          "chunksAnalyzed": 1,
+          "charactersAnalyzed": 211
+        },
+        "rejected": 0,
+        "rejectionReasons": {}
+      }
+    },
+    {
+      "subject": "Mathématiques",
+      "localCount": 3,
+      "localCards": [
+        {
+          "type": "basic",
+          "fields": {
+            "front": "Que précise le cours à propos de « Pour une fonction f dérivable, la dérivée de f(x) = x² » ?",
+            "back": "Pour une fonction f dérivable, la dérivée de f(x) = x² est f′(x) = 2x."
+          }
+        },
+        {
+          "type": "typed",
+          "fields": {
+            "front": "Quelle valeur est indiquée pour « L’intégrale de x entre 0 et 1 » ?",
+            "answer": "1/2",
+            "acceptedAnswers": []
+          }
+        },
+        {
+          "type": "basic",
+          "fields": {
+            "front": "Que faut-il retenir à propos de « Le théorème de Pythagore s’applique à un triangle rectangle » ?",
+            "back": "Le théorème de Pythagore s’applique à un triangle rectangle : a² + b² = c², où c est la longueur de l’hypoténuse."
+          }
+        }
+      ],
+      "count": 4,
+      "cards": [
+        {
+          "type": "basic",
+          "fields": {
+            "front": "Quelle est la dérivée de la fonction f(x) = x² pour une fonction f dérivable ?",
+            "back": "f′(x) = 2x"
+          },
+          "proof": "Pour une fonction f dérivable, la dérivée de f(x) = x² est f′(x) = 2x."
+        },
+        {
+          "type": "typed",
+          "fields": {
+            "front": "Quelle est la valeur de l'intégrale de x entre 0 et 1 ?",
+            "answer": "1/2",
+            "acceptedAnswers": []
+          },
+          "proof": "L’intégrale de x entre 0 et 1 vaut 1/2."
+        },
+        {
+          "type": "basic",
+          "fields": {
+            "front": "Quelle est l'équation du théorème de Pythagore appliqué à un triangle rectangle ?",
+            "back": "a² + b² = c²"
+          },
+          "proof": "Le théorème de Pythagore s’applique à un triangle rectangle : a² + b² = c², où c est la longueur de l’hypoténuse."
+        },
+        {
+          "type": "cloze",
+          "fields": {
+            "text": "Le théorème de Pythagore s’applique à un triangle rectangle : a² + b² = c², où c est la longueur de l’{{c1::hypoténuse}}."
+          },
+          "proof": "Le théorème de Pythagore s’applique à un triangle rectangle : a² + b² = c², où c est la longueur de l’hypoténuse."
+        }
+      ],
+      "summary": [
+        {
+          "id": "s1",
+          "title": "Mathématiques",
+          "pages": "1–1",
+          "keyPoints": [
+            "Pour une fonction f dérivable, la dérivée de f(x) = x² est f′(x) = 2x.",
+            "L’intégrale de x entre 0 et 1 vaut 1/2.",
+            "Le théorème de Pythagore s’applique à un triangle rectangle : a² + b² = c², où c est la longueur de l’hypoténuse."
+          ],
+          "proofs": [
+            {
+              "text": "Pour une fonction f dérivable, la dérivée de f(x) = x² est f′(x) = 2x.",
+              "sourceExcerpt": "Pour une fonction f dérivable, la dérivée de f(x) = x² est f′(x) = 2x.",
+              "category": "Dérivée"
+            },
+            {
+              "text": "L’intégrale de x entre 0 et 1 vaut 1/2.",
+              "sourceExcerpt": "L’intégrale de x entre 0 et 1 vaut 1/2.",
+              "category": "Intégrale"
+            },
+            {
+              "text": "Le théorème de Pythagore s’applique à un triangle rectangle : a² + b² = c², où c est la longueur de l’hypoténuse.",
+              "sourceExcerpt": "Le théorème de Pythagore s’applique à un triangle rectangle : a² + b² = c², où c est la longueur de l’hypoténuse.",
+              "category": "Géométrie"
+            }
+          ],
+          "excerpt": "Pour une fonction f dérivable, la dérivée de f(x) = x² est f′(x) = 2x.",
+          "categories": [
+            {
+              "id": "category-0",
+              "label": "Dérivée",
+              "items": [
+                "Pour une fonction f dérivable, la dérivée de f(x) = x² est f′(x) = 2x."
+              ]
+            },
+            {
+              "id": "category-1",
+              "label": "Intégrale",
+              "items": [
+                "L’intégrale de x entre 0 et 1 vaut 1/2."
+              ]
+            },
+            {
+              "id": "category-2",
+              "label": "Géométrie",
+              "items": [
+                "Le théorème de Pythagore s’applique à un triangle rectangle : a² + b² = c², où c est la longueur de l’hypoténuse."
+              ]
+            }
+          ]
+        }
+      ],
+      "generation": {
+        "mode": "gemini",
+        "model": "gemini-3.5-flash-lite",
+        "task": "flashcards",
+        "usage": {
+          "attempts": 1,
+          "inputTokens": 742,
+          "outputTokens": 456,
+          "estimatedUsd": 0.0013625999999999998,
+          "usageKnown": true
+        },
+        "coverage": {
+          "sectionsTotal": 1,
+          "sectionsAnalyzed": 1,
+          "chunksTotal": 1,
+          "chunksAnalyzed": 1,
+          "charactersAnalyzed": 224
+        },
+        "rejected": 0,
+        "rejectionReasons": {}
+      },
+      "summaryGeneration": {
+        "mode": "gemini",
+        "model": "gemini-3.5-flash-lite",
+        "task": "summary",
+        "usage": {
+          "attempts": 1,
+          "inputTokens": 562,
+          "outputTokens": 294,
+          "estimatedUsd": 0.0009036000000000001,
+          "usageKnown": true
+        },
+        "coverage": {
+          "sectionsTotal": 1,
+          "sectionsAnalyzed": 1,
+          "chunksTotal": 1,
+          "chunksAnalyzed": 1,
+          "charactersAnalyzed": 224
+        },
+        "rejected": 0,
+        "rejectionReasons": {}
+      }
+    },
+    {
+      "subject": "Informatique",
+      "localCount": 2,
+      "localCards": [
+        {
+          "type": "basic",
+          "fields": {
+            "front": "Quel rôle est décrit pour « Une table de hachage » ?",
+            "back": "Une table de hachage permet une recherche en temps moyen O(1), mais le pire cas est O(n)."
+          }
+        },
+        {
+          "type": "basic",
+          "fields": {
+            "front": "Que précise le cours à propos de « Une transaction atomique » ?",
+            "back": "Une transaction atomique est entièrement validée ou entièrement annulée."
+          }
+        }
+      ],
+      "count": 4,
+      "cards": [
+        {
+          "type": "basic",
+          "fields": {
+            "front": "Quelle est la complexité temporelle d'une recherche binaire ?",
+            "back": "O(log n)"
+          },
+          "proof": "Une recherche binaire exige une liste triée et a une complexité temporelle O(log n)."
+        },
+        {
+          "type": "basic",
+          "fields": {
+            "front": "Quelle est la complexité temporelle moyenne d'une recherche dans une table de hachage ?",
+            "back": "O(1)"
+          },
+          "proof": "Une table de hachage permet une recherche en temps moyen O(1), mais le pire cas est O(n)."
+        },
+        {
+          "type": "basic",
+          "fields": {
+            "front": "Quel est le pire cas de la complexité temporelle d'une table de hachage ?",
+            "back": "O(n)"
+          },
+          "proof": "Une table de hachage permet une recherche en temps moyen O(1), mais le pire cas est O(n)."
+        },
+        {
+          "type": "basic",
+          "fields": {
+            "front": "Que fait une transaction atomique ?",
+            "back": "entièrement validée ou entièrement annulée"
+          },
+          "proof": "Une transaction atomique est entièrement validée ou entièrement annulée."
+        }
+      ],
+      "summary": [
+        {
+          "id": "s1",
+          "title": "Informatique",
+          "pages": "1–1",
+          "keyPoints": [
+            "La recherche binaire nécessite une liste triée et possède une complexité temporelle en O(log n).",
+            "La table de hachage permet d'effectuer une recherche en un temps moyen de O(1), bien que le pire cas atteigne O(n).",
+            "Une transaction atomique est soit entièrement validée, soit entièrement annulée."
+          ],
+          "proofs": [
+            {
+              "text": "La recherche binaire nécessite une liste triée et possède une complexité temporelle en O(log n).",
+              "sourceExcerpt": "Une recherche binaire exige une liste triée et a une complexité temporelle O(log n).",
+              "category": "Recherche binaire"
+            },
+            {
+              "text": "La table de hachage permet d'effectuer une recherche en un temps moyen de O(1), bien que le pire cas atteigne O(n).",
+              "sourceExcerpt": "Une table de hachage permet une recherche en temps moyen O(1), mais le pire cas est O(n).",
+              "category": "Table de hachage"
+            },
+            {
+              "text": "Une transaction atomique est soit entièrement validée, soit entièrement annulée.",
+              "sourceExcerpt": "Une transaction atomique est entièrement validée ou entièrement annulée.",
+              "category": "Transaction atomique"
+            }
+          ],
+          "excerpt": "Une recherche binaire exige une liste triée et a une complexité temporelle O(log n).",
+          "categories": [
+            {
+              "id": "category-0",
+              "label": "Recherche binaire",
+              "items": [
+                "La recherche binaire nécessite une liste triée et possède une complexité temporelle en O(log n)."
+              ]
+            },
+            {
+              "id": "category-1",
+              "label": "Table de hachage",
+              "items": [
+                "La table de hachage permet d'effectuer une recherche en un temps moyen de O(1), bien que le pire cas atteigne O(n)."
+              ]
+            },
+            {
+              "id": "category-2",
+              "label": "Transaction atomique",
+              "items": [
+                "Une transaction atomique est soit entièrement validée, soit entièrement annulée."
+              ]
+            }
+          ]
+        }
+      ],
+      "generation": {
+        "mode": "gemini",
+        "model": "gemini-3.5-flash-lite",
+        "task": "flashcards",
+        "usage": {
+          "attempts": 1,
+          "inputTokens": 720,
+          "outputTokens": 491,
+          "estimatedUsd": 0.0014435,
+          "usageKnown": true
+        },
+        "coverage": {
+          "sectionsTotal": 1,
+          "sectionsAnalyzed": 1,
+          "chunksTotal": 1,
+          "chunksAnalyzed": 1,
+          "charactersAnalyzed": 247
+        },
+        "rejected": 1,
+        "rejectionReasons": {
+          "duplicate_fact": 1
+        }
+      },
+      "summaryGeneration": {
+        "mode": "gemini",
+        "model": "gemini-3.5-flash-lite",
+        "task": "summary",
+        "usage": {
+          "attempts": 1,
+          "inputTokens": 540,
+          "outputTokens": 265,
+          "estimatedUsd": 0.0008245,
+          "usageKnown": true
+        },
+        "coverage": {
+          "sectionsTotal": 1,
+          "sectionsAnalyzed": 1,
+          "chunksTotal": 1,
+          "chunksAnalyzed": 1,
+          "charactersAnalyzed": 247
+        },
+        "rejected": 0,
+        "rejectionReasons": {}
+      }
+    }
+  ],
+  "pdfs": [
+    {
+      "filename": "cardiologie-college.pdf",
+      "before": {
+        "pages": 125,
+        "characters": 238149
+      },
+      "after": {
+        "pages": 125,
+        "characters": 234795,
+        "method": "pdfjs",
+        "warnings": []
+      }
+    },
+    {
+      "filename": "cardiologie-uness.pdf",
+      "before": {
+        "pages": 18,
+        "characters": 28999
+      },
+      "after": {
+        "pages": 18,
+        "characters": 27800,
+        "method": "pdfjs",
+        "warnings": []
+      }
+    },
+    {
+      "filename": "pharmacologie-lyon.pdf",
+      "before": {
+        "pages": 70,
+        "characters": 23971
+      },
+      "after": {
+        "pages": 70,
+        "characters": 23990,
+        "method": "pdfjs",
+        "warnings": [
+          "Page 2 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 3 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 4 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 5 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 7 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 9 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 10 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 11 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 13 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 16 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 17 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 18 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 19 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 21 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 23 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 24 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 25 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 27 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 28 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 29 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 30 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 32 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 33 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 34 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 35 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 36 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 37 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 38 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 39 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 40 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 41 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 44 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 45 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 46 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 48 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 49 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 50 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 51 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 52 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 53 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 54 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 56 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 57 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 58 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 59 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 60 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 61 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 62 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 63 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 66 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 67 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 68 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 69 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier."
+        ]
+      }
+    },
+    {
+      "filename": "physiologie-grenoble.pdf",
+      "before": {
+        "pages": 29,
+        "characters": 6744
+      },
+      "after": {
+        "pages": 29,
+        "characters": 6882,
+        "method": "pdfjs",
+        "warnings": [
+          "Page 2 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 4 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 5 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 6 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 7 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 9 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 13 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 14 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 15 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 16 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 17 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 22 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 23 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 24 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 28 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.",
+          "Page 29 : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier."
+        ]
+      }
+    }
+  ],
+  "limitations": [
+    "Échantillon limité ; aucune certification médicale automatique.",
+    "La reconstruction de colonnes reste heuristique.",
+    "Safari/iPhone et lecteur d’écran non vérifiés manuellement."
+  ],
+  "validationMethod": "Réponses Gemini réelles revalidées localement après correction du filtre grammatical et dédoublonnage des faits ; aucun nouvel appel API."
+}

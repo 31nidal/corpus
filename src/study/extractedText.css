@@ -1,0 +1,6 @@
+.extracted-text{color:var(--mc-text);font-size:.94rem;line-height:1.75;min-width:0}
+.extracted-text p{white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 1em}
+.extracted-table{max-width:100%;overflow:auto;margin:12px 0}
+.extracted-table table{border-collapse:collapse;width:100%;font:inherit}
+.extracted-table td{border:1px solid var(--mc-border);padding:8px 12px;vertical-align:top;white-space:pre-wrap;min-width:90px}
+@media print{.extracted-table{overflow:visible}.extracted-table td{min-width:0}}

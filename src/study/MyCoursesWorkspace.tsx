@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import {
   Crop, FileText, Upload, Trash2, ArrowRight, ArrowLeft, BookOpen,
-  CheckCircle2, Sparkles, Download, AlertCircle, RefreshCw,
+  CheckCircle2, Sparkles, AlertCircle, RefreshCw,
   FileCheck, Clock3, Layers, Quote, X, Check
 } from 'lucide-react'
 import type { StudyDocument, StudyQuota, StudyQuestion } from './myCoursesTypes'
@@ -13,9 +13,11 @@ import {
 import { storageScope, useAccount } from '../account/store'
 import { isCorrect } from './questions'
 import { nextReview, validReview, type ReviewRecord } from './reviewSchedule'
-import { buildDocumentAnkiCsv, downloadAnkiCsv, documentAnkiFilename } from './ankiExport'
 import './myCourses.css'
 import ReviewWorkspace from './review/ReviewWorkspace'
+import {ExtractedSection} from './ExtractedSection'
+import DownloadPdfButton from './DownloadPdfButton'
+import {GenerationNotice,useGenerationProvider} from './ai/GenerationNotice'
 import {SupportPreview, type SupportTask} from './ai/SupportPreview'
 import type {FlashcardDeck} from '../flashcards/flashcardsTypes'
 import {listDecks} from '../flashcards/flashcardsApi'
@@ -64,6 +66,9 @@ export default function MyCoursesWorkspace(props: {
   const [revealedQuestions, setRevealedQuestions] = useState<Record<string, boolean>>({})
   const [flashReview,setFlashReview]=useState<'generate'|'review'|null>(null)
   const [supportTask,setSupportTask]=useState<SupportTask|null>(null)
+  const [supportOptions,setSupportOptions]=useState({count:5,replace:false})
+  const generationProvider=useGenerationProvider()
+  const [ocrRequested,setOcrRequested]=useState(false)
   const [generationRequest,setGenerationRequest]=useState(0)
   const [visualCropDoc, setVisualCropDoc] = useState<StudyDocument | null>(null)
   const [cropResult, setCropResult] = useState<{
@@ -174,7 +179,7 @@ export default function MyCoursesWorkspace(props: {
       setUploading(true)
       setError(null)
       setScannedAlert(null)
-      const doc = await uploadStudyDocument(file)
+      const doc = await uploadStudyDocument(file,undefined,{ocr:ocrRequested})
       await refreshList()
       setSelectedDocId(doc.id)
       setToast('Document importé')
@@ -211,6 +216,7 @@ export default function MyCoursesWorkspace(props: {
 
   const handleGenerateSummary = async () => {
     if (!currentDoc) return
+    if(generationProvider?.mode==='gemini'){setSupportTask('summary');return}
     try {
       setError(null)
       setGeneratingSummary(true)
@@ -229,6 +235,7 @@ export default function MyCoursesWorkspace(props: {
   const handleGenerateQuestions = async (count = 5, replace = false) => {
     if (!currentDoc) return
     if (replace && questions.length > 0 && !window.confirm('Remplacer tous les QCM existants de ce cours par une nouvelle série ?')) return
+    if(generationProvider?.mode==='gemini'){setSupportOptions({count,replace});setSupportTask('questions');return}
 
     try {
       setError(null)
@@ -276,15 +283,6 @@ export default function MyCoursesWorkspace(props: {
     setActiveTab('practice')
   }
 
-  const handleExportAnki = (mode: 'course' | 'errors' = 'course') => {
-    if (!currentDoc || !questions.length) return
-    const csv = buildDocumentAnkiCsv(currentDoc.title, currentDoc.filename, questions, mode, records)
-    const filename = documentAnkiFilename(currentDoc.title, mode)
-    downloadAnkiCsv(csv, filename)
-  }
-
-  const wrongQuestions = questions.filter(q => records[q.id]?.wrong)
-
   if (!account.user) {
     return (
       <section className="study-workspace mycourses-workspace" aria-label="Mes cours MyCorpus Study">
@@ -294,7 +292,7 @@ export default function MyCoursesWorkspace(props: {
             <h1>Mes cours.<br /><em>Vos supports, prêts à être mémorisés.</em></h1>
             <p className="mycourses-subtitle">
               Transformez vos cours magistraux, polycopiés et présentations PDF en synthèses structurées,
-              QCM d’entraînement et cartes Anki directement exploitables.
+              QCM d’entraînement et flashcards à réviser.
             </p>
           </div>
         </header>
@@ -325,6 +323,8 @@ export default function MyCoursesWorkspace(props: {
         </div>
 
         {error&&<div className="mycourses-alert mycourses-alert-error" role="alert"><AlertCircle size={20}/><p>{error}</p><button className="icon-button" aria-label="Fermer le message" onClick={()=>setError(null)}><X size={18}/></button></div>}
+        {currentDoc.extraction?.warnings.length? <details className="mycourses-alert"><summary>Points à vérifier dans l’extraction ({currentDoc.extraction.warnings.length})</summary><ul>{currentDoc.extraction.warnings.map((warning,index)=><li key={index}>{warning}</li>)}</ul></details>:null}
+        <GenerationNotice provider={generationProvider}/>
         <header className="mycourses-detail-hero">
           <div>
             <span className="study-eyebrow">SUPPORT IMPORTÉ · {currentDoc.filename}</span>
@@ -337,9 +337,11 @@ export default function MyCoursesWorkspace(props: {
           </div>
 
           <div className="mycourses-action-bar">
+            <a className="mycourses-action-btn" href={`/api/study/documents/${encodeURIComponent(currentDoc.id)}/pdf`} download={currentDoc.filename}>Télécharger le PDF original</a>
             <button className="mycourses-action-btn mycourses-action-primary" onClick={()=>{setFlashReview('generate');setGenerationRequest(value=>value+1)}}><Sparkles size={16}/>Générer des flashcards</button>
             <button className="mycourses-action-btn" onClick={()=>setFlashReview('review')}>Réviser les brouillons</button>
-            <button className="mycourses-action-btn" onClick={()=>setSupportTask('summary')} title="Synthèse, fiche de révision ou QCM à relire et modifier avant enregistrement">Préparer un support à relire</button>
+            <button className="mycourses-action-btn" onClick={()=>{setSupportOptions({count:5,replace:false});setSupportTask('summary')}} title="Synthèse, fiche de révision ou QCM à relire et modifier avant enregistrement">Préparer un support à relire</button>
+            {currentDoc.summary&&activeTab==='summary'&&<DownloadPdfButton title={currentDoc.title} selector=".mycourses-summary-content" label="Exporter la synthèse en PDF" className="mycourses-action-btn"/>}
             <button className="mycourses-action-btn mycourses-action-secondary" onClick={()=>void openVisualCrop(currentDoc)} title="Créer une flashcard d’occlusion d’image à partir d’une page de ce PDF"><Crop size={16}/>Flashcard visuelle</button>
             {!currentDoc.summary ? (
               <button
@@ -381,16 +383,7 @@ export default function MyCoursesWorkspace(props: {
               </button>
             )}
 
-            {questions.length > 0 && (
-              <button
-                className="mycourses-action-btn mycourses-action-secondary"
-                onClick={() => handleExportAnki('course')}
-                title="Exporter toutes les questions vers Anki"
-              >
-                <Download size={16} />
-                Anki (.csv)
-              </button>
-            )}
+
 
             <button
               className="mycourses-btn-delete"
@@ -437,7 +430,7 @@ export default function MyCoursesWorkspace(props: {
 
         {/* Tab 1: Structured Summary */}
         {activeTab === 'summary' && (
-          <div>
+          <div className="mycourses-summary-content">
             {currentDoc.summary ? (
               <div>
                 <p className="intro-text" style={{ marginBottom: '1.5rem' }}>
@@ -496,14 +489,7 @@ export default function MyCoursesWorkspace(props: {
                 {questions.length} questions issues de ce document. Chaque question est liée à son extrait source.
               </p>
               <div style={{ display: 'flex', gap: '0.75rem' }}>
-                {wrongQuestions.length > 0 && (
-                  <button
-                    className="mycourses-action-btn mycourses-action-secondary"
-                    onClick={() => handleExportAnki('errors')}
-                  >
-                    Exporter mes erreurs Anki ({wrongQuestions.length})
-                  </button>
-                )}
+
                 <button
                   className="mycourses-action-btn mycourses-action-primary"
                   onClick={() => handleGenerateQuestions(5)}
@@ -646,17 +632,7 @@ export default function MyCoursesWorkspace(props: {
             <p style={{ color: '#64748b', marginBottom: '1.5rem' }}>
               Le découpage automatique identifie les chapitres et les sections à partir de la structure de votre cours.
             </p>
-            {(currentDoc.sections || []).map((sec, idx) => (
-              <article key={sec.id} id={'study-section-'+sec.id} className="mycourses-summary-card">
-                <h3>
-                  <span>{idx + 1}. {sec.title}</span>
-                  <span>Pages {sec.startPage}–{sec.endPage}</span>
-                </h3>
-                <p style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6, fontSize: '0.92rem', color: 'var(--text-color, #334155)' }}>
-                  {sec.content.slice(0, 450)}{sec.content.length > 450 ? '…' : ''}
-                </p>
-              </article>
-            ))}
+            {(currentDoc.sections || []).map((sec, idx) => <ExtractedSection key={sec.id} section={sec} index={idx}/>)}
           </div>
         )}
 
@@ -841,7 +817,7 @@ export default function MyCoursesWorkspace(props: {
           />
         )}
         {flashReview&&currentDoc&&<ReviewWorkspace key={currentDoc.id} document={currentDoc} initialGenerate={flashReview==='generate'} generationRequest={generationRequest} onClose={()=>setFlashReview(null)}/>}
-        {supportTask&&currentDoc&&<SupportPreview document={currentDoc} task={supportTask} onClose={()=>setSupportTask(null)} onSaved={task=>{setToast(task==='questions'?'QCM relus enregistrés':'Support relu enregistré');void loadDoc(currentDoc.id)}}/>}
+        {supportTask&&currentDoc&&<SupportPreview document={currentDoc} task={supportTask} count={supportOptions.count} replace={supportOptions.replace} onClose={()=>setSupportTask(null)} onSaved={task=>{setToast(task==='questions'?'QCM relus enregistrés':'Support relu enregistré');void loadDoc(currentDoc.id)}}/>}
         {toast&&<div className="flash-toast" role="status"><Check size={16}/><span>{toast}</span></div>}
       </section>
     )
@@ -920,6 +896,7 @@ export default function MyCoursesWorkspace(props: {
         </p>
 
         <ul className="mycourses-import-benefits"><li><Check size={15}/>Résumer votre cours</li><li><Check size={15}/>Créer des QCM</li><li><Check size={15}/>Générer des flashcards</li></ul>
+        {generationProvider?.mode==='gemini'&&<label><input type="checkbox" checked={ocrRequested} disabled={uploading} onChange={event=>setOcrRequested(event.target.checked)}/>Transcrire aussi les pages scannées avec Gemini (40 pages / 10 Mo maximum). Le PDF sera transmis à Google.</label>}
         {uploadFile&&<div className="mycourses-upload-status" role="status"><strong>{uploadFile.name}</strong><span>{new Intl.NumberFormat('fr-FR',{maximumFractionDigits:1}).format(uploadFile.size/1024)} Ko · extraction en cours</span><progress aria-label="Extraction du PDF"/><small>Votre document s’ouvrira quand l’extraction sera terminée.</small></div>}
         <div className="mycourses-upload-controls">
           <input

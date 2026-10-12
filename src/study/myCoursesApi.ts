@@ -33,7 +33,7 @@ export async function fetchStudyDocument(id: string): Promise<StudyDocument> {
 
 export const MAX_STUDY_FILE_SIZE_BYTES = 25 * 1024 * 1024 // 25 Mo (26 214 400 octets)
 
-export async function uploadStudyDocument(file: File, title?: string): Promise<StudyDocument> {
+export async function uploadStudyDocument(file: File, title?: string, options: {ocr?:boolean} = {}): Promise<StudyDocument> {
   if (file.size > MAX_STUDY_FILE_SIZE_BYTES) {
     throw new Error('Le fichier dépasse la taille maximale autorisée de 25 Mo.')
   }
@@ -46,7 +46,8 @@ export async function uploadStudyDocument(file: File, title?: string): Promise<S
       'Content-Type': 'application/pdf',
       'x-mycorpus-request': '1',
       'x-document-filename': encodeURIComponent(file.name),
-      'x-document-title': encodeURIComponent(customTitle)
+      'x-document-title': encodeURIComponent(customTitle),
+      ...(options.ocr?{'x-document-ocr':'1'}:{})
     },
     credentials: 'same-origin',
     body: file

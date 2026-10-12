@@ -23,7 +23,7 @@ function makeTestPdf(textLines: string[]) {
   ])
 }
 
-test('parcours complet Mes cours : connexion → upload PDF → extraction → synthèse → QCM → export Anki → suppression', async ({ page }) => {
+test('parcours complet Mes cours : connexion → upload PDF → extraction → synthèse → QCM → export PDF → suppression', async ({ page }) => {
   page.setDefaultTimeout(30000)
   page.on('dialog', dialog => dialog.accept())
 
@@ -83,12 +83,17 @@ test('parcours complet Mes cours : connexion → upload PDF → extraction → s
   await page.getByRole('button', { name: /Générer QCM/ }).click()
   await expect(page.locator('.mycourses-question-item').first()).toBeVisible({ timeout: 25000 })
 
-  // 8. Export vers Anki
+  const originalPromise = page.waitForEvent('download')
+  await page.getByRole('link', { name: 'Télécharger le PDF original' }).click()
+  const original = await originalPromise
+  expect(original.suggestedFilename()).toBe('pharmacologie.pdf')
+
+  // 8. Export PDF de la synthèse, sans dialogue d’impression ni export Anki
+  await expect(page.getByRole('button', { name: /Anki/ })).toHaveCount(0)
+  await page.getByRole('button', { name: /^Synthèse/ }).click()
   const downloadPromise = page.waitForEvent('download')
-  await page.getByRole('button', { name: /Anki \(\.csv\)/ }).click()
-  const download = await downloadPromise
-  expect(download.suggestedFilename()).toContain('mycorpus-')
-  expect(download.suggestedFilename()).toContain('.csv')
+  await page.getByRole('button', { name: 'Exporter la synthèse en PDF', exact: true }).click()
+  expect((await downloadPromise).suggestedFilename()).toMatch(/^mycorpus-.*\.pdf$/)
 
   // 9. Suppression du document
   await page.getByRole('button', { name: 'Supprimer ce cours' }).click()

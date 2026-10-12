@@ -741,12 +741,14 @@ export function chunkIntoSections(pages) {
         )
 
       const accumulated = currentSection.paragraphs.reduce((a, p) => a + p.length, 0)
+      const fontHeading = page.headings?.includes(line)
       const shouldBreak =
+        fontHeading ||
         isRoman ||
         (isExplicit && accumulated >= 200) ||
         (isShort    && accumulated >= 400)
 
-      if (shouldBreak && (accumulated >= 50 || isRoman)) {
+      if (shouldBreak && (accumulated >= 50 || isRoman || fontHeading)) {
         if (currentSection.paragraphs.length > 0) {
           sections.push({
             id:        `sec-${sections.length + 1}`,
@@ -770,7 +772,7 @@ export function chunkIntoSections(pages) {
           title:      cleanTitle.slice(0, 80),
           startPage:  page.pageNumber,
           endPage:    page.pageNumber,
-          paragraphs: []
+          paragraphs: [line]
         }
       } else {
         currentSection.paragraphs.push(line)

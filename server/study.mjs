@@ -4,7 +4,9 @@ import { DatabaseSync } from 'node:sqlite'
 import { createHash, randomInt, randomUUID } from 'node:crypto'
 import { mkdirSync, existsSync, unlinkSync, writeFileSync, readFileSync, renameSync } from 'node:fs'
 import path from 'node:path'
-import { extractPdfPagesAndText, chunkIntoSections } from './pdfExtractor.mjs'
+import { chunkIntoSections } from './pdfExtractor.mjs'
+import {extractStudyPdf} from './study/pdf-layout.mjs'
+import {transcribeMissingPages} from './study/ocr-pages.mjs'
 import { extractTypedStudyFacts } from './study/symbolic-facts.mjs'
 import { buildSymbolicSummaryCategories, generateSymbolicStudyQuestions, POC_RELATIONS } from './study/symbolic-rules.mjs'
 import {handleStudySupports,initSupportSchema} from './study/supports.mjs'
@@ -34,6 +36,18 @@ export function initStudySchema(db) {
       updated_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS study_documents_user ON study_documents(user_id, created_at);
+    CREATE TABLE IF NOT EXISTS study_pdf_extractions (
+      document_id TEXT PRIMARY KEY REFERENCES study_documents(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      metadata_json TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS study_pdf_pages (
+      document_id TEXT NOT NULL REFERENCES study_documents(id) ON DELETE CASCADE,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      page_number INTEGER NOT NULL,
+      text TEXT NOT NULL,
+      PRIMARY KEY(document_id,page_number)
+    );
 
     CREATE TABLE IF NOT EXISTS study_sections (
       id TEXT PRIMARY KEY,
@@ -229,10 +243,10 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
         // Step 2: Extract text and check for scanned PDF / extractable text
         let extracted, ocrGeneration = null
         try {
-          extracted = extractPdfPagesAndText(pdfBuffer)
+          extracted = await extractStudyPdf(pdfBuffer)
         } catch (err) {
           if (err.code === 'ERR_NO_EXTRACTABLE_TEXT' && provider?.name === 'gemini' && config.AI_OCR !== 'off') {
-            const pageCount = Math.max(1, (pdfBuffer.toString('latin1').match(/\/Type\s*\/Page(?![a-zA-Z])/g) || []).length)
+            const pageCount = err.pageCount || Math.max(1, (pdfBuffer.toString('latin1').match(/\/Type\s*\/Page(?![a-zA-Z])/g) || []).length)
             try {
               const result = await generateWithQuota({db: d, userId: user.id, provider, config, task: 'ocr', context: {buffer: pdfBuffer, pageCount}, local: () => null})
               const pages = result.value.pages.map(p => ({pageNumber: p.pageNumber, text: String(p.text || '').trim()}))
@@ -254,9 +268,15 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
             })
           } else if (['ERR_UNSUPPORTED_PDF_FILTER', 'ERR_INVALID_PDF_STREAM'].includes(err.code)) {
             return send(422, {error: err.message, code: err.code, scanned: false, filters: err.filters || []})
-          } else return send(400, { error: err.message || 'Impossible d’extraire le texte de ce document PDF.' })
+          } else return send(err.status || 400, { error: err.message || 'Impossible d’extraire le texte de ce document PDF.' })
         }
 
+        if(req.headers['x-document-ocr']==='1'&&!ocrGeneration){
+          try {
+            const result=await transcribeMissingPages({extracted,buffer:pdfBuffer,db:d,userId:user.id,provider,config})
+            extracted=result.extracted;ocrGeneration=result.generation
+          }catch(error){return send(error.status||422,{error:error.message,code:error.code||'AI_OCR_FAILED'})}
+        }
         const sections = chunkIntoSections(extracted.pages)
         const documentId = randomUUID()
         const now = new Date().toISOString()
@@ -276,6 +296,9 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
             INSERT INTO study_documents(id, user_id, title, filename, file_size, page_count, status, created_at, updated_at)
             VALUES(?, ?, ?, ?, ?, ?, 'ready', ?, ?)
           `).run(documentId, user.id, title, filename, pdfBuffer.length, extracted.pageCount, now, now)
+          d.prepare('INSERT INTO study_pdf_extractions VALUES(?,?,?)').run(documentId,user.id,JSON.stringify(extracted.extraction || {method:'ocr',warnings:ocrGeneration?.uncertainPages?.map(page=>`Page ${page} : transcription incertaine.`)||[]}))
+          const insertPage=d.prepare('INSERT INTO study_pdf_pages VALUES(?,?,?,?)')
+          for(const page of extracted.pages)insertPage.run(documentId,user.id,page.pageNumber,page.text)
 
           const insertSec = d.prepare(`
             INSERT INTO study_sections(id, document_id, user_id, title, section_order, start_page, end_page, content, token_count)
@@ -338,7 +361,8 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
             })),
             createdAt: now
           },
-          ...(ocrGeneration ? {ocr: ocrGeneration} : {})
+          ...(ocrGeneration ? {ocr: ocrGeneration} : {}),
+          extraction: extracted.extraction || {method: 'ocr', warnings: ocrGeneration?.uncertainPages?.map(page => `Page ${page} : transcription incertaine.`) || []}
         })
       }
 
@@ -399,6 +423,7 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
               sections,
               summary: summaryRow ? JSON.parse(summaryRow.summary_json) : null,
               summaryCreatedAt: summaryRow?.created_at || null,
+              extraction: JSON.parse(d.prepare('SELECT metadata_json FROM study_pdf_extractions WHERE document_id=? AND user_id=?').get(documentId,user.id)?.metadata_json || 'null'),
               questionCount
             }
           })
