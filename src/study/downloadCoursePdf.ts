@@ -1,124 +1,126 @@
 import {jsPDF} from 'jspdf'
+import {PdfLayout,cleanText} from './pdf/layout'
+import {drawingImage} from './pdf/drawing'
 
-const EXCLUDED='button,input,textarea,select,.course-document-actions,.course-feedback-panel,.course-notebook,.course-completion,.next-chapter,.reading-progress,.medical-toolbar,.medical-legend,.medical-scroll-bar-hint,.diagram-header-controls,.diagram-top-bar,.diagram-navigation,.diagram-pan-hint,.diagram-modal-overlay'
-let fontPromise:Promise<string>|undefined
-function loadFont() {
-  return fontPromise??=fetch('/fonts/NotoSans-Regular.ttf').then(async response=>{
+const EXCLUDED='button,input,textarea,select,.course-document-actions,.course-feedback-panel,.course-notebook,.course-completion,.next-chapter,.reading-progress,.medical-toolbar,.medical-legend,.medical-scroll-bar-hint,.diagram-header-controls,.diagram-top-bar,.diagram-navigation,.diagram-pan-hint,.diagram-modal-overlay,.section-number,.flash-selection-action'
+const fonts=new Map<string,Promise<string>>()
+function loadFont(weight:string) {
+  if(!fonts.has(weight))fonts.set(weight,fetch(`/fonts/NotoSans-${weight}.ttf`).then(async response=>{
     if(!response.ok)throw new Error('Police PDF indisponible')
-    const bytes=new Uint8Array(await response.arrayBuffer())
-    let binary=''
+    const bytes=new Uint8Array(await response.arrayBuffer());let binary=''
     for(let offset=0;offset<bytes.length;offset+=8192)binary+=String.fromCharCode(...bytes.subarray(offset,offset+8192))
     return btoa(binary)
-  }).catch(error=>{fontPromise=undefined;throw error})
+  }).catch(error=>{fonts.delete(weight);throw error}))
+  return fonts.get(weight)!
 }
-
-async function drawingImage(svg:SVGSVGElement) {
-  const copy=svg.cloneNode(true) as SVGSVGElement
-  copy.setAttribute('xmlns','http://www.w3.org/2000/svg')
-  const originals=[svg,...svg.querySelectorAll('*')]
-  const copies=[copy,...copy.querySelectorAll('*')]
-  originals.forEach((element,index)=>{
-    const style=getComputedStyle(element)
-    for(const property of ['fill','stroke','stroke-width','font-size','font-family','font-weight','opacity','paint-order'])copies[index].setAttribute(property,style.getPropertyValue(property))
-    if(element.tagName.toLowerCase()==='text') {copies[index].setAttribute('fill','#234b5a');copies[index].setAttribute('stroke','#fff')}
-  })
-  copy.removeAttribute('class');copy.removeAttribute('style')
-  const box=svg.viewBox.baseVal
-  const width=box.width||640,height=box.height||410
-  const svgRect=svg.getBoundingClientRect()
-  for(const button of svg.closest('.diagram-canvas')?.querySelectorAll('button')||[]) {
-    const bounds=button.getBoundingClientRect()
-    const x=(bounds.x-svgRect.x)/svgRect.width*width,y=(bounds.y-svgRect.y)/svgRect.height*height
-    const group=document.createElementNS('http://www.w3.org/2000/svg','g')
-    const rect=document.createElementNS(group.namespaceURI,'rect')
-    for(const [key,value] of Object.entries({x,y,width:bounds.width/svgRect.width*width,height:bounds.height/svgRect.height*height,rx:5,fill:'#eaf4f7',stroke:'#bbd3dc'}))rect.setAttribute(key,String(value))
-    group.append(rect)
-    const label=document.createElementNS(group.namespaceURI,'text')
-    label.setAttribute('x',String(x+6));label.setAttribute('y',String(y+17));label.setAttribute('fill','#234b5a');label.setAttribute('font-size','11')
-    label.textContent=(button.textContent||'').replace(/\s+/g,' ').trim()
-    group.append(label);copy.append(group)
-  }
-  copy.setAttribute('width',String(width));copy.setAttribute('height',String(height))
-  const url=URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(copy)],{type:'image/svg+xml'}))
-  try {
-    const image=new Image()
-    image.src=url
-    await image.decode()
-    const canvas=document.createElement('canvas');canvas.width=width*2;canvas.height=height*2
-    const context=canvas.getContext('2d')!
-    context.fillStyle='#fff';context.fillRect(0,0,canvas.width,canvas.height)
-    context.drawImage(image,0,0,canvas.width,canvas.height)
-    return {data:canvas.toDataURL('PNG'),ratio:height/width}
-  } finally {URL.revokeObjectURL(url)}
-}
+const content=(node:Element|null)=>cleanText(node?.textContent||'')
 
 export async function downloadCoursePdf(article:HTMLElement,title:string) {
   const pdf=new jsPDF({format:'a4',unit:'mm',compress:true,putOnlyUsedFonts:true})
-  pdf.addFileToVFS('NotoSans.ttf',await loadFont())
-  pdf.addFont('NotoSans.ttf','NotoSans','normal');pdf.setFont('NotoSans')
-  pdf.setProperties({title,author:'MyCorpus',subject:'Cours'})
-  const margin=17,width=176,bottom=278
-  let y=21
-  function space(height:number) {if(y+height>bottom){pdf.addPage();y=21}}
-  function text(value:string,size=10,gap=3) {
-    const clean=value.replace(/\s+/g,' ').trim()
-    if(!clean)return
-    pdf.setFontSize(size);pdf.setTextColor(23,44,53)
-    const lines=pdf.splitTextToSize(clean,width) as string[]
-    const lineHeight=size*0.3528*1.5
-    for(const line of lines){space(lineHeight);pdf.text(line,margin,y);y+=lineHeight}
-    y+=gap
+  const [regular,bold]=await Promise.all([loadFont('Regular'),loadFont('Bold')])
+  for(const [name,data,style] of [['Regular',regular,'normal'],['Bold',bold,'bold']]) {
+    pdf.addFileToVFS(`NotoSans-${name}.ttf`,data);pdf.addFont(`NotoSans-${name}.ttf`,'NotoSans',style)
   }
-  text(title,21,7)
-  async function visit(element:Element):Promise<void> {
-    if(element.matches(EXCLUDED))return
-    const tag=element.tagName.toLowerCase()
-    if(tag==='svg') {
-      if(!element.matches('.medical-svg-root,.diagram-canvas>svg'))return
-      const image=await drawingImage(element as SVGSVGElement)
-      const height=Math.min(width*image.ratio,190),imageWidth=height/image.ratio
-      space(height+6);pdf.addImage(image.data,'PNG',margin+(width-imageWidth)/2,y,imageWidth,height);y+=height+6;return
-    }
-    if(tag==='h1')return
-    if(tag==='a') {const href=(element as HTMLAnchorElement).getAttribute('href')||'';text((element.textContent||'')+(/^https?:\/\//.test(href)?` (${href})`:''),9,2);return}
-    if(/^h[2-6]$/.test(tag)){space(20);text(element.textContent||'',tag==='h2'?14:12,4);return}
-    if(tag==='table') {
-      const rows=[...element.querySelectorAll('tr')].filter(row=>row.closest('table')===element)
-      const columns=Math.max(1,...rows.map(row=>row.children.length)),cellWidth=width/columns
-      pdf.setFontSize(9);pdf.setTextColor(23,44,53)
-      const renderRow=(row:Element)=>{
-        const cells=[...row.children].map(cell=>pdf.splitTextToSize((cell.textContent||'').replace(/\s+/g,' ').trim(),cellWidth-4) as string[])
-        const lineCount=Math.max(1,...cells.map(cell=>cell.length))
-        let offset=0
-        while(offset<lineCount) {
-          space(9)
-          const count=Math.min(lineCount-offset,Math.max(1,Math.floor((bottom-y-4)/4.8)))
-          const height=count*4.8+4
-          cells.forEach((lines,index)=>{
-            const x=margin+index*cellWidth
-            pdf.setDrawColor(203,213,220)
-            pdf.setFillColor(...(row.querySelector('th')?[234,244,247]:[255,255,255]) as [number,number,number])
-            pdf.rect(x,y,cellWidth,height,'FD')
-            lines.slice(offset,offset+count).forEach((line,lineIndex)=>pdf.text(line,x+2,y+5+lineIndex*4.8))
-          })
-          y+=height;offset+=count
-        }
+  pdf.setProperties({title,author:'MyCorpus',subject:'Cours'})
+  const layout=new PdfLayout(pdf,title)
+  const eyebrow=article.querySelector(':scope > .study-eyebrow'),meta=article.querySelector(':scope > .course-meta')
+  if(eyebrow)layout.muted(content(eyebrow))
+  layout.text(title,{size:23,bold:true,gap:5})
+  if(meta)layout.muted([...meta.children].map(content).join(' · '))
+  layout.y+=3
+
+  async function figure(element:Element,svg:SVGSVGElement) {
+    const heading=content(element.querySelector('h2,h3')),caption=content(element.querySelector('figcaption p'))
+    const image=await drawingImage(svg)
+    const maxHeight=image.ratio>1.2?160:96
+    let imageWidth=Math.min(164,maxHeight/image.ratio),imageHeight=imageWidth*image.ratio
+    const prefix=(heading?layout.height(heading,{size:12,bold:true}):0)+(caption?layout.height(caption,{size:8.5}):0)
+    const available=layout.bottom-layout.y-prefix-15
+    if(available>=maxHeight*0.84&&available<imageHeight){imageHeight=available;imageWidth=imageHeight/image.ratio}
+    // When a large figure needs its own page, use the introduction's remaining
+    // space for a useful outline rather than shrinking labels below legible size.
+    if(pdf.getNumberOfPages()===1&&layout.y+prefix+imageHeight+15>layout.bottom){
+      const sections=[...article.querySelectorAll('.course-section h2')].map(content)
+      const outlineHeight=sections.reduce((sum,section)=>sum+layout.height(section,{size:8.5,gap:2}),0)+16
+      if(sections.length>=3&&layout.y+outlineHeight<layout.bottom){
+        layout.heading('Dans ce cours',3)
+        sections.forEach((section,index)=>layout.text(`${String(index+1).padStart(2,'0')}  ${section}`,{size:8.5,gap:2}))
       }
-      rows.forEach(renderRow)
-      y+=3;return
     }
-    if(['p','li','summary','blockquote','textarea'].includes(tag)) {text((tag==='li'?'• ':'')+(element.textContent||''));return}
-    for(const node of element.childNodes) {
+    layout.ensure(prefix+imageHeight+15)
+    if(heading)layout.text(heading,{size:12,bold:true,gap:3})
+    if(caption)layout.text(caption,{size:8.5,color:[89,110,121],gap:4})
+    pdf.setDrawColor(217,230,233);pdf.setLineWidth(0.25)
+    pdf.roundedRect(layout.left,layout.y,layout.width,imageHeight+8,2,2)
+    pdf.addImage(image.data,'PNG',layout.left+(layout.width-imageWidth)/2,layout.y+4,imageWidth,imageHeight)
+    layout.y+=imageHeight+12
+    const details=element.querySelector('.medical-viewer-footer,.diagram-explanation')
+    if(details)await visit(details)
+  }
+  async function visit(element:Element):Promise<void> {
+    if(element.matches(EXCLUDED)||element===eyebrow||element===meta)return
+    const tag=element.tagName.toLowerCase()
+    if(tag==='svg'||tag==='h1')return
+    const svg=element.matches('.medical-plate,.interactive-diagram')?element.querySelector<SVGSVGElement>('.medical-svg-root,.diagram-canvas>svg'):null
+    if(svg){await figure(element,svg);return}
+    if(element.matches('.course-review')){
+      layout.text(content(element.querySelector('strong')),{size:8,bold:true,gap:1})
+      for(const p of element.querySelectorAll('p,small'))layout.muted(content(p))
+      layout.y+=3;return
+    }
+    if(element.matches('.objectives')){layout.panel(content(element.querySelector('h2')),[...element.querySelectorAll('p')].map(content),true);return}
+    if(element.matches('.course-prerequisites')){
+      layout.text(content(element.querySelector('strong')),{size:9,bold:true,gap:1})
+      for(const p of element.querySelectorAll('p,small'))layout.muted(content(p))
+      layout.y+=3;return
+    }
+    if(element.matches('.exam-trap')){layout.panel(content(element.querySelector('h2')),[...element.querySelectorAll('p')].map(content));return}
+    if(element.matches('.medical-point-title')){layout.heading([...element.children].map(child=>[...child.childNodes].map(node=>node.textContent||'').join(' ')).join(' · '),3);return}
+    if(element.matches('.diagram-explanation')){layout.heading(content(element.querySelector('h3')),3);for(const p of element.querySelectorAll('p'))layout.text(content(p));return}
+    if(element.matches('.medical-attribution')){layout.muted(content(element));return}
+    if(element.matches('.mycourses-summary-card')){
+      const heading=element.querySelector('h3')
+      if(heading){layout.heading(content(heading.firstElementChild)||content(heading));if(heading.children[1])layout.muted(content(heading.children[1]))}
+      for(const child of element.children)if(child!==heading)await visit(child)
+      return
+    }
+    if(/^h[2-6]$/.test(tag)){
+      const number=element.closest('.course-section')?.querySelector('.section-number')
+      layout.heading((number?`${content(number)}  `:'')+content(element),tag==='h2'?2:3);return
+    }
+    if(tag==='table'){layout.table(element);return}
+    if(tag==='a'){
+      const href=element.getAttribute('href')||''
+      layout.text(content(element),{size:9,bold:true,gap:1})
+      if(/^https?:\/\//.test(href))layout.text(href,{size:7.5,color:[15,112,117],gap:3})
+      return
+    }
+    if(tag==='ul'||tag==='ol'){
+      const items=[...element.children].filter(child=>child.tagName==='LI')
+      for(let i=0;i<items.length;i++){
+        const copy=items[i].cloneNode(true) as Element
+        if(element.closest('.course-flow'))copy.querySelector('span')?.remove()
+        const nested=[...copy.querySelectorAll('ul,ol')];nested.forEach(node=>node.remove())
+        layout.text(`${tag==='ol'?`${i+1}.`:'•'} ${content(copy)}`,{indent:3,width:layout.width-3,gap:2})
+        for(const list of items[i].querySelectorAll(':scope > ul,:scope > ol'))await visit(list)
+      }
+      layout.y+=2;return
+    }
+    if(tag==='dt'){layout.text(content(element),{bold:true,gap:1});return}
+    if(tag==='dd'){layout.text(content(element),{indent:3,gap:4});return}
+    if(tag==='p'||tag==='blockquote'){layout.text(content(element));return}
+    if(tag==='summary'){layout.text(content(element),{size:9,bold:true,gap:2});return}
+    if(tag==='strong'){layout.text(content(element),{bold:true});return}
+    if(tag==='small'||element.matches('.study-eyebrow,.medical-category-tag')){layout.muted(content(element));return}
+    const hasBlocks=element.querySelector(':scope > p,:scope > div,:scope > section,:scope > article,:scope > aside,:scope > figure,:scope > ul,:scope > ol,:scope > dl,:scope > h2,:scope > h3,:scope > h4,:scope > details,:scope > footer,:scope > table,:scope > dt,:scope > dd')
+    if(!hasBlocks&&!element.querySelector('svg')&&content(element)){layout.text([...element.childNodes].map(node=>node.textContent||'').join(' '),{size:9});return}
+    for(const node of element.childNodes){
       if(node.nodeType===Node.ELEMENT_NODE)await visit(node as Element)
-      else if(node.nodeType===Node.TEXT_NODE&&node.textContent?.trim())text(node.textContent,9,2)
+      else if(node.nodeType===Node.TEXT_NODE&&node.textContent?.trim())layout.text(node.textContent)
     }
   }
   await visit(article)
-  const pages=pdf.getNumberOfPages()
-  for(let page=1;page<=pages;page++) {
-    pdf.setPage(page);pdf.setFontSize(8);pdf.setTextColor(100,116,125)
-    pdf.text('MyCorpus',margin,289);pdf.text(`${page} / ${pages}`,193,289,{align:'right'})
-  }
+  layout.finish()
   const filename='mycorpus-'+title.replace(/œ/g,'oe').replace(/Œ/g,'OE').replace(/æ/g,'ae').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9]+/g,'-').replace(/^-|-$/g,'').toLowerCase().slice(0,100)+'.pdf'
   const url=URL.createObjectURL(pdf.output('blob'))
   const link=document.createElement('a');link.href=url;link.download=filename;document.body.append(link);link.click();link.remove()

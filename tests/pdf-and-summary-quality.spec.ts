@@ -97,3 +97,30 @@ test('Cours importé : section complète et synthèse Gemini prévisualisée ave
   expect(saved).toBe(1)
   await page.request.delete('/api/account',{headers:{'x-mycorpus-request':'1'},data:{password:'Quality-test-solide-2026'}})
 })
+
+test('PDF : tableau multipage avec en-têtes répétés et aucun texte hors page',async({page})=>{
+  await page.goto('/#tab=cours&cours=FMA7088')
+  await expect(page.locator('.course-article h1')).toBeVisible()
+  await page.evaluate(()=>{
+    const article=document.querySelector('.course-article')!
+    article.innerHTML='<h1>Validation de la pagination</h1><h2>Mesures de référence</h2><table><thead><tr><th>Repère</th><th>Observation</th></tr></thead><tbody>'+Array.from({length:75},(_,i)=>`<tr><td>Repère ${i}</td><td>Observation ${i} : une phrase assez longue pour occuper plusieurs lignes dans sa cellule, sans perdre son contenu.</td></tr>`).join('')+'</tbody></table><h2>Conclusion complète</h2><p>La dernière phrase du document est conservée.</p>'
+  })
+  const pending=page.waitForEvent('download')
+  await page.getByRole('button',{name:'Exporter en PDF',exact:true}).click()
+  const bytes=readFileSync((await(await pending).path())!)
+  const {getDocument}=await import('pdfjs-dist/legacy/build/pdf.mjs')
+  const task=getDocument({data:new Uint8Array(bytes),isEvalSupported:false}),pdf=await task.promise
+  try{
+    expect(pdf.numPages).toBeGreaterThan(2)
+    let all=''
+    for(let number=1;number<=pdf.numPages;number++){
+      const sheet=await pdf.getPage(number),content=await sheet.getTextContent()
+      const items=content.items.filter((item):item is typeof item & {str:string;transform:number[];width:number}=>'str' in item)
+      const text=items.map(item=>item.str).join(' ');all+=text+' '
+      if(text.includes('Observation '))expect(text).toContain('Repère')
+      for(const item of items){expect(item.transform[4]).toBeGreaterThanOrEqual(45);expect(item.transform[4]+item.width).toBeLessThanOrEqual(sheet.view[2]-40);expect(item.transform[5]).toBeGreaterThan(15);expect(item.transform[5]).toBeLessThan(sheet.view[3]-20)}
+    }
+    for(let i=0;i<75;i++)expect(all).toContain(`Observation ${i} :`)
+    expect(all).toContain('La dernière phrase du document est conservée.')
+  }finally{await task.destroy()}
+})
