@@ -1,5 +1,4 @@
 import {test,expect} from '@playwright/test'
-import {readFileSync} from 'node:fs'
 import {courses} from '../src/study/curriculum'
 import {questions,type Question} from '../src/study/questions'
 import {ankiFilename,buildAnkiCsv,parseReviewRecords,selectAnkiQuestions} from '../src/study/ankiExport'
@@ -36,23 +35,9 @@ test('les filtres utilisent les erreurs et difficultés enregistrées',()=>{
  expect(ankiFilename(courses.find(course=>course.id==='phys-cardiac-cycle')!,'errors')).toMatch(/^mycorpus-mes-erreurs-physiologie-/)
 })
 
-test('export complet, erreurs et absence d’erreur depuis un cours',async({page})=>{
- const course=courses.find(item=>item.id==='phys-cardiac-cycle')!,courseQuestions=questions.filter(question=>question.course===course.id)
+for(const width of [1440,390])test(`L’export Anki est retiré des cours à ${width}px`,async({page})=>{
+ await page.setViewportSize({width,height:852})
  await page.goto('/#tab=cours&cours=phys-cardiac-cycle')
- await page.getByRole('button',{name:'Exporter vers Anki'}).click()
- const fullDownload=page.waitForEvent('download');await page.getByRole('button',{name:'Tout le cours'}).click();const full=await fullDownload
- expect(full.suggestedFilename()).toBe(ankiFilename(course,'course'))
- const fullPath=await full.path();expect(fullPath).not.toBeNull();expect(readFileSync(fullPath!,'utf8')).toContain(courseQuestions[0].id)
- await page.getByRole('button',{name:'Mes erreurs uniquement'}).click()
- await expect(page.locator('.anki-export-notice')).toContainText('aucune erreur enregistrée')
- await page.evaluate(id=>localStorage.setItem('corpus-practice-v1',JSON.stringify({[id]:{seen:2,correct:1,wrong:true}})),courseQuestions[0].id)
- await page.reload();await page.getByRole('button',{name:'Exporter vers Anki'}).click()
- const errorDownload=page.waitForEvent('download');await page.getByRole('button',{name:'Mes erreurs uniquement'}).click();const errors=await errorDownload
- const errorPath=await errors.path();expect(errorPath).not.toBeNull();const content=readFileSync(errorPath!,'utf8');expect(errors.suggestedFilename()).toBe(ankiFilename(course,'errors'));expect(content).toContain(courseQuestions[0].id);expect(content).not.toContain(courseQuestions[1].id)
-})
-
-test('le choix Anki reste utilisable sur mobile',async({page})=>{
- await page.setViewportSize({width:393,height:852});await page.goto('/#tab=cours&cours=phys-cardiac-cycle');await page.getByRole('button',{name:'Exporter vers Anki'}).click()
- const menu=page.locator('.anki-export-menu');await expect(menu).toBeVisible();expect(await menu.evaluate(element=>element.getBoundingClientRect().right)).toBeLessThanOrEqual(393)
- await expect(page.getByRole('button',{name:'Tout le cours'})).toBeVisible()
+ await expect(page.getByRole('button',{name:'Exporter en PDF'})).toBeVisible()
+ await expect(page.getByRole('button',{name:/Anki/})).toHaveCount(0)
 })

@@ -1,3 +1,4 @@
+import {readFileSync} from 'node:fs'
 import {test,expect} from '@playwright/test'
 import {extractStudyPdf} from '../server/study/pdf-layout.mjs'
 
@@ -16,42 +17,46 @@ test('Connexion depuis Mes cours : le moteur Gemini est rechargé après authent
   await expect(page.getByRole('checkbox',{name:/Transcrire aussi les pages scannées/})).toBeVisible()
 })
 
-test('Export PDF : texte lisible en thème sombre, A4, formules et tableaux sans interface superposée',async({page})=>{
+test('Téléchargement PDF direct : A4, texte sélectionnable, accents, formules et schéma en thème sombre',async({page})=>{
   await page.goto('/#tab=cours&cours=FMA7088')
   await expect(page.getByRole('button',{name:'Exporter en PDF',exact:true})).toBeVisible()
   await page.getByRole('button',{name:'Activer le thème sombre',exact:true}).click()
   const title=await page.locator('.course-article h1').innerText()
-  await page.evaluate(()=>{window.print=()=>{}})
+  const initialTitle=await page.title()
+  await page.evaluate(()=>{
+    window.print=()=>{throw new Error('Impression interdite')}
+    const paragraph=document.createElement('p');paragraph.textContent='Éjection systolique : f(x) = x² ; f′(x) = 2x ; débit ≈ 5 L/min.'
+    document.querySelector('.course-article')!.append(paragraph)
+    const table=document.createElement('table')
+    table.innerHTML='<tr><th>Paramètre</th><th>Valeur</th></tr><tr><td>Débit de référence</td><td>5 L/min</td></tr>'
+    document.querySelector('.course-article')!.append(table)
+  })
+  const downloadPromise=page.waitForEvent('download')
   await page.getByRole('button',{name:'Exporter en PDF',exact:true}).click()
-  await expect(page.locator('#course-print-document')).toHaveCount(1)
-  await page.emulateMedia({media:'print'})
-  const printable=page.locator('#course-print-document')
-  await expect(printable).toBeVisible()
-  await expect(page.locator('#root')).toBeHidden()
-  expect(await printable.locator('button,textarea').count()).toBe(0)
-  expect(await printable.locator('h2').first().evaluate(element=>getComputedStyle(element).color)).toBe('rgb(23, 44, 53)')
-  const drawing=printable.locator('.medical-drawing').first()
-  await expect(drawing).toBeVisible()
-  const diagramBox=await drawing.boundingBox()
-  const svgBox=await drawing.locator('svg').first().boundingBox()
-  expect(svgBox!.y+svgBox!.height).toBeLessThanOrEqual(diagramBox!.y+diagramBox!.height+1)
-  const footerBox=await printable.locator('.medical-viewer-footer').first().boundingBox()
-  expect(footerBox!.y).toBeGreaterThanOrEqual(svgBox!.y+svgBox!.height-1)
-  const figureBox=await printable.locator('.medical-plate').first().boundingBox()
-  expect(figureBox!.y+figureBox!.height).toBeGreaterThanOrEqual(footerBox!.y+footerBox!.height)
-  const transformed=drawing.locator('svg [transform]')
-  for(let i=0;i<await transformed.count();i++) expect(await transformed.nth(i).evaluate(element=>getComputedStyle(element).transform)).not.toBe('none')
-  expect(await drawing.locator('text').first().evaluate(element=>getComputedStyle(element).fill)).toBe('rgb(35, 75, 90)')
-  expect(await printable.locator('.medical-plate').first().evaluate(element=>getComputedStyle(element).backgroundColor)).toBe('rgba(0, 0, 0, 0)')
-  await page.screenshot({path:'tests/artifacts/design/pdf-quality/print-a4.png',fullPage:true})
-  const bytes=await page.pdf({preferCSSPageSize:true,printBackground:true})
+  const download=await downloadPromise
+  expect(download.suggestedFilename()).toBe('mycorpus-le-coeur.pdf')
+  const bytes=readFileSync((await download.path())!)
+  expect(bytes.subarray(0,5).toString()).toBe('%PDF-')
+  expect(bytes.toString('latin1')).toContain('/Subtype /Image')
   const extracted=await extractStudyPdf(bytes)
+  const {getDocument}=await import('pdfjs-dist/legacy/build/pdf.mjs')
+  const loading=getDocument({data:new Uint8Array(bytes),isEvalSupported:false})
+  const pdf=await loading.promise
+  try {
+    const first=await pdf.getPage(1)
+    expect(first.view[2]-first.view[0]).toBeCloseTo(595.28,0)
+    expect(first.view[3]-first.view[1]).toBeCloseTo(841.89,0)
+  } finally {await loading.destroy()}
   expect(extracted.totalText).toContain(title)
+  expect(extracted.totalText).toContain('Éjection systolique')
+  expect(extracted.totalText).toContain('x²')
+  expect(extracted.totalText).toContain('f′(x)')
+  expect(extracted.totalText).toContain('Débit de référence')
   expect(extracted.totalText).not.toContain('Marquer ce cours terminé')
   expect(extracted.totalText.length).toBeGreaterThan(500)
-  await page.evaluate(()=>window.dispatchEvent(new Event('afterprint')))
-  expect(await page.title()).not.toContain('MyCorpus — '+title)
-  await expect(printable).toHaveCount(0)
+  await expect(page).toHaveTitle(initialTitle)
+  await expect(page.getByRole('button',{name:'Exporter en PDF',exact:true})).toBeEnabled()
+  await expect(page.getByRole('button',{name:/Anki/})).toHaveCount(0)
 })
 
 test('Cours importé : section complète et synthèse Gemini prévisualisée avec preuve avant sauvegarde',async({page})=>{

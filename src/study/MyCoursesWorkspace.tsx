@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import {
   Crop, FileText, Upload, Trash2, ArrowRight, ArrowLeft, BookOpen,
-  CheckCircle2, Sparkles, Download, AlertCircle, RefreshCw,
+  CheckCircle2, Sparkles, AlertCircle, RefreshCw,
   FileCheck, Clock3, Layers, Quote, X, Check
 } from 'lucide-react'
 import type { StudyDocument, StudyQuota, StudyQuestion } from './myCoursesTypes'
@@ -13,11 +13,10 @@ import {
 import { storageScope, useAccount } from '../account/store'
 import { isCorrect } from './questions'
 import { nextReview, validReview, type ReviewRecord } from './reviewSchedule'
-import { buildDocumentAnkiCsv, downloadAnkiCsv, documentAnkiFilename } from './ankiExport'
 import './myCourses.css'
 import ReviewWorkspace from './review/ReviewWorkspace'
 import {ExtractedSection} from './ExtractedSection'
-import {printCourse} from './printCourse'
+import DownloadPdfButton from './DownloadPdfButton'
 import {GenerationNotice,useGenerationProvider} from './ai/GenerationNotice'
 import {SupportPreview, type SupportTask} from './ai/SupportPreview'
 import type {FlashcardDeck} from '../flashcards/flashcardsTypes'
@@ -284,15 +283,6 @@ export default function MyCoursesWorkspace(props: {
     setActiveTab('practice')
   }
 
-  const handleExportAnki = (mode: 'course' | 'errors' = 'course') => {
-    if (!currentDoc || !questions.length) return
-    const csv = buildDocumentAnkiCsv(currentDoc.title, currentDoc.filename, questions, mode, records)
-    const filename = documentAnkiFilename(currentDoc.title, mode)
-    downloadAnkiCsv(csv, filename)
-  }
-
-  const wrongQuestions = questions.filter(q => records[q.id]?.wrong)
-
   if (!account.user) {
     return (
       <section className="study-workspace mycourses-workspace" aria-label="Mes cours MyCorpus Study">
@@ -302,7 +292,7 @@ export default function MyCoursesWorkspace(props: {
             <h1>Mes cours.<br /><em>Vos supports, prêts à être mémorisés.</em></h1>
             <p className="mycourses-subtitle">
               Transformez vos cours magistraux, polycopiés et présentations PDF en synthèses structurées,
-              QCM d’entraînement et cartes Anki directement exploitables.
+              QCM d’entraînement et flashcards à réviser.
             </p>
           </div>
         </header>
@@ -347,10 +337,11 @@ export default function MyCoursesWorkspace(props: {
           </div>
 
           <div className="mycourses-action-bar">
+            <a className="mycourses-action-btn" href={`/api/study/documents/${encodeURIComponent(currentDoc.id)}/pdf`} download={currentDoc.filename}>Télécharger le PDF original</a>
             <button className="mycourses-action-btn mycourses-action-primary" onClick={()=>{setFlashReview('generate');setGenerationRequest(value=>value+1)}}><Sparkles size={16}/>Générer des flashcards</button>
             <button className="mycourses-action-btn" onClick={()=>setFlashReview('review')}>Réviser les brouillons</button>
             <button className="mycourses-action-btn" onClick={()=>{setSupportOptions({count:5,replace:false});setSupportTask('summary')}} title="Synthèse, fiche de révision ou QCM à relire et modifier avant enregistrement">Préparer un support à relire</button>
-            {currentDoc.summary&&activeTab==='summary'&&<button className="mycourses-action-btn" onClick={()=>{const content=document.querySelector<HTMLElement>('.mycourses-summary-content');if(content)void printCourse(content,currentDoc.title)}}><Download size={16}/>Exporter la synthèse en PDF</button>}
+            {currentDoc.summary&&activeTab==='summary'&&<DownloadPdfButton title={currentDoc.title} selector=".mycourses-summary-content" label="Exporter la synthèse en PDF" className="mycourses-action-btn"/>}
             <button className="mycourses-action-btn mycourses-action-secondary" onClick={()=>void openVisualCrop(currentDoc)} title="Créer une flashcard d’occlusion d’image à partir d’une page de ce PDF"><Crop size={16}/>Flashcard visuelle</button>
             {!currentDoc.summary ? (
               <button
@@ -392,16 +383,7 @@ export default function MyCoursesWorkspace(props: {
               </button>
             )}
 
-            {questions.length > 0 && (
-              <button
-                className="mycourses-action-btn mycourses-action-secondary"
-                onClick={() => handleExportAnki('course')}
-                title="Exporter toutes les questions vers Anki"
-              >
-                <Download size={16} />
-                Anki (.csv)
-              </button>
-            )}
+
 
             <button
               className="mycourses-btn-delete"
@@ -507,14 +489,7 @@ export default function MyCoursesWorkspace(props: {
                 {questions.length} questions issues de ce document. Chaque question est liée à son extrait source.
               </p>
               <div style={{ display: 'flex', gap: '0.75rem' }}>
-                {wrongQuestions.length > 0 && (
-                  <button
-                    className="mycourses-action-btn mycourses-action-secondary"
-                    onClick={() => handleExportAnki('errors')}
-                  >
-                    Exporter mes erreurs Anki ({wrongQuestions.length})
-                  </button>
-                )}
+
                 <button
                   className="mycourses-action-btn mycourses-action-primary"
                   onClick={() => handleGenerateQuestions(5)}
