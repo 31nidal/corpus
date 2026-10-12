@@ -4,6 +4,7 @@ import {useEffect, useRef, useState} from 'react'
 import {Check, Plus, Sparkles, Trash2, X} from 'lucide-react'
 import {createDeck, createNotesBulk, generateDrafts, listDecks, regenerateGeneratedDraft} from './flashcardsApi'
 import type {FlashcardDeck, FlashcardNoteDraft, GenerationSource, NoteType} from './flashcardsTypes'
+import './flashcards.css'
 
 const extractKeys = (text: string) => {
   const matches = [...text.matchAll(/\{\{c(\d+)::[\s\S]*?\}\}/g)]
