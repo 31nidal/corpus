@@ -1,3 +1,4 @@
+import {createStudyV2Service} from './study/v2/handler.mjs'
 import {getOrResetStudyQuota, reserveGenerationQuota, releaseGenerationQuota} from './study/quota.mjs'
 export {computeNextMonthlyReset, getOrResetStudyQuota, checkGenerationQuota, reserveGenerationQuota, releaseGenerationQuota} from './study/quota.mjs'
 import { DatabaseSync } from 'node:sqlite'
@@ -103,6 +104,7 @@ export function initStudySchema(db) {
 export function createStudyHandler(config = process.env, dependencies = {}) {
   let db = dependencies.db
   const provider = dependencies.provider || null
+  let v2Service
 
   const getDb = () => {
     if (db) return db
@@ -149,7 +151,7 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
     return quota
   }
 
-  return async (req, res) => {
+  const handler = async (req, res) => {
     const send = (status, body) => {
       res.writeHead(status, {
         'Content-Type': 'application/json; charset=utf-8',
@@ -172,6 +174,11 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
       const mutating = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)
       if (mutating && (req.headers['x-mycorpus-request'] !== '1' || (req.headers.origin && req.headers.origin !== origin))) {
         return send(403, { error: 'Origine de la requête refusée.' })
+      }
+
+      if(subpath.startsWith('v2/')) {
+        v2Service ||= createStudyV2Service({db:d,config,provider,getStorageDir,...dependencies.v2})
+        return await v2Service.handle({req,url,userId:user.id,send})
       }
 
       // GET /api/study/quotas
@@ -439,7 +446,7 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
           res.writeHead(200, {
             'Content-Type': 'application/pdf',
             'Content-Length': data.length,
-            'Content-Disposition': `inline; filename="${doc.filename}"`,
+            'Content-Disposition': `inline; filename="${doc.filename.replace(/[^\x20-\x7e]|["\\]/g,'_')}"; filename*=UTF-8''${encodeURIComponent(doc.filename)}`,
             'Cache-Control': 'private, max-age=3600'
           })
           return res.end(data)
@@ -805,6 +812,17 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
       })
     }
   }
+  // Resume only databases that have already opted into V2. Fresh/legacy databases
+  // are not migrated just because the server starts.
+  handler.resume=()=>{
+    const d=getDb()
+    if(d.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='study_v2_jobs'").get()) {
+      v2Service ||= createStudyV2Service({db:d,config,provider,getStorageDir,...dependencies.v2})
+    }
+    return v2Service
+  }
+  handler.close=async()=>{await v2Service?.pipeline.close()}
+  return handler
 }
 
 function normalizeStudyText(value) {

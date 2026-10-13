@@ -1,9 +1,10 @@
+export const MAX_PDF_PAGE_DIMENSION=14400 // points: 200 inches, never used to allocate a canvas
 import {extractPdfPagesAndText} from '../pdfExtractor.mjs'
 
 import {layoutText, recoverMathText} from './pdf-text.mjs'
 export {layoutText} from './pdf-text.mjs'
 
-export async function extractStudyPdf(buffer) {
+export async function extractStudyPdf(buffer, {includeStructure=false}={}) {
   // The native parser remains the compatibility path for legacy/synthetic PDFs.
   let native, nativeError
   try {native = extractPdfPagesAndText(buffer)} catch (error) {nativeError = error}
@@ -16,6 +17,8 @@ export async function extractStudyPdf(buffer) {
     const pages = [], warnings = []
     for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber++) {
       const page = await pdf.getPage(pageNumber)
+      const size=page.getViewport({scale:1})
+      if(![size.width,size.height].every(value=>Number.isFinite(value)&&value>=1&&value<=MAX_PDF_PAGE_DIMENSION))throw Object.assign(new Error('Les dimensions d’une page dépassent la limite. Scindez ou réduisez ce PDF.'),{code:'ERR_PDF_DIMENSIONS',status:413})
       const content = await page.getTextContent()
       await page.getOperatorList()
       for (const [id, style] of Object.entries(content.styles)) {
@@ -24,7 +27,7 @@ export async function extractStudyPdf(buffer) {
       const items = content.items.map(item => ({...item, str: typeof item.str === 'string' ? recoverMathText(item.str, content.styles[item.fontName]?.name) : item.str}))
       const layout = layoutText(items, page.getViewport({scale: 1}).width, content.styles)
       const compatibilityPage = native?.pages.find(p => p.pageNumber === pageNumber)
-      pages.push({pageNumber, text: layout.ambiguous && compatibilityPage ? compatibilityPage.text : layout.text,headings:layout.headings})
+      pages.push({pageNumber, text: layout.ambiguous && compatibilityPage ? compatibilityPage.text : layout.text,headings:layout.headings, ...(includeStructure?{blocks:layout.blocks}: {})})
       if (layout.ambiguous) warnings.push(`Page ${pageNumber} : positions de texte superposées ; ordre de compatibilité utilisé, à vérifier.`)
       if (!layout.text.trim()) warnings.push(`Page ${pageNumber} : aucun texte sélectionnable.`)
       if (layout.columns > 1) warnings.push(`Page ${pageNumber} : lecture en colonnes reconstruite, à vérifier dans le PDF.`)
@@ -41,7 +44,7 @@ export async function extractStudyPdf(buffer) {
     }
     return {pages, pageCount: pdf.numPages, totalText, extraction: {method: 'pdfjs', warnings}}
   } catch (error) {
-    if (['ERR_NO_EXTRACTABLE_TEXT', 'ERR_PDF_PAGE_LIMIT'].includes(error.code)) throw error
+    if (['ERR_NO_EXTRACTABLE_TEXT', 'ERR_PDF_PAGE_LIMIT', 'ERR_PDF_DIMENSIONS'].includes(error.code)) throw error
     if (native) return {...native, extraction: {method: 'native', warnings: ['La mise en page a été extraite en mode de compatibilité. Vérifiez le texte avant génération.']}}
     throw nativeError || Object.assign(new Error('PDF illisible ou corrompu.'), {code: 'ERR_INVALID_PDF_STREAM'})
   } finally {await task?.destroy().catch(() => {})}
