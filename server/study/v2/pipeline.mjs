@@ -259,6 +259,9 @@ export class DocumentPipeline {
         const state = jobState || (attention ? 'needs_attention' : 'failed'), now = this.now();
         this.db.exec('BEGIN IMMEDIATE');
         try {
+            if (Number.isSafeInteger(error.pageCount) && error.pageCount >= 1 && error.pageCount <= 600) {
+                this.db.prepare('UPDATE study_documents SET page_count=? WHERE id=? AND user_id=?').run(error.pageCount, job.document_id, job.user_id);
+            }
             this.db.prepare('UPDATE study_v2_jobs SET state=?,error_code=?,error_message=?,lease_until=NULL,lease_token=NULL,updated_at=? WHERE id=? AND user_id=?').run(state, error.code || 'PDF_PROCESSING_FAILED', error.message || 'Traitement impossible. L’original est conservé.', now, job.id, job.user_id);
             this.db.prepare('UPDATE study_v2_document_meta SET processing_state=?,updated_at=? WHERE document_id=? AND user_id=?').run(attention ? 'needs_attention' : 'failed', now, job.document_id, job.user_id);
             this.db.prepare("UPDATE study_documents SET status=?,error_message=? WHERE id=? AND user_id=?").run(this.db.prepare('SELECT 1 FROM study_sections WHERE document_id=? AND user_id=?').get(job.document_id, job.user_id) ? 'ready' : 'error', error.message, job.document_id, job.user_id);

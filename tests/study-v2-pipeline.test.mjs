@@ -54,6 +54,7 @@ test('Pipeline V2 : scan sans consentement conservé, sans appel OCR implicite',
         assert.equal(calls, 0);
         assert.equal(api.library.document('u', imported.document.id).processingState, 'needs_attention');
         assert.equal(api.pipeline.job('u', imported.job.id).errorCode, 'ERR_NO_EXTRACTABLE_TEXT');
+        assert.equal(api.library.document('u', imported.document.id).pageCount, 2);
         assert.ok(existsSync(api.pipeline.file('u', imported.document.id)));
     }
     finally {
