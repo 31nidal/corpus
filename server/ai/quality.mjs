@@ -24,7 +24,22 @@ export function summaryText(point) {
   const quantities = value => value.match(/\d+(?:[.,]\d+)?/g) || []
   const sourceQuantities = new Set(quantities(point.sourceExcerpt))
   if (quantities(text).some(value => !sourceQuantities.has(value))) return null
+  if (summaryRelationIssue(text, point.sourceExcerpt)) return null
   return text
+}
+
+export function summaryRelationIssue(text, sourceExcerpt = '') {
+  const source = normalize(sourceExcerpt), value = normalize(text)
+  // These are narrow, reproducible contradictions, not a semantic certificate.
+  const upper = /[≤⩽]|\bmajor(?:ée?|ation|ant)\b/u.test(source)
+  const lower = /[≥⩾]|\bminor(?:ée?|ation|ant)\b/u.test(source)
+  if (upper && !lower && /\bminor(?:ée?|ation|ant)\b/u.test(value)) return 'inequality_direction'
+  if (lower && !upper && /\bmajor(?:ée?|ation|ant)\b/u.test(value)) return 'inequality_direction'
+  if (/\b(?:peut|peuvent|pourrait|pourraient)\b/u.test(source)
+    && !/\b(?:peut|peuvent|pourrait|pourraient|possible|possibilité|susceptible)\b/u.test(value)
+    && /\b(?:provoque|entraîne|entraine|entraînera|cause|garantit|nécessairement|systématiquement)\b/u.test(value)) return 'certainty_strengthened'
+  if (/\bsouvent\b/u.test(source) && !/\b(?:souvent|généralement|habituellement|peut|peuvent)\b/u.test(value)) return 'frequency_removed'
+  return null
 }
 
 export function cardQuality(card) {

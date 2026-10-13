@@ -1,8 +1,9 @@
+import {generateSummary} from './summary.mjs'
 import {GeminiClient, aiError} from './gemini-client.mjs'
 import {planChunks, evenlySelect} from './chunks.mjs'
 import {emptyUsage, collectUsage} from './usage.mjs'
 import {normalize, sanitizeGeneratedNoteDrafts} from '../flashcards/generation.mjs'
-import {cardQuality, summaryText, uniqueCards,literalCardAnswer} from './quality.mjs'
+import {cardQuality, uniqueCards,literalCardAnswer} from './quality.mjs'
 
 const string = {type:'string'}
 const array = items => ({type:'array',items})
@@ -43,12 +44,19 @@ function attach(items,generation) {Object.defineProperty(items,'generation',{val
 
 export class GeminiPedagogy {
   constructor(config={},dependencies={}) {this.client=dependencies.client||new GeminiClient(config,dependencies);this.name='gemini';this.usesPaidQuota=true;this.config=config}
-  async run(task,context,schema,instruction,validate) {
-    const sections=rawSections(context),plan=planChunks(sections)
+  async run(task,context,schema,instruction,validate,options={}) {
+    const sections=rawSections(context)
+    let plan
+    try {plan=planChunks(sections,options.chunkCharacters?{chunkCharacters:options.chunkCharacters}:{})}
+    catch(error) {
+      // Smaller summary chunks must not lower the existing document limit.
+      if(!options.chunkCharacters||error.code!=='AI_TOO_MANY_CHUNKS')throw error
+      plan=planChunks(sections)
+    }
     if(!plan.totalCharacters)throw aiError('AI_EMPTY_SOURCE','Le contenu source est vide.',422)
     const generation={mode:'gemini',model:this.client.model,task,usage:emptyUsage(),coverage:{sectionsTotal:sections.length,sectionsAnalyzed:0,chunksTotal:plan.chunks.length,chunksAnalyzed:0,charactersAnalyzed:0},rejected:0,rejectionReasons:{}}
     const signal=AbortSignal.timeout(180000)
-    const queues=[]
+    const queues=[],rejectedItems=[]
     let repairedOnce=false
     try {
       // Sequential document chunks bound cost and preserve deterministic attribution.
@@ -59,6 +67,7 @@ export class GeminiPedagogy {
           onUsage:u=>collectUsage(generation.usage,u)})
         const validated=validate(result,chunk.fragments)
         const {items}=validated
+        rejectedItems.push(...(validated.rejectedItems||[]))
         let rejected=validated.rejected
         if(task==='flashcards'&&validated.repairs?.length&&!repairedOnce){
           repairedOnce=true
@@ -78,7 +87,7 @@ export class GeminiPedagogy {
         generation.coverage.chunksAnalyzed++;generation.coverage.charactersAnalyzed+=chunk.characters
       }
       generation.coverage.sectionsAnalyzed=sections.length
-      return {queues,generation,sections}
+      return {queues,generation,sections,rejectedItems,signal}
     }catch(error){generation.usage.usageKnown=false;error.generation=generation;throw error}
   }
   async generateFlashcards(context) {
@@ -110,23 +119,7 @@ export class GeminiPedagogy {
     if(!items.length)throw Object.assign(aiError('AI_NO_GROUNDED_RESULT','Aucune carte IA suffisamment étayée n’a été produite.',422),{generation:result.generation})
     return attach(items,result.generation)
   }
-  async generateStudySummary(context) {
-    const result=await this.run(context.kind==='revision'?'revision':'summary',context,SUMMARY_SCHEMA,
-      `Rédige une vraie synthèse structurée, pas une suite de citations. Chaque point possède text (1 à 3 phrases claires reformulées, sans Markdown), category (libellé bref) et sa preuve verbatim sourceExcerpt. Chaque point est autonome : nomme le sujet plutôt que « ce processus » ou « ils ». Résume définitions, mécanismes, relations, conditions, valeurs et limites importantes. Couvre chaque section substantielle, y compris la fin du document. Ne copie pas les titres seuls. Conserve unités, négations, conditions, degré de certitude et chiffres : aucun fait externe ni généralisation, aucun renforcement comme « formellement » ou « toujours » absent du cours. Pour une fiche de révision, privilégie étapes, formules et distinctions utiles au rappel.`,(raw,fragments)=>{
-        if(!Array.isArray(raw?.points)||raw.points.length>100)throw aiError('AI_INVALID_SCHEMA','Le format de la synthèse IA est invalide.')
-        const items=raw.points.filter(item=>evidenceFor(item,fragments)&&typeof item.category==='string'&&item.category.length<=100&&summaryText(item)).map(item=>({...item,text:summaryText(item)}))
-        return {items,rejected:raw.points.length-items.length}
-      })
-    const points=result.queues.flat()
-    if(!points.length)throw Object.assign(aiError('AI_NO_GROUNDED_RESULT','Aucun point de synthèse suffisamment étayé.',422),{generation:result.generation})
-    const chapters=result.sections.map(section=>{
-      const selected=points.filter(p=>p.sourceSectionId===section.id)
-      const unique=selected.filter((point,index)=>selected.findIndex(other=>normalize(other.text)===normalize(point.text))===index)
-      const labels=[...new Set(unique.map(point=>point.category))]
-      return {id:section.id,title:section.title,pages:[section.startPage,section.endPage].filter(p=>p!=null).join('–'),keyPoints:unique.map(p=>p.text),proofs:unique.map(p=>({text:p.text,sourceExcerpt:p.sourceExcerpt,category:p.category})),excerpt:selected[0]?.sourceExcerpt||'',categories:labels.map((label,index)=>({id:`category-${index}`,label,items:unique.filter(p=>p.category===label).map(p=>p.text)}))}
-    })
-    return {title:context.documentTitle||'Support de révision',overview:`${context.kind==='revision'?'Fiche de révision':'Synthèse'} — ${result.sections.length} sections analysées. Vérifiez les extraits avant validation.`,sectionCount:result.sections.length,chapters,generation:result.generation}
-  }
+  async generateStudySummary(context) {return generateSummary(this,context,SUMMARY_SCHEMA,SOURCE_RULES)}
   async generateStudyQuestions(context) {
     const result=await this.run('questions',context,QUESTION_SCHEMA,
       `Génère des QCM à une seule bonne réponse, question autonome d'au moins 20 caractères, 3 à 5 options distinctes, correct est le tableau contenant l'indice de la bonne réponse. La bonne réponse est verbatim dans sourceExcerpt. Les distracteurs sont plausibles mais incontestablement incorrects pour la question ; évite toute ambiguïté ou proposition partiellement correcte.`,(raw,fragments)=>{

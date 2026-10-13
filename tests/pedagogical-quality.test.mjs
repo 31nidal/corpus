@@ -165,3 +165,90 @@ test('Flashcards : basic et cloze du même fait ne gonflent pas artificiellement
   assert.equal(result.length,1)
   assert.equal(generation.rejectionReasons.duplicate_fact,1)
 })
+
+test('Synthèse : refuse inversion des bornes et renforcement des possibilités',()=>{
+  assert.equal(summaryText({text:'La variation est minorée par M.',sourceExcerpt:'La variation est majorée : |f(x)-f(y)| ⩽ M.'}),null)
+  assert.equal(summaryText({text:'Le médicament entraîne une somnolence.',sourceExcerpt:'Le médicament peut entraîner une somnolence.'}),null)
+  assert.equal(summaryText({text:'Le médicament peut entraîner une somnolence.',sourceExcerpt:'Le médicament peut entraîner une somnolence.'}),'Le médicament peut entraîner une somnolence.')
+})
+test('Synthèse : réparation des sections absentes, preuve exacte et règles de source conservées',async()=>{
+  const a='La demande augmente lorsque le prix diminue.',b='La production dépend des ressources disponibles.'
+  let calls=0, firstSignal
+  const client={model:'test',json:async({data,instruction,signal})=>{
+    calls++
+    if(data.task==='summary-repair') {
+      assert.equal(signal,firstSignal)
+      assert.match(instruction,/instructions/i)
+      return {points:[{sourceSectionId:'b',text:b,sourceExcerpt:b,category:'Comprendre'}]}
+    }
+    firstSignal=signal
+    return {points:[{sourceSectionId:'a',text:a,sourceExcerpt:a,category:'Comprendre'}]}
+  }}
+  const result=await new GeminiPedagogy({}, {client}).generateStudySummary({sections:[{id:'a',title:'Demande',content:a},{id:'b',title:'Production',content:b}]})
+  assert.equal(calls,2)
+  assert.equal(result.generation.summaryRepaired,1)
+  assert.equal(result.generation.coverage.sectionsSummarized,2)
+  assert.deepEqual(result.generation.coverage.missingSections,[])
+})
+test('Synthèse : échec de réparation explicite, aucune nouvelle tentative réseau',async()=>{
+  const source='La demande augmente lorsque le prix diminue.'
+  let calls=0
+  const client={model:'test',json:async({data})=>{
+    calls++
+    if(data.task==='summary-repair')throw Object.assign(new Error('network'),{code:'NETWORK'})
+    return {points:[{sourceSectionId:'a',text:source,sourceExcerpt:source,category:'Comprendre'}]}
+  }}
+  const result=await new GeminiPedagogy({}, {client}).generateStudySummary({sections:[{id:'a',content:source},{id:'b',title:'Production',content:'La production dépend des ressources disponibles.'}]})
+  assert.equal(calls,2)
+  assert.equal(result.generation.coverage.sectionsSummarized,1)
+  assert.deepEqual(result.generation.coverage.missingSections,[{id:'b',title:'Production'}])
+  assert.match(result.generation.message,/partielle/)
+})
+
+test('Synthèse : une preuve peut appartenir au second fragment de la même section',async()=>{
+  const {validateSummary}=await import('../server/ai/summary.mjs')
+  const text='La seconde explication précise les limites de la méthode.'
+  const result=validateSummary({points:[{sourceSectionId:'s',sourceExcerpt:text,text,category:'Comprendre'}]},[{sectionId:'s',content:'Un premier fragment sans cette preuve.'},{sectionId:'s',content:text}])
+  assert.equal(result.items.length,1)
+})
+test('Synthèse : la réparation reste plafonnée sans masquer les sections absentes',async()=>{
+  const {MAX_SUMMARY_REPAIR_CALLS}=await import('../server/ai/summary.mjs')
+  let repairs=0
+  const sections=Array.from({length:8},(_,i)=>({id:`s${i}`,title:`Section ${i}`,content:`La notion ${i} présente une définition détaillée. `.repeat(100)}))
+  const client={model:'test',json:async({data})=>{
+    if(data.task==='summary-repair'){repairs++;return {points:[]}}
+    const fragment=data.fragments.find(f=>f.sectionId==='s0')
+    return {points:fragment?[{sourceSectionId:'s0',text:'La notion 0 présente une définition détaillée.',sourceExcerpt:'La notion 0 présente une définition détaillée.',category:'Comprendre'}]:[]}
+  }}
+  const result=await new GeminiPedagogy({}, {client}).generateStudySummary({sections})
+  assert.equal(repairs,MAX_SUMMARY_REPAIR_CALLS)
+  assert.equal(result.generation.coverage.missingSections.length,7)
+})
+
+test('Synthèse validée : couverture recalculée après suppression d’un point',async()=>{
+  const {handleStudySupports}=await import('../server/study/supports.mjs')
+  const db=new DatabaseSync(':memory:')
+  db.exec("PRAGMA foreign_keys=ON;CREATE TABLE users(id TEXT PRIMARY KEY);INSERT INTO users VALUES('u');")
+  initStudySchema(db)
+  db.prepare("INSERT INTO study_documents(id,user_id,title,filename,file_size,created_at,updated_at) VALUES('d','u','Cours','cours.pdf',100,'now','now')").run()
+  const texts=['La demande dépend des prix disponibles.','La production dépend des ressources disponibles.']
+  for(let i=0;i<2;i++)db.prepare('INSERT INTO study_sections VALUES(?,?,?,?,?,?,?,?,?)').run(`s${i}`,'d','u',`Section ${i}`,i,1,1,texts[i],10)
+  const args={db,userId:'u',doc:{id:'d',title:'Cours'},provider:null,config:{},localSummary:()=>({chapters:texts.map((text,i)=>({id:`s${i}`,keyPoints:[text]}))})}
+  const preview=await handleStudySupports({...args,body:{action:'generate',task:'summary'}})
+  // Old/local payloads have no coverage; the save path remains compatible.
+  const payload=JSON.parse(db.prepare('SELECT payload_json FROM study_generation_previews').get().payload_json)
+  payload.generation.coverage={sectionsTotal:2,sectionsAnalyzed:2,chunksTotal:1,chunksAnalyzed:1,sectionsSummarized:2,missingSections:[]}
+  db.prepare('UPDATE study_generation_previews SET payload_json=?').run(JSON.stringify(payload))
+  const saved=await handleStudySupports({...args,body:{action:'save',previewId:preview.previewId,items:[preview.items[0]]}})
+  assert.equal(saved.generation.coverage.sectionsSummarized,1)
+  assert.deepEqual(saved.generation.coverage.missingSections,[{id:'s1',title:'Section 1'}])
+  db.close()
+})
+
+test('Synthèse : les petits blocs ne réduisent pas la limite des cours longs',async()=>{
+  const sections=Array.from({length:70},(_,i)=>({id:`s${i}`,content:`La notion ${i} correspond à une définition précise dans le cours. `.repeat(50)}))
+  const client={model:'test',json:async({data})=>({points:data.fragments.map(fragment=>({sourceSectionId:fragment.sectionId,text:fragment.content.split('. ')[0]+'.',sourceExcerpt:fragment.content.split('. ')[0]+'.',category:'Comprendre'}))})}
+  const result=await new GeminiPedagogy({}, {client}).generateStudySummary({sections})
+  assert.equal(result.generation.coverage.sectionsSummarized,70)
+  assert.ok(result.generation.coverage.chunksTotal<=32)
+})

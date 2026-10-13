@@ -46,6 +46,11 @@ export async function handleStudySupports({db,userId,doc,body,provider,config,lo
       return result
     })
     const generation={...original.generation,reviewed:true,edited:items.some(i=>i.edited)}
+    if(preview.task!=='questions'&&generation.coverage) {
+      const represented=new Set(items.map(item=>item.sectionId))
+      const selected=original.sectionIds?sections.filter(section=>original.sectionIds.includes(section.id)):sections
+      generation.coverage={...generation.coverage,sectionsSummarized:selected.filter(section=>represented.has(section.id)).length,missingSections:selected.filter(section=>!represented.has(section.id)).map(({id,title})=>({id,title}))}
+    }
     const now=new Date().toISOString()
     let saved
     db.exec('BEGIN IMMEDIATE')
@@ -88,7 +93,7 @@ export async function handleStudySupports({db,userId,doc,body,provider,config,lo
     return section&&typeof row.sourceExcerpt==='string'&&row.sourceExcerpt.length>=15&&normalize(section.content).includes(normalize(row.sourceExcerpt))
   }).map(row=>({...row,startPage:sourcePage(db,userId,doc.id,row.sourceExcerpt,selected.find(s=>s.id===row.sectionId).startPage),endPage:selected.find(s=>s.id===row.sectionId).endPage}))
   if(!rows.length){result.refund?.();throw fail(422,'Aucun support suffisamment étayé n’a été généré. Essayez une autre section.')}
-  const payload={previewId:randomUUID(),task,items:rows,generation:result.generation,replace:body.replace===true,persisted:false}
+  const payload={previewId:randomUUID(),task,sectionIds:selected.map(section=>section.id),items:rows,generation:result.generation,replace:body.replace===true,persisted:false}
   try {
     db.prepare('DELETE FROM study_generation_previews WHERE user_id=? AND expires_at<?').run(userId,Date.now())
     db.prepare('INSERT INTO study_generation_previews(id,user_id,document_id,task,payload_json,source_hash,created_at,expires_at) VALUES(?,?,?,?,?,?,?,?)').run(payload.previewId,userId,doc.id,task,JSON.stringify(payload),fingerprint(sections),Date.now(),Date.now()+2*3600000)
