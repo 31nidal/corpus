@@ -1,5 +1,5 @@
 import {SummaryChapter} from './ai/SummaryChapter'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, type ReactNode } from 'react'
 import {
   Crop, FileText, Upload, Trash2, ArrowRight, ArrowLeft, BookOpen,
   CheckCircle2, Sparkles, AlertCircle, RefreshCw,
@@ -43,6 +43,7 @@ export default function MyCoursesWorkspace(props: {
   initialSectionId?: string | null
   onOpenDocument?: (id: string | null) => void
   onNavigateAtlas?: () => void
+  versionControl?: ReactNode
 }) {
   const account = useAccount()
   const [accountStorage] = useState(storageScope)
@@ -287,6 +288,7 @@ export default function MyCoursesWorkspace(props: {
   if (!account.user) {
     return (
       <section className="study-workspace mycourses-workspace" aria-label="Mes cours MyCorpus Study">
+      {props.versionControl}
         <header className="mycourses-header">
           <div>
             <span className="study-eyebrow">MYCORPUS STUDY · ESPACE PERSONNEL</span>
@@ -315,6 +317,7 @@ export default function MyCoursesWorkspace(props: {
   if (currentDoc) {
     return (
       <section className="study-workspace mycourses-workspace mycourses-detail" aria-label={`Détail du cours : ${currentDoc.title}`}>
+        {props.versionControl}
         <div className="mycourses-breadcrumb">
           <button onClick={() => { setSelectedDocId(null); props.onOpenDocument?.(null) }}>
             <ArrowLeft size={16} /> Revenir à Mes cours
@@ -806,6 +809,7 @@ export default function MyCoursesWorkspace(props: {
   // --- Dashboard View (List of courses + Upload) ---
   return (
     <section className="study-workspace mycourses-workspace" aria-label="Mes cours MyCorpus Study">
+      {props.versionControl}
       <header className="mycourses-header">
         <div>
           <span className="study-eyebrow">MYCORPUS STUDY · VOS DOCUMENTS PERSONNELS</span>

@@ -1,0 +1,3 @@
+.sv2-version-switch {display: flex; justify-content: flex-end; margin-bottom: 12px}
+.sv2-version-switch button {border: 1px solid var(--mc-border); border-radius: 8px; padding: 9px 12px; color: var(--mc-text-secondary); background: var(--mc-surface); font-size: 12px}
+.sv2-version-switch button:focus-visible {outline: 2px solid var(--mc-brand); outline-offset: 3px}

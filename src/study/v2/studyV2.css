@@ -1,0 +1,107 @@
+.sv2-workspace {max-width: none; padding: 28px clamp(16px, 3vw, 48px) calc(40px + max(var(--sv2-nav-inset, 0px), env(safe-area-inset-bottom))); color: var(--mc-text); background: var(--mc-bg)}
+.sv2-workspace *, .sv2-workspace *::before, .sv2-workspace *::after {box-sizing: border-box}
+.sv2-workspace button, .sv2-workspace a {display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; border: 1px solid var(--mc-border); border-radius: 8px; padding: 9px 12px; color: var(--mc-text); background: var(--mc-surface); font-size: 13px; text-decoration: none; text-align: left}
+.sv2-workspace button:disabled {opacity: .55; cursor: default}
+.sv2-workspace :is(button, input, select, summary, a):focus-visible {outline: 2px solid var(--mc-brand); outline-offset: 3px}
+.sv2-workspace h1 {font-size: clamp(26px, 3vw, 36px); line-height: 1.2; letter-spacing: -.7px; margin: 8px 0 12px; overflow-wrap: anywhere}
+.sv2-workspace h2 {font-size: 16px; margin: 0 0 12px}
+.sv2-workspace p, .sv2-workspace small {color: var(--mc-text-secondary); line-height: 1.55; overflow-wrap: anywhere}
+.sv2-workspace p {font-size: 13px; margin: 8px 0}
+.sv2-workspace label {display: flex; flex-direction: column; gap: 7px; color: var(--mc-text-secondary); font-size: 12px}
+.sv2-workspace :is(input:not([type=checkbox]), select) {min-width: 0; max-width: 100%; min-height: 40px; padding: 9px 10px; color: var(--mc-text); border: 1px solid var(--mc-border); border-radius: 7px; background: var(--mc-surface); font: inherit}
+.sv2-workspace form {display: grid; gap: 12px; margin-top: 16px}
+.sv2-workspace [role=alert] {color: var(--mc-text); padding: 12px; background: var(--mc-surface-soft); border-left: 3px solid var(--mc-brand); border-radius: 4px}
+.sv2-heading {display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 24px}
+.sv2-heading > div {min-width: 0}
+.sv2-eyebrow {font-size: 10px !important; letter-spacing: 1.5px}
+.sv2-row {display: flex; flex-wrap: wrap; gap: 8px}
+.sv2-workspace .sv2-primary {background: var(--mc-brand); border-color: var(--mc-brand); color: var(--mc-on-brand, white)}
+.sv2-import {display: grid; grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) auto; gap: 16px; align-items: center; margin-bottom: 28px; padding: 22px; border: 1px dashed var(--mc-border); background: var(--mc-surface); border-radius: 12px}
+.sv2-import > div {position: relative; padding-left: 34px}
+.sv2-import > div > svg {position: absolute; left: 0; top: 0; color: var(--mc-brand)}
+.sv2-import h2 {margin: 0}
+.sv2-file {min-width: 0; display: grid; gap: 7px}
+.sv2-file span {font-size: 12px; overflow-wrap: anywhere; min-width: 0; align-self: center}
+.sv2-import .sv2-checkbox {grid-column: 1 / -1; grid-row: 2}
+.sv2-import > p {grid-column: 1 / -1; margin: 0}
+.sv2-workspace .sv2-checkbox {display: flex; flex-direction: row; gap: 10px; align-items: flex-start; line-height: 1.5}
+.sv2-checkbox input {flex-shrink: 0; accent-color: var(--mc-brand); width: 17px; height: 17px; margin-top: 1px}
+.sv2-library-layout {display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 28px}
+.sv2-folders {min-width: 0; align-self: start; padding: 16px; background: var(--mc-surface); border: 1px solid var(--mc-border); border-radius: 12px}
+.sv2-folders button {display: flex; justify-content: flex-start; width: 100%; border-color: transparent; background: transparent; margin: 3px 0; overflow-wrap: anywhere}
+.sv2-folders button[aria-pressed=true] {background: var(--mc-surface-soft); color: var(--mc-brand); border-color: var(--mc-border)}
+.sv2-folders .sv2-chapter {padding-left: 26px; font-size: 12px}
+.sv2-library-main {min-width: 0}
+.sv2-workspace .sv2-search {display: flex; flex-direction: row; align-items: center; padding: 4px 12px; border: 1px solid var(--mc-border); border-radius: 9px; background: var(--mc-surface)}
+.sv2-search input {flex: 1; border: 0 !important; background: transparent !important}
+.sv2-documents {display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr)); gap: 16px}
+.sv2-document-card {display: flex; flex-direction: column; align-items: flex-start; min-width: 0; padding: 18px; border: 1px solid var(--mc-border); border-radius: 12px; background: var(--mc-surface); gap: 12px}
+.sv2-document-card form {align-self: stretch; margin: 0}
+.sv2-workspace .sv2-document-open {border: 0; padding: 0; background: transparent; width: 100%; align-items: flex-start; justify-content: flex-start; gap: 12px; font-size: 15px; min-width: 0}
+.sv2-document-open > svg {flex-shrink: 0; margin-top: 2px; color: var(--mc-brand)}
+.sv2-document-open span {min-width: 0}
+.sv2-document-open strong {display: block; overflow-wrap: anywhere; line-height: 1.5}
+.sv2-document-open small {display: block; font-size: 12px; margin-top: 4px}
+.sv2-state {display: inline-block; border: 1px solid var(--mc-border); border-radius: 6px; padding: 4px 8px; font-size: 11px; background: var(--mc-surface-soft); color: var(--mc-text-secondary)}
+.sv2-state[data-state=ready] {color: var(--mc-brand)}
+.sv2-delete {border-top: 1px solid var(--mc-border); width: 100%; padding-top: 10px; font-size: 12px; color: var(--mc-text-secondary)}
+.sv2-workspace summary {cursor: pointer; line-height: 1.6}
+.sv2-recents {display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 20px 0}
+.sv2-recents h2 {width: 100%; margin-bottom: 2px}
+.sv2-empty {padding: 40px 16px; text-align: center; border: 1px solid var(--mc-border); border-radius: 12px}
+.sv2-document-top {align-items: flex-start; justify-content: space-between; margin-bottom: 16px}
+.sv2-document-top .sv2-version-switch {margin: 0}
+.sv2-spaces {display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0}
+.sv2-spaces [aria-pressed=true] {color: var(--mc-brand); background: var(--mc-surface-soft); border-color: var(--mc-brand)}
+.sv2-reading-layout {display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 20px; align-items: start}
+.sv2-reading-layout[hidden] {display: none}
+.sv2-outline {padding: 16px; border: 1px solid var(--mc-border); border-radius: 10px; background: var(--mc-surface)}
+.sv2-outline nav {display: grid; gap: 6px; margin-top: 14px; max-height: 65vh; overflow: auto}
+.sv2-outline button {justify-content: space-between; align-items: flex-start; font-size: 12px; background: transparent; border-color: transparent}
+.sv2-outline button span {min-width: 0; overflow-wrap: anywhere}
+.sv2-outline button small {flex-shrink: 0; font-size: 10px}
+.sv2-outline button[aria-current=location] {border-color: var(--mc-border); color: var(--mc-brand); background: var(--mc-surface-soft)}
+.sv2-reading-main {min-width: 0}
+.sv2-reader {min-width: 0; padding: 12px; border: 1px solid var(--mc-border); border-radius: 10px; background: var(--mc-surface)}
+.sv2-reader-controls {display: flex; flex-wrap: wrap; align-items: center; gap: 8px}
+.sv2-reader-controls label {flex-direction: row; align-items: center}
+.sv2-reader-controls input {width: 65px; font-size: 12px}
+.sv2-reader-controls button {font-size: 11px}
+.sv2-reader-controls select {font-size: 11px}
+.sv2-pdf-scroll {height: 68vh; min-height: 300px; overflow: auto; padding: 12px; border: 1px solid var(--mc-border); border-radius: 6px; background: var(--mc-surface-soft); scrollbar-width: thin}
+.sv2-pdf-sheet {position: relative; margin: 0 auto; background: white; box-shadow: 0 2px 8px rgb(0 0 0 / 10%)}
+.sv2-pdf-sheet canvas {display: block}
+.sv2-recovery, .sv2-selection {padding: 18px; margin: 18px 0; background: var(--mc-surface-soft); border: 1px solid var(--mc-border); border-radius: 10px}
+.sv2-recovery button, .sv2-selection button {margin: 12px 8px 0 0}
+.sv2-selection blockquote {font-size: 13px; line-height: 1.7; margin: 12px 0; white-space: pre-wrap; max-height: 220px; overflow: auto; overflow-wrap: anywhere; border-left: 2px solid var(--mc-brand); padding-left: 12px}
+.sv2-warnings {margin-bottom: 16px; font-size: 12px; color: var(--mc-text-secondary)}
+.sv2-warnings ul {max-height: 180px; overflow: auto; line-height: 1.7}
+@media (max-width: 900px) {
+  .sv2-library-layout {grid-template-columns: 190px minmax(0, 1fr); gap: 16px}
+  .sv2-import {grid-template-columns: minmax(0, 1fr); padding: 18px}
+  .sv2-import .sv2-checkbox {grid-column: 1; grid-row: auto}
+  .sv2-import > p {grid-column: 1}
+  .sv2-reading-layout {grid-template-columns: minmax(0, 1fr)}
+  .sv2-outline nav {max-height: 190px}
+}
+@media (max-width: 600px) {
+  .sv2-workspace {padding: 18px 14px calc(30px + max(var(--sv2-nav-inset, 0px), env(safe-area-inset-bottom)))}
+  .sv2-library-layout {grid-template-columns: minmax(0, 1fr)}
+  .sv2-folders {padding: 12px}
+  .sv2-heading {gap: 8px; margin-bottom: 16px}
+  .sv2-heading .sv2-version-switch {width: 100%; justify-content: flex-start}
+  .sv2-reader {padding: 8px}
+  .sv2-reader-controls {gap: 6px}
+  .sv2-pdf-scroll {padding: 6px; min-height: 260px; height: 60vh}
+  .sv2-document-card {padding: 16px}
+  .sv2-document-top {flex-direction: column}
+}
+
+/* Scope dark button colors explicitly: the historical workspace rules otherwise
+   override the new controls and make outline entries unreadable. */
+[data-theme=dark] .sv2-workspace button {color: var(--mc-text); background: var(--mc-surface); border-color: var(--mc-border)}
+[data-theme=dark] .sv2-workspace .sv2-primary {color: var(--mc-bg); background: var(--mc-brand); border-color: var(--mc-brand)}
+[data-theme=dark] .sv2-workspace .sv2-document-open {background: transparent; border-color: transparent}
+[data-theme=dark] .sv2-workspace .sv2-spaces [aria-pressed=true],
+[data-theme=dark] .sv2-workspace .sv2-folders button[aria-pressed=true],
+[data-theme=dark] .sv2-workspace .sv2-outline button[aria-current=location] {color: var(--mc-brand); background: var(--mc-surface-soft); border-color: var(--mc-brand)}
