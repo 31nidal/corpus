@@ -1,3 +1,4 @@
+import {migrateStudyNotes} from './notes-schema.mjs';
 /** Additive Study migrations. No existing document, card or review is rewritten. */
 export function migrateStudyV2(db, now = Date.now()) {
     db.exec('BEGIN IMMEDIATE');
@@ -74,6 +75,7 @@ export function migrateStudyV2(db, now = Date.now()) {
       `);
             db.prepare('INSERT INTO study_v2_migrations VALUES(1,?)').run(now);
         }
+        migrateStudyNotes(db, now);
         // Projection only: the canonical legacy rows and identifiers remain intact.
         db.prepare(`INSERT OR IGNORE INTO study_v2_document_meta(document_id,user_id,processing_state,created_at,updated_at)
       SELECT id,user_id,CASE status WHEN 'ready' THEN 'ready' WHEN 'processing' THEN 'imported' ELSE 'failed' END,?,?

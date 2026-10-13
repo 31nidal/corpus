@@ -34,7 +34,7 @@ test('Study V2 : migration répétable, données et historique FSRS conservés',
     db.prepare('UPDATE study_v2_document_meta SET reading_page=3,archived_at=1700000000010 WHERE document_id=?').run('d');
     migrateStudyV2(db, 1700000000020);
     assert.deepEqual(snapshot(db), before);
-    assert.deepEqual(db.prepare('SELECT version FROM study_v2_migrations').all().map(row => row.version), [1]);
+    assert.deepEqual(db.prepare('SELECT version FROM study_v2_migrations').all().map(row => row.version), [1, 2]);
     assert.equal(db.prepare('SELECT reading_page FROM study_v2_document_meta WHERE document_id=?').get('d').reading_page, 3);
     assert.equal(db.prepare('SELECT created_at FROM study_v2_document_meta WHERE document_id=?').get('d').created_at, 1700000000000);
     assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
