@@ -1,3 +1,4 @@
+import {SummaryChapter} from './ai/SummaryChapter'
 import { useState, useEffect, useRef } from 'react'
 import {
   Crop, FileText, Upload, Trash2, ArrowRight, ArrowLeft, BookOpen,
@@ -436,30 +437,9 @@ export default function MyCoursesWorkspace(props: {
                 <p className="intro-text" style={{ marginBottom: '1.5rem' }}>
                   {currentDoc.summary.overview}
                 </p>
-                {currentDoc.summary.chapters.map((chap, idx) => (
-                  <article key={chap.id || idx} className="mycourses-summary-card">
-                    <h3>
-                      <span>{idx + 1}. {chap.title}</span>
-                      <span>{chap.pages}</span>
-                    </h3>
-                    {chap.categories?.length ? (
-                      <div className="mycourses-summary-categories">
-                        {chap.categories.map(category => (
-                          <section key={category.id} className="mycourses-summary-category">
-                            <h4>{category.label}</h4>
-                            <ul className="mycourses-summary-list">
-                              {category.items.map((item, itemIndex) => <li key={itemIndex}>{item}</li>)}
-                            </ul>
-                          </section>
-                        ))}
-                      </div>
-                    ) : (
-                      <ul className="mycourses-summary-list">
-                        {chap.keyPoints.map((pt, pIdx) => <li key={pIdx}>{pt}</li>)}
-                      </ul>
-                    )}
-                  </article>
-                ))}
+                {currentDoc.summary.generation&&<GenerationNotice generation={currentDoc.summary.generation}/>}
+                {currentDoc.summary.chapters.map((chapter,index)=><SummaryChapter key={chapter.id||index} chapter={chapter} index={index} paragraphs={currentDoc.summary?.kind==='summary'}/>)}
+
               </div>
             ) : (
               <div className="mycourses-summary-card" style={{ textAlign: 'center', padding: '3rem 1.5rem' }}>

@@ -720,9 +720,21 @@ export function chunkIntoSections(pages) {
   ])
 
   for (const page of pages) {
-    const lines = page.text.split('\n').map(l => l.trim()).filter(Boolean)
+    const lines = page.text.split('\n')
+    let codeLines = null
 
-    for (const line of lines) {
+    for (const rawLine of lines) {
+      const line = rawLine.trim()
+      if (/^```/.test(line)) {
+        if (codeLines) {
+          currentSection.paragraphs.push(codeLines.concat(rawLine).join('\n'))
+          codeLines = null
+        } else codeLines = [rawLine]
+        currentSection.endPage = page.pageNumber
+        continue
+      }
+      if (codeLines) {codeLines.push(rawLine); continue}
+      if (!line) continue
       const isBullet       = bulletRe.test(line)
       const isHeaderFooter = headerFooterRe.test(line)
       const isRoman        = !isBullet && !isHeaderFooter && romanHeadingRe.test(line)
@@ -742,11 +754,13 @@ export function chunkIntoSections(pages) {
 
       const accumulated = currentSection.paragraphs.reduce((a, p) => a + p.length, 0)
       const fontHeading = page.headings?.includes(line)
+      const structured = Array.isArray(page.headings)
+      const plausibleTitle = line.length <= 120 && /\p{L}{3}/u.test(line) && !/[|=∫∑Σ≤≥⩽⩾]|[_^]\{/.test(line)
       const shouldBreak =
         fontHeading ||
-        isRoman ||
-        (isExplicit && accumulated >= 200) ||
-        (isShort    && accumulated >= 400)
+        (plausibleTitle && isRoman) ||
+        (plausibleTitle && isExplicit && accumulated >= 200 && (structured ? /^\d+(?:\.\d+)+\.?\s+\p{L}/u.test(line) && !/[.;!?]$/.test(line) : true)) ||
+        (!structured && plausibleTitle && isShort && accumulated >= 400)
 
       if (shouldBreak && (accumulated >= 50 || isRoman || fontHeading)) {
         if (currentSection.paragraphs.length > 0) {
@@ -763,7 +777,7 @@ export function chunkIntoSections(pages) {
         // Note : les remplacements utilisent des \b pour ne jamais tronquer un mot
         // (ex : 'C' de 'Contexte', 'M' de 'Matériel' ne sont pas supprimés)
         let cleanTitle = line
-          .replace(/^(?:(?:chapitre|partie|section|module|axe|cours|thème)\s*[:\d\-]*|[IVXLCDM]+\b|[0-9]+(?:\.[0-9]+)*)[\s.\-–:]*/i, '')
+          .replace(/^(?:(?:chapitre|partie|section|module|axe|cours|thème)(?![\p{L}\p{N}_])\s*[:\d\-]*|[IVXLCDM]+(?=\s|[.\-–:])|[0-9]+(?:\.[0-9]+)*)[\s.\-–:]*/iu, '')
           .trim()
         if (!cleanTitle || cleanTitle.length < 3) cleanTitle = line
         cleanTitle = cleanTitle.split(/[:.]/)[0].trim()
@@ -779,6 +793,7 @@ export function chunkIntoSections(pages) {
         currentSection.endPage = page.pageNumber
       }
     }
+    if (codeLines) currentSection.paragraphs.push(codeLines.join('\n'))
   }
 
   // Pousser la dernière section ouverte

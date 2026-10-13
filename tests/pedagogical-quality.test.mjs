@@ -9,9 +9,42 @@ import {chunkIntoSections} from '../server/pdfExtractor.mjs'
 import {initStudySchema} from '../server/study.mjs'
 import {sourcePage} from '../server/study/source-page.mjs'
 import {transcribeMissingPages} from '../server/study/ocr-pages.mjs'
+import {recoverMathText} from '../server/study/pdf-text.mjs'
 import {getOrResetStudyQuota} from '../server/study/quota.mjs'
 
 const run=(str,x,y,width=200,height=12)=>({str,transform:[height,0,0,height,x,y],width,height})
+test('PDF : colonnes non alignées et lignes courtes ne mélangent pas les paragraphes',()=>{
+  const items=[]
+  for(let i=0;i<5;i++) {
+    items.push(run(`Paragraphe de gauche : explication détaillée numéro ${i}.`,40,700-i*32,230))
+    items.push(run(`Paragraphe de droite : explication détaillée numéro ${i}.`,320,700-i*32,230))
+    items.push(run('suite à gauche.',40,684-i*32,95))
+  }
+  const text=layoutText(items,600).text
+  assert.ok(text.indexOf('numéro 4.')<text.indexOf('Paragraphe de droite'))
+  assert.equal((text.match(/suite à gauche/g)||[]).length,5)
+})
+test('PDF : indentation et lignes du code conservées jusque dans les sections',()=>{
+  const styles={mono:{fontFamily:'monospace'}}
+  const code=(text,x,y)=>({...run(text,x,y,text.length*6),fontName:'mono'})
+  const layout=layoutText([code('for i in range(3):',40,700),code('print(i)',64,684),code('print("fin")',40,668)],600,styles)
+  assert.equal(layout.text,'```\nfor i in range(3):\n    print(i)\nprint("fin")\n```')
+  const sections=chunkIntoSections([{pageNumber:1,text:layout.text,headings:[]}])
+  assert.match(sections[0].content,/\n    print\(i\)/)
+})
+test('PDF : indices attachés, glyphes AMS corrigés sans changer les chiffres ordinaires',()=>{
+  const layout=layoutText([run('Soit x',40,700,30),run('0',70,697,5,8),run(' dans I.',75,700,50)],600)
+  assert.match(layout.text,/x_\{0\}/)
+  assert.equal(recoverMathText('x 6 M','ABCDEF+MSAM10'),'x ⩽ M')
+  assert.equal(recoverMathText('6 > 3','Helvetica'),'6 > 3')
+})
+test('PDF : métadonnées de titres excluent les formules et ne tronquent pas Dérivée ou L’essentiel',()=>{
+  const text='Dérivée d’une fonction\n\n'+('Une explication claire de la dérivée. '.repeat(12))+'\n\n| 0\n\nL’essentiel\n\n'+('Une autre explication claire. '.repeat(12))
+  const sections=chunkIntoSections([{pageNumber:1,text,headings:['Dérivée d’une fonction','L’essentiel']}])
+  assert.equal(sections[0].title,'Dérivée d’une fonction')
+  assert.equal(sections[1].title,'L’essentiel')
+  assert.ok(!sections.some(s=>s.title==='| 0'))
+})
 test('PDF : ordre visuel, paragraphes, titre, ligatures et formule intacte',()=>{
   const result=layoutText([run('dans le cytoplasme.',40,680),run('La glycolyse se déroule',40,700),run('MÉTABOLISME',40,740,200,20),run('E = mc² ; ∫ f(x) dx ; Na⁺',40,630)],600)
   assert.equal(result.text,'MÉTABOLISME\n\nLa glycolyse se déroule dans le cytoplasme.\n\nE = mc² ; ∫ f(x) dx ; Na⁺')
@@ -131,4 +164,100 @@ test('Flashcards : basic et cloze du même fait ne gonflent pas artificiellement
   const result=uniqueCards([[{noteType:'basic',fields:{front:'Où se déroule la glycolyse ?',back:'dans le cytoplasme'},sourceExcerpt:proof},{noteType:'cloze',fields:{text:'La glycolyse se déroule dans le {{c1::cytoplasme}}.'},sourceExcerpt:proof}]],generation).flat()
   assert.equal(result.length,1)
   assert.equal(generation.rejectionReasons.duplicate_fact,1)
+})
+
+test('Synthèse : refuse inversion des bornes et renforcement des possibilités',()=>{
+  assert.equal(summaryText({text:'La variation est minorée par M.',sourceExcerpt:'La variation est majorée : |f(x)-f(y)| ⩽ M.'}),null)
+  assert.equal(summaryText({text:'Le médicament entraîne une somnolence.',sourceExcerpt:'Le médicament peut entraîner une somnolence.'}),null)
+  assert.equal(summaryText({text:'Le médicament peut entraîner une somnolence.',sourceExcerpt:'Le médicament peut entraîner une somnolence.'}),'Le médicament peut entraîner une somnolence.')
+})
+test('Synthèse : réparation des sections absentes, preuve exacte et règles de source conservées',async()=>{
+  const a='La demande augmente lorsque le prix diminue.',b='La production dépend des ressources disponibles.'
+  let calls=0, firstSignal
+  const client={model:'test',json:async({data,instruction,signal})=>{
+    calls++
+    if(data.task==='summary-repair') {
+      assert.equal(signal,firstSignal)
+      assert.match(instruction,/instructions/i)
+      return {points:[{sourceSectionId:'b',text:b,sourceExcerpt:b,category:'Comprendre'}]}
+    }
+    firstSignal=signal
+    return {points:[{sourceSectionId:'a',text:a,sourceExcerpt:a,category:'Comprendre'}]}
+  }}
+  const result=await new GeminiPedagogy({}, {client}).generateStudySummary({sections:[{id:'a',title:'Demande',content:a},{id:'b',title:'Production',content:b}]})
+  assert.equal(calls,2)
+  assert.equal(result.generation.summaryRepaired,1)
+  assert.equal(result.generation.coverage.sectionsSummarized,2)
+  assert.deepEqual(result.generation.coverage.missingSections,[])
+})
+test('Synthèse : échec de réparation explicite, aucune nouvelle tentative réseau',async()=>{
+  const source='La demande augmente lorsque le prix diminue.'
+  let calls=0
+  const client={model:'test',json:async({data})=>{
+    calls++
+    if(data.task==='summary-repair')throw Object.assign(new Error('network'),{code:'NETWORK'})
+    return {points:[{sourceSectionId:'a',text:source,sourceExcerpt:source,category:'Comprendre'}]}
+  }}
+  const result=await new GeminiPedagogy({}, {client}).generateStudySummary({sections:[{id:'a',content:source},{id:'b',title:'Production',content:'La production dépend des ressources disponibles.'}]})
+  assert.equal(calls,2)
+  assert.equal(result.generation.coverage.sectionsSummarized,1)
+  assert.deepEqual(result.generation.coverage.missingSections,[{id:'b',title:'Production'}])
+  assert.match(result.generation.message,/partielle/)
+})
+
+test('Synthèse : une preuve peut appartenir au second fragment de la même section',async()=>{
+  const {validateSummary}=await import('../server/ai/summary.mjs')
+  const text='La seconde explication précise les limites de la méthode.'
+  const result=validateSummary({points:[{sourceSectionId:'s',sourceExcerpt:text,text,category:'Comprendre'}]},[{sectionId:'s',content:'Un premier fragment sans cette preuve.'},{sectionId:'s',content:text}])
+  assert.equal(result.items.length,1)
+})
+test('Synthèse : la réparation reste plafonnée sans masquer les sections absentes',async()=>{
+  const {MAX_SUMMARY_REPAIR_CALLS}=await import('../server/ai/summary.mjs')
+  let repairs=0
+  const sections=Array.from({length:8},(_,i)=>({id:`s${i}`,title:`Section ${i}`,content:`La notion ${i} présente une définition détaillée. `.repeat(100)}))
+  const client={model:'test',json:async({data})=>{
+    if(data.task==='summary-repair'){repairs++;return {points:[]}}
+    const fragment=data.fragments.find(f=>f.sectionId==='s0')
+    return {points:fragment?[{sourceSectionId:'s0',text:'La notion 0 présente une définition détaillée.',sourceExcerpt:'La notion 0 présente une définition détaillée.',category:'Comprendre'}]:[]}
+  }}
+  const result=await new GeminiPedagogy({}, {client}).generateStudySummary({sections})
+  assert.equal(repairs,MAX_SUMMARY_REPAIR_CALLS)
+  assert.equal(result.generation.coverage.missingSections.length,7)
+})
+
+test('Synthèse validée : couverture recalculée après suppression d’un point',async()=>{
+  const {handleStudySupports}=await import('../server/study/supports.mjs')
+  const db=new DatabaseSync(':memory:')
+  db.exec("PRAGMA foreign_keys=ON;CREATE TABLE users(id TEXT PRIMARY KEY);INSERT INTO users VALUES('u');")
+  initStudySchema(db)
+  db.prepare("INSERT INTO study_documents(id,user_id,title,filename,file_size,created_at,updated_at) VALUES('d','u','Cours','cours.pdf',100,'now','now')").run()
+  const texts=['La demande dépend des prix disponibles.','La production dépend des ressources disponibles.']
+  for(let i=0;i<2;i++)db.prepare('INSERT INTO study_sections VALUES(?,?,?,?,?,?,?,?,?)').run(`s${i}`,'d','u',`Section ${i}`,i,1,1,texts[i],10)
+  const args={db,userId:'u',doc:{id:'d',title:'Cours'},provider:null,config:{},localSummary:()=>({chapters:texts.map((text,i)=>({id:`s${i}`,keyPoints:[text]}))})}
+  const preview=await handleStudySupports({...args,body:{action:'generate',task:'summary'}})
+  // Old/local payloads have no coverage; the save path remains compatible.
+  const payload=JSON.parse(db.prepare('SELECT payload_json FROM study_generation_previews').get().payload_json)
+  payload.generation.coverage={sectionsTotal:2,sectionsAnalyzed:2,chunksTotal:1,chunksAnalyzed:1,sectionsSummarized:2,missingSections:[]}
+  db.prepare('UPDATE study_generation_previews SET payload_json=?').run(JSON.stringify(payload))
+  const saved=await handleStudySupports({...args,body:{action:'save',previewId:preview.previewId,items:[preview.items[0]]}})
+  assert.equal(saved.generation.coverage.sectionsSummarized,1)
+  assert.deepEqual(saved.generation.coverage.missingSections,[{id:'s1',title:'Section 1'}])
+  db.close()
+})
+
+test('Synthèse : les petits blocs ne réduisent pas la limite des cours longs',async()=>{
+  const sections=Array.from({length:70},(_,i)=>({id:`s${i}`,content:`La notion ${i} correspond à une définition précise dans le cours. `.repeat(50)}))
+  const client={model:'test',json:async({data})=>({points:data.fragments.map(fragment=>({sourceSectionId:fragment.sectionId,text:fragment.content.split('. ')[0]+'.',sourceExcerpt:fragment.content.split('. ')[0]+'.',category:'Comprendre'}))})}
+  const result=await new GeminiPedagogy({}, {client}).generateStudySummary({sections})
+  assert.equal(result.generation.coverage.sectionsSummarized,70)
+  assert.ok(result.generation.coverage.chunksTotal<=32)
+})
+
+test('PDF structuré : une consigne d’exercice numérotée reste dans sa section',()=>{
+  const intro='Les algorithmes sont présentés avec leurs conditions et leurs résultats. '.repeat(7)
+  const instruction='1. Voici la fonction qui retourne la somme des cubes'
+  const sections=chunkIntoSections([{pageNumber:1,headings:['1. Premiers pas avec Python','1.2. Somme des cubes'],text:`1. Premiers pas avec Python\n${intro}\n${instruction}\n${intro}\n1.2. Somme des cubes\n${intro}`}])
+  assert.ok(sections.some(section=>section.title==='Somme des cubes'))
+  assert.ok(!sections.some(section=>section.title.startsWith('Voici la fonction')))
+  assert.ok(sections.some(section=>section.content.includes(instruction)))
 })
