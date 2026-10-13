@@ -252,3 +252,12 @@ test('Synthèse : les petits blocs ne réduisent pas la limite des cours longs',
   assert.equal(result.generation.coverage.sectionsSummarized,70)
   assert.ok(result.generation.coverage.chunksTotal<=32)
 })
+
+test('PDF structuré : une consigne d’exercice numérotée reste dans sa section',()=>{
+  const intro='Les algorithmes sont présentés avec leurs conditions et leurs résultats. '.repeat(7)
+  const instruction='1. Voici la fonction qui retourne la somme des cubes'
+  const sections=chunkIntoSections([{pageNumber:1,headings:['1. Premiers pas avec Python','1.2. Somme des cubes'],text:`1. Premiers pas avec Python\n${intro}\n${instruction}\n${intro}\n1.2. Somme des cubes\n${intro}`}])
+  assert.ok(sections.some(section=>section.title==='Somme des cubes'))
+  assert.ok(!sections.some(section=>section.title.startsWith('Voici la fonction')))
+  assert.ok(sections.some(section=>section.content.includes(instruction)))
+})

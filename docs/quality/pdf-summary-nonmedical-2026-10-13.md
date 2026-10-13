@@ -16,8 +16,8 @@ Comparaison avec `77530c5`, avant ces corrections, en exécutant les deux versio
 
 | PDF public | Pages | Sections avant | Sections après | Observation |
 |---|---:|---:|---:|---|
-| [Exo7 — Dérivée](https://exo7.emath.fr/cours/ch_derivee.pdf) | 14 | 73 | 16 | Moins de fragments mathématiques considérés comme titres ; indices et 29 glyphes ⩽ récupérés |
-| [Exo7 — Algorithmes/Python](https://exo7.emath.fr/cours/ch_algo.pdf) | 25 | 115 | 40 | 50 blocs monospace délimités ; indentation conservée |
+| [Exo7 — Dérivée](https://exo7.emath.fr/cours/ch_derivee.pdf) | 14 | 73 | 15 | Moins de fragments mathématiques considérés comme titres ; indices et 29 glyphes ⩽ récupérés |
+| [Exo7 — Algorithmes/Python](https://exo7.emath.fr/cours/ch_algo.pdf) | 25 | 115 | 28 | 50 blocs monospace délimités ; indentation conservée |
 | [Banque de France — Inflation/déflation](https://www.banque-france.fr/system/files/2024-08/eeb-inflation-deflation.pdf) | 3 | 9 | 7 | Ordre des colonnes reconstitué ; titres accentués préservés |
 
 Ces comptages ne mesurent ni l’exhaustivité ni l’exactitude du résumé. Les fichiers publics ne sont pas versionnés.
@@ -34,6 +34,6 @@ Ces comptages ne mesurent ni l’exhaustivité ni l’exactitude du résumé. Le
 
 ## Suites locales
 
-Build TypeScript/Vite : vert. Tests backend : Study 67/67, flashcards 109/109, catalogue 6/6, comptes 7/7, feedback 2/2, sécurité 1/1, taxonomie 11/11, qualité catalogue 6/6, progression 2/2. Le build conserve l’avertissement existant sur les chunks de plus de 500 ko.
+Build TypeScript/Vite : vert. Tests backend : Study 68/68, flashcards 109/109, catalogue 6/6, comptes 7/7, feedback 2/2, sécurité 1/1, taxonomie 11/11, qualité catalogue 6/6, progression 2/2. Le build conserve l’avertissement existant sur les chunks de plus de 500 ko.
 
 Les résultats de la suite Playwright complète et de la CI distante sont consignés dans la PR ; les succès ciblés ci-dessus ne doivent pas être présentés comme une validation du benchmark Gemini réel.

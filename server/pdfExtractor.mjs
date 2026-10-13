@@ -759,7 +759,7 @@ export function chunkIntoSections(pages) {
       const shouldBreak =
         fontHeading ||
         (plausibleTitle && isRoman) ||
-        (plausibleTitle && isExplicit && accumulated >= 200 && (structured ? /^\d+(?:\.\d+)*\.?\s+\p{L}/u.test(line) && !/[.;!?]$/.test(line) : true)) ||
+        (plausibleTitle && isExplicit && accumulated >= 200 && (structured ? /^\d+(?:\.\d+)+\.?\s+\p{L}/u.test(line) && !/[.;!?]$/.test(line) : true)) ||
         (!structured && plausibleTitle && isShort && accumulated >= 400)
 
       if (shouldBreak && (accumulated >= 50 || isRoman || fontHeading)) {
