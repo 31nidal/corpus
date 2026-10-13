@@ -72,7 +72,7 @@ test('Cours importé : section complète et synthèse Gemini prévisualisée ave
   await page.route('**/api/study/documents/quality-document/supports',async route=>{
     const body=route.request().postDataJSON()
     if(body.action==='save'){saved++;await route.fulfill({json:{persisted:true}});return}
-    await route.fulfill({json:{previewId:'preview',task:'summary',persisted:false,generation:{mode:'gemini',model:'gemini-test'},items:[{id:'point',text:'La glycolyse a lieu dans le cytoplasme.',sourceExcerpt:'La glycolyse se déroule dans le cytoplasme.',sectionId:'section',startPage:1,endPage:1,category:'Localisation'}]}})
+    await route.fulfill({json:{previewId:'preview',task:'summary',persisted:false,generation:{mode:'gemini',model:'gemini-test',coverage:{sectionsTotal:2,sectionsAnalyzed:2,chunksTotal:1,chunksAnalyzed:1,sectionsSummarized:1,missingSections:[{id:'absent',title:'Limites du métabolisme'}]}},items:[{id:'point',text:'La glycolyse a lieu dans le cytoplasme.',sourceExcerpt:'La glycolyse se déroule dans le cytoplasme.',sectionId:'section',startPage:1,endPage:1,category:'Localisation'}]}})
   })
   await page.goto('/#tab=mes-cours&doc=quality-document')
   await expect(page.getByRole('heading',{name:document.title,exact:true})).toBeVisible()
@@ -86,6 +86,9 @@ test('Cours importé : section complète et synthèse Gemini prévisualisée ave
   expect(await dialog.evaluate(element=>getComputedStyle(element.parentElement!).position)).toBe('fixed')
   expect(await dialog.evaluate(element=>element.parentElement!.parentElement===window.document.body)).toBe(true)
   await dialog.getByRole('button',{name:'Générer la prévisualisation'}).click()
+  await expect(dialog.getByRole('heading',{name:'Métabolisme',exact:true})).toBeVisible()
+  await expect(dialog.getByText(/1\/2 sections représentées/)).toBeVisible()
+  await expect(dialog.getByText(/Sections sans point retenu : Limites du métabolisme/)).toBeVisible()
   await expect(dialog.getByLabel('Point 1')).toHaveValue('La glycolyse a lieu dans le cytoplasme.')
   await expect(dialog.getByText('La glycolyse se déroule dans le cytoplasme.',{exact:true})).toBeVisible()
   expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(390)

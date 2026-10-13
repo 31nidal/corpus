@@ -44,6 +44,8 @@ export type StudySummaryCategory = {
 }
 
 export type StudySummary = {
+  kind?: 'summary' | 'revision'
+  generation?: import('./ai/GenerationNotice').GenerationInfo
   title: string
   overview: string
   sectionCount: number

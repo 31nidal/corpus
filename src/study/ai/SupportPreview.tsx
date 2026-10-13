@@ -7,7 +7,7 @@ import type {StudyDocument} from '../myCoursesTypes'
 import './supports.css'
 
 export type SupportTask='summary'|'revision'|'questions'
-type Item={id:string;text:string;sourceExcerpt:string;sectionId:string;startPage:number;endPage:number;options?:string[];correct?:number[]}
+type Item={id:string;text:string;sourceExcerpt:string;sectionId:string;startPage:number;endPage:number;category?:string;options?:string[];correct?:number[]}
 type Preview={previewId:string;task:SupportTask;items:Item[];generation:GenerationInfo}
 async function request(documentId:string,body:unknown) {
   const response=await fetch(`/api/study/documents/${encodeURIComponent(documentId)}/supports`,{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json','x-mycorpus-request':'1'},body:JSON.stringify(body),signal:AbortSignal.timeout(210000)})
@@ -54,6 +54,8 @@ export function SupportPreview({document,task:initialTask,count=5,replace=false,
     <p role="status" aria-live="polite">{message}</p>
     {!preview&&<><label>Support<select value={task} disabled={busy} onChange={e=>setTask(e.target.value as SupportTask)}><option value="summary">Synthèse</option><option value="revision">Fiche de révision</option><option value="questions">QCM</option></select></label><p>Toutes les sections du cours seront analysées. Le nombre d’éléments dépend des notions réellement exploitables.</p><button className="study-primary" disabled={busy} onClick={()=>void run()}>{busy?'Génération en cours…':'Générer la prévisualisation'}</button></>}
     {preview&&<div className="support-preview-items">{preview.items.map((item,index)=><article className="draft-review-card" key={item.id}>
+      {task!=='questions'&&(index===0||preview.items[index-1].sectionId!==item.sectionId)&&<h3>{document.sections?.find(section=>section.id===item.sectionId)?.title||'Section du cours'}</h3>}
+      {task!=='questions'&&item.category&&<p><strong>{item.category}</strong></p>}
       <label>{task==='questions'?`Question ${index+1}`:`Point ${index+1}`}<textarea disabled={busy} maxLength={2000} value={item.text} onChange={e=>update(item.id,{text:e.target.value})}/></label>
       {item.options?.map((option,i)=><label className="support-option" key={i}><input type="radio" disabled={busy} name={item.id} aria-label={`Bonne réponse ${i+1} de la question ${index+1}`} checked={item.correct?.[0]===i} onChange={()=>update(item.id,{correct:[i]})}/><input disabled={busy} aria-label={`Proposition ${i+1} de la question ${index+1}`} maxLength={1000} value={option} onChange={e=>update(item.id,{options:item.options!.map((v,j)=>j===i?e.target.value:v)})}/></label>)}
       <blockquote><strong>Preuve dans le cours</strong><p>{item.sourceExcerpt}</p></blockquote>
