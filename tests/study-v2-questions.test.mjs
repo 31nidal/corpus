@@ -211,3 +211,36 @@ test('QCM V2 : format unique, refus du multi, score et snapshot immuable après 
     assert.equal(ctx.training.finish('u','d',attempt.id).score,1)
   }finally{await ctx.close()}
 })
+
+test('QCM V2 Gemini : lot borné, contrôle distinct et attribution par index même en ordre inversé',async()=>{
+  const calls=[],questions=Array.from({length:5},(_,index)=>({...candidate('s'),prompt:`Question médicale numéro ${index+1} : quelles propositions décrivent le rein ?`}))
+  const client={model:'fixture',async json({data,onUsage}){
+    calls.push(data);onUsage({attempts:1,inputTokens:100,outputTokens:50,estimatedUsd:.001,usageKnown:true})
+    if(data.question)return verification(data.question)
+    if(data.questions)return {questions:data.questions.map(({index,question})=>({index,...verification(question),coherent:index!==1})).reverse()}
+    return {questions}
+  }}
+  const result=await new GeminiPedagogy({}, {client}).generateDocumentQuestions({sections:[{id:'s',content:source,startPage:1,endPage:1}],settings:questionSettings({count:5})})
+  assert.equal(calls.length,3);assert.equal(calls[1].questions.length,4)
+  assert.equal(result.questions.length,4);assert.ok(!result.questions.some(question=>question.prompt.includes('numéro 2')))
+  assert.equal(result.generation.rejectionReasons.independent_verification,1)
+  assert.equal(result.generation.usage.attempts,3)
+})
+test('QCM V2 Gemini : index de vérification dupliqué ou manquant ne valide aucune question du lot',async()=>{
+  const questions=[candidate('s'),{...candidate('s'),prompt:'Quel organe assure la filtration glomérulaire selon le cours ?'}]
+  for(const indexes of [[0,0],[1]]){
+    const client={model:'fixture',async json({data}){return data.questions?{questions:indexes.map(index=>({index,...verification(questions[0])}))}:{questions}}}
+    await assert.rejects(()=>new GeminiPedagogy({}, {client}).generateDocumentQuestions({sections:[{id:'s',content:source,startPage:1,endPage:1}],settings:questionSettings({count:2})}),error=>error.code==='AI_NO_GROUNDED_RESULT'&&error.generation.rejectionReasons.independent_verification===2)
+  }
+})
+
+test('QCM V2 Gemini : un candidat refusé ne bloque pas un QCM pertinent de même énoncé dans une section suivante',async()=>{
+  const client={model:'fixture',async json({data}){
+    if(data.question)return {...verification(data.question),coherent:data.question.options[0].sourceSectionId==='last'}
+    return {questions:[candidate(data.fragments[0].sectionId)]}
+  }}
+  const result=await new GeminiPedagogy({}, {client}).generateDocumentQuestions({sections:[{id:'first',content:source.padEnd(16000,' '),startPage:1,endPage:1},{id:'last',content:source,startPage:2,endPage:2}],settings:questionSettings({count:2})})
+  assert.equal(result.questions.length,1)
+  assert.equal(result.questions[0].options[0].sourceSectionId,'last')
+  assert.equal(result.generation.rejectionReasons.independent_verification,1)
+})
