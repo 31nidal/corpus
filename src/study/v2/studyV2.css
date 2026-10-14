@@ -105,3 +105,8 @@
 [data-theme=dark] .sv2-workspace .sv2-spaces [aria-pressed=true],
 [data-theme=dark] .sv2-workspace .sv2-folders button[aria-pressed=true],
 [data-theme=dark] .sv2-workspace .sv2-outline button[aria-current=location] {color: var(--mc-brand); background: var(--mc-surface-soft); border-color: var(--mc-brand)}
+
+/* The global flashcards workspace is absolute; inside a course it joins its flow.
+   The course owns the one scroll container and the measured mobile nav reserve. */
+.sv2-course-review > .flash-workspace {position: static; inset: auto; overflow: visible; padding: 16px 0 0}
+.sv2-workspace {scroll-padding-bottom: calc(16px + max(var(--sv2-nav-inset, 0px), env(safe-area-inset-bottom)))}

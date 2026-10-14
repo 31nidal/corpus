@@ -13,7 +13,8 @@ async function prepare(page:Page,pdf=referencePdf()){
   await expect(page.locator('.sv2-text-layer')).toContainText('Le rein filtre le plasma sanguin.')
   return {doc:new URLSearchParams(new URL(page.url()).hash.slice(1)).get('doc')!,deck}
 }
-test('Flashcards V2 : passage exact → brouillon → édition → acceptation → FSRS, aucune phrase extérieure',async({page})=>{
+for(const width of [1440,390])test(`Flashcards V2 ${width} px : passage exact → édition → acceptation → FSRS dans le cours`,async({page})=>{
+  await page.setViewportSize({width,height:900})
   const {doc}=await prepare(page)
   await page.getByRole('button',{name:'Page suivante',exact:true}).click()
   await expect(page.locator('.sv2-text-layer')).toContainText('La filtration glomerulaire depend de la pression sanguine.')
@@ -40,6 +41,37 @@ test('Flashcards V2 : passage exact → brouillon → édition → acceptation �
   await expect(review.getByRole('link',{name:/Réviser la carte créée/})).toHaveCount(1)
   await review.getByRole('link',{name:/Réviser la carte créée/}).click()
   await expect(page.getByRole('button', {name: 'Afficher la réponse', exact: true})).toBeVisible()
+  expect(new URLSearchParams(new URL(page.url()).hash.slice(1)).get('tab')).toBe('mes-cours')
+  expect(new URLSearchParams(new URL(page.url()).hash.slice(1)).get('doc')).toBe(doc)
+  await expect(page.getByRole('heading',{name:'rein',exact:true})).toBeVisible()
+  const after=(await (await page.request.get(`/api/flashcards/documents/${doc}/drafts`)).json()).drafts
+  const noteId=after.find((draft:{status:string})=>draft.status==='accepted').acceptedNoteId
+  const card=(await (await page.request.get(`/api/flashcards/review?note=${noteId}`)).json()).cards[0]
+  const readCard=async()=>{const {cards}=await (await page.request.get('/api/flashcards/cards')).json();return cards.find((item:{id:string})=>item.id===card.id)}
+  await page.getByRole('button',{name:'Afficher la réponse',exact:true}).click()
+  const grade=page.getByRole('button',{name:/^Correct/})
+  await expect(grade).toBeEnabled()
+  await page.getByRole('navigation',{name:'Espaces du cours'}).getByRole('button',{name:'Flashcards',exact:true}).focus()
+  await page.keyboard.press('3')
+  const untouched=await readCard()
+  expect(untouched.review.reviewVersion).toBe(card.review.reviewVersion)
+  await page.locator('.review-card').scrollIntoViewIfNeeded()
+  expect(await page.locator('.sv2-workspace').evaluate(node=>node.scrollWidth<=node.clientWidth+1)).toBeTruthy()
+  await page.screenshot({path:`tests/artifacts/design/study-v2-fsrs-${width}.png`,fullPage:true})
+  await grade.click()
+  await expect(page.getByRole('heading',{name:'Session terminée',exact:true})).toBeVisible()
+  const updated=await readCard()
+  expect(updated.review.lastRating).toBe('good')
+  expect(updated.review.reviewVersion).toBe(card.review.reviewVersion+1)
+  await page.getByRole('button',{name:'Retour aux flashcards du cours',exact:true}).click()
+  await expect(review).toBeVisible()
+  await expect(review.getByRole('link',{name:/Réviser la carte créée/})).toBeFocused()
+  await page.getByRole('navigation',{name:'Espaces du cours'}).getByRole('button',{name:'Document original',exact:true}).click()
+  await expect(page.getByLabel('Page du PDF',{exact:true})).toHaveValue('2')
+  await page.reload()
+  const persisted=await readCard()
+  expect(persisted.review.lastRating).toBe('good')
+  expect(persisted.review.reviewVersion).toBe(updated.review.reviewVersion)
 })
 test('Flashcards visuelles V2 : page exacte, masque au clavier, source conservée et URL libérée',async({page})=>{
   const {doc}=await prepare(page)
@@ -104,4 +136,33 @@ test('PDF de grandes dimensions : lecteur et recadrage restent dans leur budget 
   await crop.getByRole('button',{name:'Utiliser la page entière',exact:true}).click()
   await expect(page.getByRole('dialog',{name:'Éditeur de carte visuelle',exact:true}).getByAltText('Source à masquer')).toBeVisible()
   await page.keyboard.press('Escape')
+})
+
+for(const noteType of ['cloze','typed'])test(`Flashcards V2 : ${noteType} en révision dans le cours, sans quitter le PDF`,async({page})=>{
+  await page.setViewportSize({width:390,height:844})
+  const {doc,deck}=await prepare(page)
+  const generated=await page.request.post(`/api/flashcards/documents/${doc}/drafts/generate`,{headers,data:{count:1,selection:{page:1,text:'Le rein assure la filtration glomerulaire.'}}})
+  expect(generated.status()).toBe(201)
+  const draft=(await (await page.request.get(`/api/flashcards/documents/${doc}/drafts`)).json()).drafts[0]
+  const fields=noteType==='cloze'?{text:'Le {{c1::rein}} assure la filtration glomerulaire.'}:{front:'Quel organe assure la filtration glomérulaire ?',answer:'rein'}
+  expect((await page.request.patch(`/api/flashcards/drafts/${draft.id}`,{headers,data:{noteType,fields}})).status()).toBe(200)
+  expect((await page.request.post(`/api/flashcards/drafts/${draft.id}/accept`,{headers,data:{deckId:deck.id}})).status()).toBe(200)
+  await page.getByRole('navigation',{name:'Espaces du cours'}).getByRole('button',{name:'Flashcards',exact:true}).click()
+  await page.getByRole('combobox',{name:'Filtrer les brouillons',exact:true}).selectOption('accepted')
+  await page.getByRole('link',{name:'Réviser cette carte',exact:true}).click()
+  if(noteType==='typed'){
+    const input=page.getByRole('textbox',{name:'Votre réponse',exact:true})
+    await expect(input).toBeFocused()
+    await input.fill('rein');await input.press('Enter')
+    await expect(page.locator('.typed-feedback')).toContainText('Correct !')
+  }else{
+    await expect(page.locator('.review-face')).toContainText('[...]')
+    await page.getByRole('button',{name:'Afficher la réponse',exact:true}).click()
+  }
+  const grade=page.getByRole('button',{name:/^Correct/})
+  await expect(grade).toBeEnabled();await grade.click()
+  await expect(page.getByRole('heading',{name:'Session terminée',exact:true})).toBeVisible()
+  expect(new URLSearchParams(new URL(page.url()).hash.slice(1)).get('doc')).toBe(doc)
+  await page.getByRole('button',{name:'Retour aux flashcards du cours',exact:true}).click()
+  await expect(page.getByRole('link',{name:'Réviser cette carte',exact:true})).toBeFocused()
 })
