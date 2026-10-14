@@ -2,7 +2,7 @@ import {getOrResetStudyQuota,reserveGenerationQuota,releaseGenerationQuota} from
 import {checkAiBudget,recordAiUsage} from './usage.mjs'
 
 const localDescription = 'Moteur local — règles automatiques, sans appel Gemini.'
-export async function generateWithQuota({db,userId,provider,task,context,local,config={}}) {
+export async function generateWithQuota({db,userId,provider,task,context,local,config={},allowLocalFallback=true}) {
   if(!provider)return {value:await local(),generation:{mode:'local',message:localDescription}}
   checkAiBudget(db,userId,config)
   // Account overrides update the existing monthly counter; never create a second quota.
@@ -13,7 +13,7 @@ export async function generateWithQuota({db,userId,provider,task,context,local,c
   reserveGenerationQuota(userId,db)
   let generation
   try {
-    const method={flashcards:'generateFlashcards',summary:'generateStudySummary',revision:'generateStudySummary',questions:'generateStudyQuestions',ocr:'extractScannedPdf'}[task]
+    const method={flashcards:'generateFlashcards',summary:'generateStudySummary',revision:'generateStudySummary',questions:'generateStudyQuestions',study_questions:'generateDocumentQuestions',ocr:'extractScannedPdf'}[task]
     const value=task==='ocr'?await provider[method](context.buffer,context.pageCount):await provider[method](context)
     generation=value.generation||{mode:'provider'}
     recordAiUsage(db,userId,task,generation,'success')
@@ -23,7 +23,7 @@ export async function generateWithQuota({db,userId,provider,task,context,local,c
     releaseGenerationQuota(userId,db)
     generation=error.generation
     recordAiUsage(db,userId,task,generation,'failed')
-    if(task==='ocr'||[400,403,413,429].includes(error.status))throw error
+    if(!allowLocalFallback||task==='ocr'||[400,403,413,429].includes(error.status))throw error
     return {value:await local(),generation:{...generation,mode:'local',errorCode:error.code||'AI_UNAVAILABLE',message:`La génération Gemini a échoué. ${localDescription} Le quota de génération a été restitué.`}}
   }
 }
