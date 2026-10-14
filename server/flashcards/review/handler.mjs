@@ -23,7 +23,7 @@ export async function handleDraftReview({db,notes,userId,subpath,url,req,readJso
         if(!notes.deck(userId,body.deckId)){send(400,{error:'Deck de destination introuvable.'});return true}
       }
       if(action==='generate') {
-        if(Object.keys(body).some(k=>!['count','level','sectionId','sectionIds','startPage','endPage'].includes(k))){send(400,{error:'La génération lit uniquement les sections du document ; seuls les paramètres de génération et filtres de sections/pages sont autorisés.'});return true}
+        if(Object.keys(body).some(k=>!['count','level','sectionId','sectionIds','startPage','endPage','selection'].includes(k))){send(400,{error:'La génération lit uniquement les sections du document ; seuls les paramètres de génération et filtres de sections/pages/passages sont autorisés.'});return true}
         send(201,await generateReviewDrafts({repo,userId,documentId,options:body,provider,config}))
       }else send(200,repo.batch(userId,documentId,action,body))
       return true

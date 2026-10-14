@@ -2,15 +2,16 @@ import {createHash, randomUUID} from 'node:crypto'
 import {summaryText} from '../../ai/quality.mjs'
 import {AI_LIMITS} from '../../ai/gemini-client.mjs'
 import {studyError} from './library.mjs'
+import {canonicalSource,MAX_SOURCE_SELECTION_CHARACTERS,selectSourcePassage} from '../source-selection.mjs'
+export {canonicalSource} from '../source-selection.mjs'
 
 // Conservative check of written quantities, not unit conversion or medical truth.
 // Common compound units are retained; unrecognized scientific notation still needs review.
 export const NOTE_QUANTITY_PATTERN = /(?<![\p{N}])[-+−]?\d+(?:[.,]\d+)?(?:\s*(?:mm\s*Hg|mL\s*\/\s*min|L\s*\/\s*min|mg\s*\/\s*kg|mmol\s*\/\s*L|%|µg|μg|mg|kg|mL|ml|mmol|mol|mV|ms|kPa|Pa|cm|mm|°\s*C|min|g|L|V|s|h)(?!\p{L}))?/gu
 const writtenQuantities = text => [...new Set(canonicalSource(text).match(NOTE_QUANTITY_PATTERN) || [])].map(value => value.replace(/\s+/g, '').replace(',', '.').replace(/−/g, '-').replace(/^\+/, ''))
 export const MAX_NOTE_ITEMS = 500
-export const MAX_NOTE_SELECTION_CHARACTERS = 10000
+export const MAX_NOTE_SELECTION_CHARACTERS = MAX_SOURCE_SELECTION_CHARACTERS
 export const NOTE_LEVELS = Object.freeze({short: {pointsPerSection: 2, label: 'Résumé court'}, structured: {pointsPerSection: 5, label: 'Fiche de révision'}, detailed: {pointsPerSection: 20, label: 'Fiche détaillée'}})
-export const canonicalSource = text => String(text).normalize('NFC').replace(/[’‘]/g, "'").replace(/\s+/g, ' ').trim()
 export const sourceHash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex')
 
 export function selectNoteSources(db, userId, document, {sectionIds, selection} = {}) {
@@ -21,13 +22,7 @@ export function selectNoteSources(db, userId, document, {sectionIds, selection} 
     sections = sections.filter(section => sectionIds.includes(section.id))
   }
   if (selection !== undefined) {
-    if (!selection || typeof selection !== 'object' || Array.isArray(selection) || Object.keys(selection).some(key => !['page','text'].includes(key)) || !Number.isSafeInteger(selection.page) || selection.page < 1 || selection.page > document.pageCount || typeof selection.text !== 'string' || selection.text.length < 35 || selection.text.length > MAX_NOTE_SELECTION_CHARACTERS) throw studyError(400, 'Passage sélectionné invalide.')
-    const page = db.prepare('SELECT text FROM study_pdf_pages WHERE document_id=? AND user_id=? AND page_number=?').get(document.id, userId, selection.page)
-    const text = canonicalSource(selection.text)
-    if (!text || !page || !canonicalSource(page.text).includes(text)) throw studyError(400, 'Le passage ne correspond pas au texte source de cette page.')
-    const section = sections.find(section => section.startPage <= selection.page && section.endPage >= selection.page && canonicalSource(section.content).includes(text))
-    if (!section) throw studyError(400, 'Sélectionnez un passage à l’intérieur d’une seule section du cours.')
-    sections = [{...section, content: text, startPage: selection.page, endPage: selection.page}]
+    sections = [selectSourcePassage(db,userId,document,sections,selection)]
   }
   if (!sections.length || sections.every(section => canonicalSource(section.content).length < 35)) throw studyError(422, 'Le cours contient trop peu de texte exploitable pour une fiche.')
   if (sections.reduce((total, section) => total + section.content.length, 0) > AI_LIMITS.inputCharacters) throw studyError(413, 'Ce contenu dépasse la limite IA. Choisissez une partie du cours.')
