@@ -49,7 +49,7 @@ Les quatre PDF universitaires ont exactement les SHA-256 du benchmark précéden
 
 Les avertissements concernent notamment colonnes reconstruites et formules composées. Les diapositives avec figures ne deviennent pas un texte complet simplement parce qu’une légende est extractible. Les fractions, valeurs absolues, images et coordonnées fiables exigent encore une comparaison à l’original. Les 230 sections du long PDF reflètent un découpage automatique, sans plan éditorial certifié. Les temps locaux d’extraction sont d’environ 0,3 à 2 secondes sur cet échantillon, sans garantie sur d’autres machines.
 
-Les tests de compression couvrent également ASCII85+Flate, Flate seul et brut, longueurs de flux indirectes, scan sans texte, filtre non supporté et flux corrompu. Les limites de taille, pages, dimensions, concurrence et interruption sont testées séparément. Aucun PDF réel chiffré ni OCR réel évalué dans cette passe.
+Les tests de compression couvrent également ASCII85+Flate, Flate seul et brut, longueurs de flux indirectes, scan sans texte, filtre non supporté et flux corrompu. Les limites de taille, pages, dimensions, concurrence et interruption sont testées séparément. Un PDF valide de 14 400 × 14 400 points a révélé une allocation excessive possible dans le recadrage historique : son canvas est désormais limité à quatre millions de pixels, comme le lecteur, et la capture attend le rendu terminé. Le test navigateur contrôle les dimensions réelles du canvas et ouvre ensuite l’éditeur d’occlusion. Aucun PDF réel chiffré ni OCR réel évalué dans cette passe.
 
 ## Gemini réel, budget explicitement autorisé
 
@@ -65,7 +65,7 @@ Le script final utilise désormais le délai configuré de production. Aucun nou
 
 ## Validation technique, migrations et preuves UX
 
-Build TypeScript/Vite vert. Backend : Study 121/121, flashcards 111/111, comptes 7/7, progression 2/2, taxonomie 11/11, catalogue 6/6, qualité catalogue 6/6, feedback 2/2, sécurité 1/1 : 267 tests verts. Les 24 parcours E2E ciblés passent après la dernière correction, sans retry.
+Build TypeScript/Vite vert. Backend : Study 121/121, flashcards 111/111, comptes 7/7, progression 2/2, taxonomie 11/11, catalogue 6/6, qualité catalogue 6/6, feedback 2/2, sécurité 1/1 : 267 tests verts. Les 25 parcours E2E ciblés passent après la dernière correction, sans retry.
 
 Les tests de migrations vérifient explicitement les versions V2 `[1,2,3,4]`, l’idempotence, les clés étrangères, la conservation des documents/sections/synthèses, cartes et état/historique FSRS. Les migrations sont additives ; aucune purge de données existantes. Les anciens supports restent accessibles dans l’interface actuelle et les synthèses copiées ne remplacent pas leurs originaux.
 
@@ -80,9 +80,11 @@ Captures de revue recréées par les tests dans `tests/artifacts/design/study-v2
 ```sh
 node --experimental-strip-types --experimental-loader=./scripts/ts-loader.mjs scripts/benchmark-study-v2.mjs --output=/private/tmp/study-v2-benchmark.json
 node scripts/verify-university-pdfs.mjs /private/tmp/corpus-real-pdfs
-npm test -- tests/study-v2-library.spec.ts tests/study-v2-notes.spec.ts tests/study-v2-questions.spec.ts tests/study-v2-assistant.spec.ts tests/study-v2-flashcards.spec.ts tests/my-courses.spec.ts tests/flashcard-draft-review.spec.ts
+npm test -- --config=playwright.study-v2.config.ts
 ```
 
 Le benchmark local ne fait aucun appel payant. `--live` est une option explicite ; utiliser seulement après autorisation du contenu à envoyer. `--live-limit` est limité à huit requêtes HTTP, retries compris, et `--live-task` permet de cibler une tâche. Les PDF publics ne sont pas versionnés ; leurs chemins peuvent être adaptés avec `--pdf-dir` et `--nonmedical-dir`.
+
+La configuration Playwright dédiée démarre un serveur isolé au port 5179 avec une base temporaire distincte et le générateur local forcé. Elle ne réutilise pas un serveur développeur déjà lancé avec Gemini, ni ses données. Les tests recréent aussi les captures de revue ; les PNG restent ignorés par Git.
 
 À compléter avant activation générale : QCM Gemini réel jusqu’à la correction finale, assistant positif sourcé, corpus Gemini représentatif, revue médicale des ambiguïtés et réponses incomplètes, Safari/iPhone/lecteur d’écran/tactile, figures complexes, OCR réel et très longs documents. La présence de tests verts ne suffit pas à déclarer la qualité pédagogique terminée.
