@@ -20,10 +20,7 @@ import {ExtractedSection} from './ExtractedSection'
 import DownloadPdfButton from './DownloadPdfButton'
 import {GenerationNotice,useGenerationProvider} from './ai/GenerationNotice'
 import {SupportPreview, type SupportTask} from './ai/SupportPreview'
-import type {FlashcardDeck} from '../flashcards/flashcardsTypes'
-import {listDecks} from '../flashcards/flashcardsApi'
-import {PdfCropSelector} from '../flashcards/PdfCropSelector'
-import {ImageOcclusionEditor} from '../flashcards/ImageOcclusionEditor'
+import VisualCardCreator from './VisualCardCreator'
 
 type Records = Record<string, ReviewRecord>
 
@@ -73,22 +70,7 @@ export default function MyCoursesWorkspace(props: {
   const [ocrRequested,setOcrRequested]=useState(false)
   const [generationRequest,setGenerationRequest]=useState(0)
   const [visualCropDoc, setVisualCropDoc] = useState<StudyDocument | null>(null)
-  const [cropResult, setCropResult] = useState<{
-    blob: Blob
-    pageNumber: number
-    crop: {x: number; y: number; width: number; height: number} | null
-  } | null>(null)
-  const [studyDecks, setStudyDecks] = useState<FlashcardDeck[]>([])
-
-  const openVisualCrop = async (doc: StudyDocument) => {
-    try {
-      const d = await listDecks()
-      setStudyDecks(d)
-    } catch {
-      // best effort
-    }
-    setVisualCropDoc(doc)
-  }
+  const openVisualCrop = (doc: StudyDocument) => setVisualCropDoc(doc)
 
   const [toast, setToast] = useState('')
   useEffect(() => {
@@ -767,38 +749,11 @@ export default function MyCoursesWorkspace(props: {
             </div>
           </div>
         )}
-        {visualCropDoc && (
-          <PdfCropSelector
-            documentId={visualCropDoc.id}
-            documentTitle={visualCropDoc.title}
-            onSelectCrop={({ blob, pageNumber, crop }) => {
-              setVisualCropDoc(null)
-              setCropResult({ blob, pageNumber, crop })
-            }}
-            onCancel={() => setVisualCropDoc(null)}
-          />
-        )}
-        {cropResult && currentDoc && (
-          <ImageOcclusionEditor
-            imageSrc={URL.createObjectURL(cropResult.blob)}
-            imageBlob={cropResult.blob}
-            defaultDeckId={studyDecks[0]?.id || ''}
-            decks={studyDecks}
-            sourceMetadata={{
-              sourceKind: 'study_document',
-              sourceDocumentId: currentDoc.id,
-              sourcePage: cropResult.pageNumber,
-              sourceCrop: cropResult.crop || undefined,
-            }}
-            initialSubject={currentDoc.title}
-            initialChapter={currentDoc.title}
-            onCreated={note => {
-              setCropResult(null)
-              setToast(`Note d'occlusion créée avec succès (${note.cards?.length || 1} carte(s))`)
-            }}
-            onCancel={() => setCropResult(null)}
-          />
-        )}
+        {visualCropDoc && <VisualCardCreator key={visualCropDoc.id} document={visualCropDoc}
+          onClose={() => setVisualCropDoc(null)} onCreated={count => {
+            setVisualCropDoc(null)
+            setToast(`Note d'occlusion créée avec succès (${count} carte(s))`)
+          }}/>}
         {flashReview&&currentDoc&&<ReviewWorkspace key={currentDoc.id} document={currentDoc} initialGenerate={flashReview==='generate'} generationRequest={generationRequest} onClose={()=>setFlashReview(null)}/>}
         {supportTask&&currentDoc&&<SupportPreview document={currentDoc} task={supportTask} count={supportOptions.count} replace={supportOptions.replace} onClose={()=>setSupportTask(null)} onSaved={task=>{setToast(task==='questions'?'QCM relus enregistrés':'Support relu enregistré');void loadDoc(currentDoc.id)}}/>}
         {toast&&<div className="flash-toast" role="status"><Check size={16}/><span>{toast}</span></div>}

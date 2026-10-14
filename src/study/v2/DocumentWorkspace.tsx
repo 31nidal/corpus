@@ -8,7 +8,7 @@ import {useDocument} from './useDocument'
 const NotesWorkspace = lazy(() => import('./NotesWorkspace'))
 const QuestionsWorkspace = lazy(() => import('./QuestionsWorkspace'))
 const AssistantWorkspace = lazy(() => import('./AssistantWorkspace'))
-const ReviewWorkspace = lazy(() => import('../review/ReviewWorkspace'))
+const DocumentFlashcards = lazy(() => import('./DocumentFlashcards'))
 
 export function DocumentWorkspace({id, initialSectionId, onBack, versionControl}: {
   id: string; initialSectionId?: string | null; onBack: () => void; onClassic: () => void; versionControl: ReactNode
@@ -22,6 +22,7 @@ export function DocumentWorkspace({id, initialSectionId, onBack, versionControl}
   const [assistantVisited, setAssistantVisited] = useState(false)
   const [assistantSelection, setAssistantSelection] = useState<PdfSelection | null>(null)
   const [notesVisited, setNotesVisited] = useState(false)
+  const [flashcardSelection, setFlashcardSelection] = useState<PdfSelection | null>(null)
   const [noteSelection, setNoteSelection] = useState<PdfSelection | null>(null)
   const [selection, setSelection] = useState<PdfSelection | null>(null)
   const [copied, setCopied] = useState('')
@@ -54,14 +55,14 @@ export function DocumentWorkspace({id, initialSectionId, onBack, versionControl}
         </details></aside>
         <div className="sv2-reading-main">
           <PdfReader documentId={id} title={data.document.title} page={course.page} onPage={course.setPage} onSelection={setSelection}/>
-          {selection && <section className="sv2-selection" aria-label="Passage sélectionné"><h2>Sélection · page {selection.page}</h2><blockquote>{selection.text}</blockquote><button disabled={selection.text.length < 35} onClick={() => {setAssistantSelection(selection); setAssistantVisited(true); setAssistantOpen(true)}}>Expliquer ce passage</button><button onClick={() => {setNoteSelection(selection); setNotesVisited(true); setSpace('notes')}} disabled={selection.text.length < 35}>Résumer ce passage</button><button onClick={() => {setQuestionSelection(selection); setQuestionsVisited(true); setSpace('questions')}} disabled={selection.text.length < 35}>Générer un QCM sur ce passage</button><button onClick={copy}>Copier le passage</button><button onClick={() => setSelection(null)}>Fermer la sélection</button><p role="status">{copied}</p></section>}
+          {selection && <section className="sv2-selection" aria-label="Passage sélectionné"><h2>Sélection · page {selection.page}</h2><blockquote>{selection.text}</blockquote><button disabled={selection.text.length < 35} onClick={() => {setAssistantSelection(selection); setAssistantVisited(true); setAssistantOpen(true)}}>Expliquer ce passage</button><button onClick={() => {setNoteSelection(selection); setNotesVisited(true); setSpace('notes')}} disabled={selection.text.length < 35}>Résumer ce passage</button><button onClick={() => {setQuestionSelection(selection); setQuestionsVisited(true); setSpace('questions')}} disabled={selection.text.length < 35}>Générer un QCM sur ce passage</button><button disabled={selection.text.length < 15} onClick={() => {setFlashcardSelection(selection); setSpace('flashcards')}}>Créer des flashcards sur ce passage</button><button onClick={copy}>Copier le passage</button><button onClick={() => setSelection(null)}>Fermer la sélection</button><p role="status">{copied}</p></section>}
           <p role="status">{course.positionMessage}</p>
         </div>
         {assistantVisited && course.document && <aside hidden={!assistantOpen} className="sv2-assistant-pane"><Suspense fallback={<p role="status">Chargement de l’assistant…</p>}><AssistantWorkspace document={course.document} selection={assistantSelection} onClose={() => setAssistantOpen(false)} onSource={course.setPage}/></Suspense></aside>}
       </div>
       {notesVisited && course.document && <div hidden={space !== 'notes'}><Suspense fallback={<p role="status">Chargement des fiches…</p>}><NotesWorkspace document={course.document} selection={noteSelection} onSource={page => {course.setPage(page); setSpace('original')}}/></Suspense></div>}
       {questionsVisited && course.document && <div hidden={space !== 'questions'}><Suspense fallback={<p role="status">Chargement des QCM…</p>}><QuestionsWorkspace document={course.document} selection={questionSelection} onSource={page => {course.setPage(page); setSpace('original')}}/></Suspense></div>}
-      {space === 'flashcards' && course.document && <Suspense fallback={<p role="status">Chargement des brouillons de flashcards…</p>}><ReviewWorkspace document={course.document} onClose={() => setSpace('original')}/></Suspense>}
+      {space === 'flashcards' && course.document && <Suspense fallback={<p role="status">Chargement des brouillons de flashcards…</p>}><DocumentFlashcards document={course.document} selection={flashcardSelection} page={course.page} onClose={() => setSpace('original')}/></Suspense>}
     </>}
   </section>
 }

@@ -9,6 +9,9 @@ import {
 } from 'lucide-react'
 import type {FlashcardDeck, FlashcardNote, ImageOcclusionMask} from './flashcardsTypes'
 import {createNote, updateNote, uploadFlashcardAsset} from './flashcardsApi'
+import {MaskKeyboardControls} from './MaskKeyboardControls'
+import {useOcclusionDialog} from './useOcclusionDialog'
+import './imageOcclusionEditor.css'
 
 interface ImageOcclusionEditorProps {
   imageSrc: string
@@ -71,6 +74,7 @@ export const ImageOcclusionEditor: React.FC<ImageOcclusionEditorProps> = ({
 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const dialog=useOcclusionDialog(onCancel,saving)
 
   // Drag creation & moving/resizing state
   const [isDrawing, setIsDrawing] = useState(false)
@@ -357,7 +361,7 @@ export const ImageOcclusionEditor: React.FC<ImageOcclusionEditorProps> = ({
   const selectedMask = masks.find(m => m.id === selectedMaskId)
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-slate-950 text-slate-100 overflow-hidden">
+    <div ref={dialog.ref} role="dialog" aria-modal="true" aria-label="Éditeur de carte visuelle" onKeyDown={dialog.keyDown} className="image-occlusion-editor fixed inset-0 z-50 flex flex-col bg-slate-950 text-slate-100 overflow-hidden">
       {/* Top Header */}
       <header className="flex items-center justify-between px-6 py-3.5 border-b border-slate-800 bg-slate-900/90 backdrop-blur-sm">
         <div className="flex items-center gap-3">
@@ -408,18 +412,18 @@ export const ImageOcclusionEditor: React.FC<ImageOcclusionEditorProps> = ({
       </header>
 
       {/* Main workspace: 2-column layout */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="occlusion-layout flex-1 flex overflow-hidden">
         {/* Left Column: Canvas / Image Area */}
         <div
           ref={imageContainerRef}
-          className="flex-1 overflow-auto p-6 flex items-center justify-center bg-slate-900/40 relative select-none"
+          className="occlusion-image-area flex-1 overflow-auto p-6 flex items-center justify-center bg-slate-900/40 relative select-none"
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onPointerMove={handleMouseMove}
           onPointerUp={handleMouseUp}
         >
-          <div className="relative inline-block border border-slate-700/80 rounded-lg shadow-2xl overflow-hidden bg-black/40 cursor-crosshair">
+          <div className="occlusion-image-sheet relative inline-block border border-slate-700/80 rounded-lg shadow-2xl overflow-hidden bg-black/40 cursor-crosshair">
             <img
               ref={imageElementRef}
               src={imageSrc}
@@ -435,6 +439,7 @@ export const ImageOcclusionEditor: React.FC<ImageOcclusionEditorProps> = ({
                 <div
                   key={mask.id}
                   data-mask-id={mask.id}
+                  data-mask-selected={isSelected}
                   className={`absolute rounded cursor-move transition-shadow ${
                     isSelected
                       ? 'border-2 border-indigo-400 bg-indigo-600/80 shadow-lg shadow-indigo-500/30'
@@ -507,7 +512,7 @@ export const ImageOcclusionEditor: React.FC<ImageOcclusionEditorProps> = ({
             {/* Currently drawing mask */}
             {currentDraw && (
               <div
-                className="absolute border-2 border-dashed border-indigo-400 bg-indigo-500/30 pointer-events-none"
+                className="occlusion-drawing absolute border-2 border-dashed border-indigo-400 bg-indigo-500/30 pointer-events-none"
                 style={{
                   left: `${currentDraw.x * 100}%`,
                   top: `${currentDraw.y * 100}%`,
@@ -520,7 +525,13 @@ export const ImageOcclusionEditor: React.FC<ImageOcclusionEditorProps> = ({
         </div>
 
         {/* Right Column: Settings & Mask Details Sidebar */}
-        <div className="w-80 lg:w-96 border-l border-slate-800 bg-slate-900/90 flex flex-col p-5 overflow-y-auto">
+        <div className="occlusion-sidebar w-80 lg:w-96 border-l border-slate-800 bg-slate-900/90 flex flex-col p-5 overflow-y-auto">
+          <label>Masque à modifier<select value={selectedMaskId||''} disabled={saving} onChange={event=>setSelectedMaskId(event.target.value||null)}><option value="">Choisir un masque</option>{masks.map((mask,index)=><option key={mask.id} value={mask.id}>{index+1}. {mask.label||'Masque'}</option>)}</select></label>
+          <button disabled={saving||masks.length>=50} onClick={()=>{
+            const mask:ImageOcclusionMask={id:`mask_${crypto.randomUUID()}`,x:.3,y:.3,width:.3,height:.1,label:`Structure ${masks.length+1}`}
+            setMasks(value=>[...value,mask]);setSelectedMaskId(mask.id)
+          }}>Ajouter un masque au clavier</button>
+          {selectedMask&&<MaskKeyboardControls mask={selectedMask} onChange={mask=>setMasks(value=>value.map(old=>old.id===mask.id?mask:old))}/>}
           {error && (
             <div className="mb-4 p-3 bg-red-950/40 border border-red-800/60 rounded-lg flex items-start gap-2 text-xs text-red-200">
               <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />

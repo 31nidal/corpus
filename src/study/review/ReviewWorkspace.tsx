@@ -26,7 +26,7 @@ export default function ReviewWorkspace(props: ReviewOptions & { onClose: () => 
       <GenerationNotice generation={review.generation} provider={review.provider} />
       <ReviewActions review={review} />
       {review.showGeneration && (
-        <GenerationOptions document={document} busy={review.busy} onGenerate={review.generate} />
+        <GenerationOptions document={document} busy={review.busy} onGenerate={review.generate} sourceSelection={props.sourceSelection}/>
       )}
       <ReviewDestination review={review} />
       <ReviewSelectionActions review={review} />
