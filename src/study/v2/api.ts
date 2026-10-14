@@ -19,8 +19,9 @@ export async function request<T>(route: string, options: RequestInit = {}, prefi
   return body
 }
 export const json = (method: string, body: unknown) => ({method, headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)})
-export function listLibrary(filters: {q: string; folderId?: string | null; archived: boolean}, signal?: AbortSignal) {
+export function listLibrary(filters: {q: string; folderId?: string | null; archived: boolean; offset?: number}, signal?: AbortSignal) {
   const query = new URLSearchParams({q: filters.q, archived: String(filters.archived), limit: '100'})
+  if (filters.offset !== undefined) query.set('offset', String(filters.offset))
   if (filters.folderId !== undefined) query.set('folderId', filters.folderId ?? '')
   return request<LibraryResult>('documents?' + query, {signal})
 }

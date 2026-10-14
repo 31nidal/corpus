@@ -25,6 +25,7 @@ export function Library({onOpen, versionControl}: {onOpen: (id: string) => void;
         {!library.loading && !library.error && !library.data.documents.length && <div className="sv2-empty"><h2>{q ? 'Aucun cours trouvé' : archived ? 'Aucun cours archivé' : 'Aucun cours ici'}</h2><p>{q ? 'Essayez un autre titre ou un passage du cours.' : archived ? 'Les cours archivés pourront être restaurés ici.' : 'Importez un PDF ou classez un cours dans ce dossier.'}</p></div>}
         {recent.length > 0 && !q && folderId === undefined && !archived && <nav className="sv2-recents" aria-label="Cours récemment consultés"><h2>Récemment consultés</h2>{recent.map(doc => <button key={doc.id} onClick={() => onOpen(doc.id)}>{doc.title}</button>)}</nav>}
         <div className="sv2-documents">{library.data.documents.map(doc => <DocumentCard key={doc.id} document={doc} folders={library.data.folders} onOpen={onOpen} onChanged={library.reload}/>)}</div>
+        {library.data.nextOffset !== null && <button disabled={library.loading || library.loadingMore} onClick={() => void library.loadMore()}>{library.loadingMore ? 'Chargement des cours suivants…' : 'Charger les cours suivants'}</button>}
       </main>
     </div>
   </section>

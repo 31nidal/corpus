@@ -46,7 +46,7 @@ export default function QuestionsWorkspace({document, selection, onSource}: {
           })}>S’entraîner sur les questions validées</button>
         </fieldset>
         {set.questions.map(question => <QuestionCard key={question.id + '-' + question.version} documentId={document.id} setId={set.id} question={question} onSource={onSource}
-          onRegenerated={data.reload} onChanged={changed => {data.setSelected({...set, questions: set.questions.map(old => old.id === changed.id ? changed : old)}); data.reload()}}/>)}
+          onRegenerated={data.reload} onChanged={changed => {data.setSelected(current => current && current.id === set.id ? {...current, questions: current.questions.map(old => old.id === changed.id ? changed : old)} : current); data.reload()}}/>)}
         <button disabled={busy} onClick={() => setDeleting(true)}>Supprimer cette série</button>
         {deleting && <div role="alert"><p>Supprimer cette série et son historique d’entraînement ? Le cours et les flashcards seront conservés.</p><button disabled={busy} onClick={() => void act(async () => {await deleteQuestionSet(document.id, set.id); data.setSelected(null); data.choose(''); setDeleting(false); data.reload()})}>Confirmer la suppression de la série</button><button disabled={busy} onClick={() => setDeleting(false)}>Annuler</button></div>}
       </section>}

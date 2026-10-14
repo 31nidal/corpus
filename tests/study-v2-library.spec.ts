@@ -174,3 +174,67 @@ test('Study 2.0 : flashcards existantes, génération, édition, acceptation et 
   const noteId = new URLSearchParams(url!.slice(1)).get('note')
   expect((await (await page.request.get('/api/flashcards/review')).json()).cards.some((card: {noteId: string}) => card.noteId === noteId)).toBeTruthy()
 })
+
+test('Study 2.0 : bibliothèque au-delà de 100 cours, pagination et recherche sans réponse obsolète',async({page})=>{
+  await register(page)
+  const listed = await (await page.request.get('/api/study/v2/documents')).json()
+  let release: (()=>void)|undefined
+  let nextPage = new Promise<void>(resolve => {release=resolve})
+  let completedPages = 0
+  const docs=Array.from({length:101},(_,index)=>({id:`pagination-${index}`,title:`Cours ${index+1}`,filename:'cours.pdf',fileSize:100,pageCount:1,createdAt:'2026-10-14',updatedAt:'2026-10-14',folderId:null,archivedAt:null,lastOpenedAt:null,readingPage:1,processingState:'ready',version:1,metadataUpdatedAt:1,sectionCount:1}))
+  await page.route('**/api/study/v2/documents?*',async route=>{
+    const params=new URL(route.request().url()).searchParams
+    if(params.get('q')) {await route.fulfill({json:{documents:[],folders:listed.folders,nextOffset:null}});return}
+    const offset=Number(params.get('offset')||0)
+    if(offset){await nextPage;await route.fulfill({json:{documents:docs.slice(offset),folders:[],nextOffset:null}}).catch(()=>{});completedPages++;return}
+    await route.fulfill({json:{documents:docs.slice(0,100),folders:[],nextOffset:100}})
+  })
+  await enable(page)
+  await expect(page.locator('.sv2-document-card')).toHaveCount(100)
+  await page.getByRole('button',{name:'Charger les cours suivants',exact:true}).click()
+  await expect(page.getByRole('button',{name:'Chargement des cours suivants…',exact:true})).toBeDisabled()
+  release!()
+  await expect(page.locator('.sv2-document-card')).toHaveCount(101)
+  await expect(page.locator('.sv2-document-card').last()).toContainText('Cours 101')
+  await expect(page.getByRole('button',{name:'Charger les cours suivants',exact:true})).toHaveCount(0)
+  await page.getByLabel('Rechercher dans les titres et le contenu').fill('absent')
+  await expect(page.locator('.sv2-document-card')).toHaveCount(0)
+  await expect(page.getByRole('heading',{name:'Aucun cours trouvé'})).toBeVisible()
+  await page.getByLabel('Rechercher dans les titres et le contenu').fill('')
+  await expect(page.locator('.sv2-document-card')).toHaveCount(100)
+  nextPage = new Promise<void>(resolve => {release=resolve})
+  await page.getByRole('button',{name:'Charger les cours suivants',exact:true}).click()
+  await expect(page.getByRole('button',{name:'Chargement des cours suivants…',exact:true})).toBeDisabled()
+  await page.getByLabel('Rechercher dans les titres et le contenu').fill('absent')
+  await expect(page.getByRole('heading',{name:'Aucun cours trouvé'})).toBeVisible()
+  release!()
+  await expect.poll(()=>completedPages).toBe(2)
+  await expect(page.locator('.sv2-document-card')).toHaveCount(0)
+})
+
+test('Study 2.0 : vrai PDF image sans couche texte, original lisible et OCR jamais implicite',async({page})=>{
+  const {jsPDF}=await import('jspdf')
+  await register(page)
+  await enable(page)
+  const png=await page.evaluate(()=>{
+    const canvas=document.createElement('canvas');canvas.width=900;canvas.height=1200
+    const context=canvas.getContext('2d')!;context.fillStyle='white';context.fillRect(0,0,900,1200)
+    context.fillStyle='black';context.font='24px sans-serif'
+    context.fillText('Cours scanné — Anatomie rénale',80,100)
+    context.fillText('Le rein filtre le plasma sanguin.',80,150)
+    context.fillText('Le cortex rénal contient les glomérules.',80,200)
+    return canvas.toDataURL('image/png')
+  })
+  const pdf=new jsPDF();pdf.addImage(png,'PNG',0,0,210,280)
+  await page.getByLabel('Fichier PDF',{exact:true}).setInputFiles({name:'cours-scan.pdf',mimeType:'application/pdf',buffer:Buffer.from(pdf.output('arraybuffer'))})
+  await page.getByRole('button',{name:'Importer le PDF',exact:true}).click()
+  const card=page.locator('.sv2-document-card').filter({hasText:'cours-scan'})
+  await expect(card.locator('.sv2-state')).toHaveText('Intervention nécessaire',{timeout:30000})
+  await card.locator('.sv2-document-open').click()
+  const recovery=page.getByRole('region',{name:'Diagnostic et récupération'})
+  await expect(recovery).toBeVisible()
+  await expect(recovery.getByRole('checkbox')).not.toBeChecked()
+  await expect(page.locator('.sv2-pdf-sheet canvas')).toBeVisible()
+  await expect.poll(()=>page.locator('.sv2-text-layer').innerText()).toBe('')
+  await page.screenshot({path:'tests/artifacts/design/study-v2-scanned-desktop.png',fullPage:true})
+})

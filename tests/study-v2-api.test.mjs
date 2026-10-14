@@ -48,3 +48,22 @@ test('Study V2 : worker réel extrait un PDF texte et refuse une dimension exces
     assert.match(extracted.totalText, /volume systolique/);
     await assert.rejects(() => extractInWorker(makePdf(20000)), error => error.code === 'ERR_PDF_DIMENSIONS');
 });
+
+test('Study V2 : pagination réelle de 101 documents, sans fuite entre comptes',async()=>{
+    const {DatabaseSync}=await import('node:sqlite')
+    const {initStudySchema}=await import('../server/study.mjs')
+    const {migrateStudyV2}=await import('../server/study/v2/schema.mjs')
+    const {StudyLibrary}=await import('../server/study/v2/library.mjs')
+    const db=new DatabaseSync(':memory:')
+    try{
+        db.exec("PRAGMA foreign_keys=ON;CREATE TABLE users(id TEXT PRIMARY KEY);INSERT INTO users VALUES('u'),('other');")
+        initStudySchema(db);migrateStudyV2(db)
+        const insert=db.prepare('INSERT INTO study_documents(id,user_id,title,filename,file_size,page_count,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)')
+        for(let index=0;index<101;index++)insert.run(`d${index}`,'u',`Cours ${index}`,'cours.pdf',100,1,'2026-10-14','2026-10-14')
+        insert.run('other','other','Autre utilisateur','cours.pdf',100,1,'2026-10-14','2026-10-14')
+        const library=new StudyLibrary(db),first=library.list('u',{limit:100}),second=library.list('u',{limit:100,offset:first.nextOffset})
+        assert.equal(first.documents.length,100);assert.equal(second.documents.length,1);assert.equal(second.nextOffset,null)
+        assert.equal(new Set([...first.documents,...second.documents].map(doc=>doc.id)).size,101)
+        assert.equal(library.list('other',{limit:100}).documents.length,1)
+    }finally{db.close()}
+})
