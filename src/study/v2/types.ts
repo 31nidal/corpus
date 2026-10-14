@@ -8,7 +8,7 @@ export type DocumentMeta = Pick<StudyDocument, 'id' | 'title' | 'filename' | 'fi
   readingPage: number
   processingState: ProcessingState
   version: number
-  metadataUpdatedAt: number
+  metadataUpdatedAt: number | null
 }
 export type StudyFolder = {id: string; name: string; kind: 'subject' | 'chapter'; parentId: string | null}
 export type DocumentJob = {
@@ -19,7 +19,7 @@ export type DocumentJob = {
 export type LibraryResult = {documents: DocumentMeta[]; folders: StudyFolder[]; nextOffset: number | null}
 export type DocumentResult = {document: DocumentMeta; job: DocumentJob | null}
 export type DocumentPatch = Partial<Pick<DocumentMeta, 'title' | 'folderId' | 'readingPage'>> & {
-  archived?: boolean; opened?: boolean; expectedUpdatedAt?: number
+  archived?: boolean; opened?: boolean; expectedUpdatedAt?: number | null
 }
 export type PdfSelection = {text: string; page: number}
 export const processingLabels: Record<ProcessingState, string> = {

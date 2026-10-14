@@ -67,3 +67,43 @@ test('Study V2 : pagination réelle de 101 documents, sans fuite entre comptes',
         assert.equal(library.list('other',{limit:100}).documents.length,1)
     }finally{db.close()}
 })
+
+test('Study V2 : premier classement d’un import classique postérieur à la migration, CAS null et données préservées',async()=>{
+    const {DatabaseSync}=await import('node:sqlite')
+    const {initStudySchema}=await import('../server/study.mjs')
+    const {migrateStudyV2}=await import('../server/study/v2/schema.mjs')
+    const {StudyLibrary}=await import('../server/study/v2/library.mjs')
+    const db=new DatabaseSync(':memory:')
+    try{
+        db.exec("PRAGMA foreign_keys=ON;CREATE TABLE users(id TEXT PRIMARY KEY);INSERT INTO users VALUES('u'),('other');")
+        initStudySchema(db);migrateStudyV2(db)
+        db.prepare("INSERT INTO study_documents(id,user_id,title,filename,file_size,page_count,created_at,updated_at) VALUES('legacy','u','Classique','classique.pdf',100,2,'2026-10-14','2026-10-14')").run()
+        const library=new StudyLibrary(db),snapshot=library.list('u').documents[0]
+        assert.equal(snapshot.metadataUpdatedAt,null)
+        const updated=library.patch('u','legacy',{title:'Cours renommé',expectedUpdatedAt:snapshot.metadataUpdatedAt})
+        assert.equal(updated.title,'Cours renommé');assert.ok(updated.metadataUpdatedAt>0)
+        assert.throws(()=>library.patch('u','legacy',{title:'Conflit',expectedUpdatedAt:null}),error=>error.status===409)
+        assert.throws(()=>library.patch('other','legacy',{title:'Vol',expectedUpdatedAt:null}),error=>error.status===404)
+        assert.equal(db.prepare("SELECT filename,page_count FROM study_documents WHERE id='legacy'").get().filename,'classique.pdf')
+        assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(),[])
+    }finally{db.close()}
+})
+test('Study V2 : un import classique fini après projection ne reste pas en attente d’un job V2 inexistant',async()=>{
+    const {DatabaseSync}=await import('node:sqlite')
+    const {initStudySchema}=await import('../server/study.mjs')
+    const {migrateStudyV2}=await import('../server/study/v2/schema.mjs')
+    const {StudyLibrary}=await import('../server/study/v2/library.mjs')
+    const db=new DatabaseSync(':memory:')
+    try{
+        db.exec("PRAGMA foreign_keys=ON;CREATE TABLE users(id TEXT PRIMARY KEY);INSERT INTO users VALUES('u');")
+        initStudySchema(db)
+        db.prepare("INSERT INTO study_documents(id,user_id,title,filename,file_size,page_count,status,created_at,updated_at) VALUES('legacy','u','Classique','classique.pdf',100,2,'processing','2026-10-14','2026-10-14')").run()
+        migrateStudyV2(db)
+        const library=new StudyLibrary(db)
+        assert.equal(library.document('u','legacy').processingState,'imported')
+        db.prepare("UPDATE study_documents SET status='ready' WHERE id='legacy'").run()
+        assert.equal(library.document('u','legacy').processingState,'ready')
+        assert.equal(db.prepare('SELECT COUNT(*) AS n FROM study_v2_jobs').get().n,0)
+        assert.equal(db.prepare("SELECT processing_state FROM study_v2_document_meta WHERE document_id='legacy'").get().processing_state,'imported','Projection à la lecture ; source existante non réécrite')
+    }finally{db.close()}
+})

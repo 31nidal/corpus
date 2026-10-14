@@ -5,7 +5,10 @@ const escapeLike = value => value.replace(/[\\%_]/g, '\\$&');
 const select = `SELECT d.id,d.title,d.filename,d.file_size AS fileSize,d.page_count AS pageCount,
   d.created_at AS createdAt,d.updated_at AS updatedAt,m.folder_id AS folderId,m.archived_at AS archivedAt,
   m.last_opened_at AS lastOpenedAt,COALESCE(m.reading_page,1) AS readingPage,
-  COALESCE(m.processing_state,CASE d.status WHEN 'ready' THEN 'ready' WHEN 'processing' THEN 'imported' ELSE 'failed' END) AS processingState,
+  CASE WHEN m.processing_state='imported' AND d.status!='processing'
+    AND NOT EXISTS(SELECT 1 FROM study_v2_jobs j WHERE j.document_id=d.id AND j.user_id=d.user_id)
+    THEN CASE d.status WHEN 'ready' THEN 'ready' ELSE 'failed' END
+    ELSE COALESCE(m.processing_state,CASE d.status WHEN 'ready' THEN 'ready' WHEN 'processing' THEN 'imported' ELSE 'failed' END) END AS processingState,
   COALESCE(m.current_version,1) AS version,m.updated_at AS metadataUpdatedAt,d.error_message AS errorMessage,
   (SELECT COUNT(*) FROM study_sections s WHERE s.document_id=d.id AND s.user_id=d.user_id) AS sectionCount
   FROM study_documents d LEFT JOIN study_v2_document_meta m ON m.document_id=d.id AND m.user_id=d.user_id`;
@@ -51,7 +54,7 @@ export class StudyLibrary {
         return { id, name: name.trim(), kind, parentId };
     }
     patch(userId, id, patch) {
-        const doc = this.ensureMeta(userId, id);
+        let doc = this.document(userId, id);
         if (!patch || typeof patch !== 'object' || Array.isArray(patch) || !Object.keys(patch).length || Object.keys(patch).some(k => !['title', 'folderId', 'archived', 'readingPage', 'opened', 'expectedUpdatedAt'].includes(k)))
             throw studyError(400, 'Modification du document invalide.');
         if (patch.expectedUpdatedAt !== undefined && patch.expectedUpdatedAt !== doc.metadataUpdatedAt)
@@ -64,9 +67,15 @@ export class StudyLibrary {
             throw studyError(400, 'État du document invalide.');
         if (patch.readingPage !== undefined && (!Number.isSafeInteger(patch.readingPage) || patch.readingPage < 1 || patch.readingPage > Math.max(1, doc.pageCount)))
             throw studyError(400, 'Page de lecture invalide.');
-        const now = Math.max(this.now(), doc.metadataUpdatedAt + 1);
         this.db.exec('BEGIN IMMEDIATE');
         try {
+            // Compare the projected legacy snapshot before creating its metadata,
+            // while holding the SQLite write lock. Null is a real initial version.
+            doc = this.document(userId, id);
+            if (patch.expectedUpdatedAt !== undefined && patch.expectedUpdatedAt !== doc.metadataUpdatedAt)
+                throw studyError(409, 'Le document a changé. Rechargez avant de modifier.');
+            doc = this.ensureMeta(userId, id);
+            const now = Math.max(this.now(), doc.metadataUpdatedAt + 1);
             if (patch.title !== undefined)
                 this.db.prepare('UPDATE study_documents SET title=?,updated_at=? WHERE id=? AND user_id=?').run(patch.title.trim(), new Date(now).toISOString(), id, userId);
             this.db.prepare(`UPDATE study_v2_document_meta SET folder_id=?,archived_at=?,reading_page=?,last_opened_at=?,updated_at=? WHERE document_id=? AND user_id=?`).run(patch.folderId === undefined ? doc.folderId : patch.folderId, patch.archived === undefined ? doc.archivedAt : patch.archived ? doc.archivedAt ?? now : null, patch.readingPage ?? doc.readingPage, patch.opened ? now : doc.lastOpenedAt, now, id, userId);
