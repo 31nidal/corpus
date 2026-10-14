@@ -20,7 +20,7 @@ export function fixture(dependencies = {}) {
             await (route.startsWith('/api/account/') ? accounts : study)(req, res);
             const cookies = [received['set-cookie']].flat().filter(Boolean).map(value => value.split(';')[0]);
             return { status, data: received['content-type']?.startsWith('application/pdf') ? data : JSON.parse(data?.toString() || 'null'), headers: received, cookie: cookies.find(value => value.startsWith('mycorpus_session=')) };
-        }, async drain() {const service=study.resume();await Promise.all([service?.pipeline.drain(),service?.notes.drain(),service?.questions.drain()])}, async close() { await study.close(); rmSync(dir, { recursive: true, force: true }); } };
+        }, async drain() {const service=study.resume();await Promise.all([service?.pipeline.drain(),service?.notes.drain(),service?.questions.drain(),service?.assistant.drain()])}, async close() { await study.close(); rmSync(dir, { recursive: true, force: true }); } };
 }
 export async function register(api) { const result = await api.call('/api/account/register', { method: 'POST', body: { name: 'Study', email: `study-${crypto.randomUUID()}@example.test`, password: 'Study-v2-test-solide-2026' } }); assert.equal(result.status, 201); return result.cookie; }
 export async function imported(api, cookie) { const result = await api.call('/api/study/v2/documents/upload', { method: 'POST', cookie, body: Buffer.from('%PDF-1.4\nfixture\n%%EOF'), headers: { 'x-study-request-id': crypto.randomUUID(), 'x-document-filename': 'cours.pdf', 'x-document-title': 'Anatomie' } }); assert.equal(result.status, 202); return result.data; }

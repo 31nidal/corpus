@@ -821,7 +821,7 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
     }
     return v2Service
   }
-  handler.close=async()=>{await Promise.all([v2Service?.pipeline.close(),v2Service?.notes.close(),v2Service?.questions.close()])}
+  handler.close=async()=>{await Promise.all([v2Service?.pipeline.close(),v2Service?.notes.close(),v2Service?.questions.close(),v2Service?.assistant.close()])}
   return handler
 }
 

@@ -1,6 +1,7 @@
 import {StudyNotes} from './notes.mjs';
 import {StudyQuestions} from './questions.mjs';
 import {QuestionTraining} from './question-training.mjs';
+import {DocumentAssistant} from './assistant.mjs';
 import { migrateStudyV2 } from './schema.mjs';
 import { StudyLibrary, studyError } from './library.mjs';
 import { DocumentPipeline, MAX_DOCUMENT_BYTES } from './pipeline.mjs';
@@ -31,7 +32,8 @@ export function createStudyV2Service({ db, config, provider, getStorageDir, loca
     const notes = new StudyNotes({db, config, provider, localSummary});
     const questions = new StudyQuestions({db, config, provider});
     const training = new QuestionTraining({db, questions});
-    return { pipeline, notes, questions, async handle({ req, url, userId, send }) {
+    const assistant = new DocumentAssistant({db, config, provider});
+    return { pipeline, notes, questions, assistant, async handle({ req, url, userId, send }) {
             const path = url.pathname.replace('/api/study/v2/', '').replace(/\/$/, '');
             if (req.method === 'GET' && path === 'documents') {
                 const q = url.searchParams.get('q') || '', folderId = url.searchParams.has('folderId') ? url.searchParams.get('folderId') || null : undefined;
@@ -67,6 +69,17 @@ export function createStudyV2Service({ db, config, provider, getStorageDir, loca
                     throw studyError(400, 'Consentement OCR invalide.');
                 return send(202, pipeline.upload(userId, Buffer.concat(parts), { requestId: req.headers['x-study-request-id'], filename, title, consentOcr: req.headers['x-document-ocr'] === '1' }));
             }
+        const assistantMatch=path.match(/^documents\/([a-zA-Z0-9_-]+)\/assistant(?:\/([a-zA-Z0-9_-]+)(?:\/(messages))?)?$/);
+        if(assistantMatch){
+          const [,documentId,threadId,action]=assistantMatch;
+          library.document(userId,documentId);
+          if(threadId)assistant.thread(userId,documentId,threadId);
+          if(req.method==='GET'&&!action)return send(200,threadId?{thread:assistant.get(userId,documentId,threadId)}:{threads:assistant.list(userId,documentId)});
+          if(req.method==='POST'&&!threadId)return send(201,assistant.create(userId,documentId,await readStudyV2Json(req)));
+          if(req.method==='POST'&&threadId&&action==='messages')return send(202,assistant.ask(userId,documentId,threadId,await readStudyV2Json(req)));
+          if(req.method==='DELETE'&&threadId&&!action){assistant.delete(userId,documentId,threadId);return send(200,{deleted:true});}
+          return send(405,{error:'Méthode non autorisée.'});
+        }
         const trainingMatch = path.match(/^documents\/([a-zA-Z0-9_-]+)\/training(?:\/([a-zA-Z0-9_-]+)(?:\/(answer|finish))?)?$/);
         if(trainingMatch){
           const [,documentId,id,action]=trainingMatch;

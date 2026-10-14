@@ -13,7 +13,7 @@ export async function generateWithQuota({db,userId,provider,task,context,local,c
   reserveGenerationQuota(userId,db)
   let generation
   try {
-    const method={flashcards:'generateFlashcards',summary:'generateStudySummary',revision:'generateStudySummary',questions:'generateStudyQuestions',study_questions:'generateDocumentQuestions',ocr:'extractScannedPdf'}[task]
+    const method={flashcards:'generateFlashcards',summary:'generateStudySummary',revision:'generateStudySummary',questions:'generateStudyQuestions',study_questions:'generateDocumentQuestions',document_assistant:'answerDocument',ocr:'extractScannedPdf'}[task]
     const value=task==='ocr'?await provider[method](context.buffer,context.pageCount):await provider[method](context)
     generation=value.generation||{mode:'provider'}
     recordAiUsage(db,userId,task,generation,'success')
