@@ -1,3 +1,4 @@
+import {StudyNotes} from './notes.mjs';
 import { migrateStudyV2 } from './schema.mjs';
 import { StudyLibrary, studyError } from './library.mjs';
 import { DocumentPipeline, MAX_DOCUMENT_BYTES } from './pipeline.mjs';
@@ -22,10 +23,11 @@ export async function readStudyV2Json(req) {
 }
 const keys = (body, allowed) => { if (Object.keys(body).some(key => !allowed.includes(key)))
     throw studyError(400, 'Paramètre inconnu.'); };
-export function createStudyV2Service({ db, config, provider, getStorageDir, ...dependencies }) {
+export function createStudyV2Service({ db, config, provider, getStorageDir, localSummary, ...dependencies }) {
     migrateStudyV2(db);
-    const library = new StudyLibrary(db), pipeline = new DocumentPipeline({ db, config, provider, getStorageDir, ...dependencies });
-    return { pipeline, async handle({ req, url, userId, send }) {
+    const library = new StudyLibrary(db), pipeline = new DocumentPipeline({ db, config, provider, getStorageDir, localSummary, ...dependencies });
+    const notes = new StudyNotes({db, config, provider, localSummary});
+    return { pipeline, notes, async handle({ req, url, userId, send }) {
             const path = url.pathname.replace('/api/study/v2/', '').replace(/\/$/, '');
             if (req.method === 'GET' && path === 'documents') {
                 const q = url.searchParams.get('q') || '', folderId = url.searchParams.has('folderId') ? url.searchParams.get('folderId') || null : undefined;
@@ -61,6 +63,17 @@ export function createStudyV2Service({ db, config, provider, getStorageDir, ...d
                     throw studyError(400, 'Consentement OCR invalide.');
                 return send(202, pipeline.upload(userId, Buffer.concat(parts), { requestId: req.headers['x-study-request-id'], filename, title, consentOcr: req.headers['x-document-ocr'] === '1' }));
             }
+        const noteMatch = path.match(/^documents\/([a-zA-Z0-9_-]+)\/notes(?:\/([a-zA-Z0-9_-]+))?$/);
+        if (noteMatch) {
+          const [,documentId,noteId] = noteMatch;
+          library.document(userId, documentId);
+          if (noteId) notes.get(userId, documentId, noteId);
+          if (req.method==='GET') return send(200, noteId ? {note:notes.get(userId,documentId,noteId)} : {notes:notes.list(userId,documentId).map(({items,...note})=>({...note,itemCount:items.length}))});
+          if (req.method==='POST'&&!noteId) return send(202,notes.create(userId,documentId,await readStudyV2Json(req)));
+          if (req.method==='PATCH'&&noteId) return send(200,{note:notes.patch(userId,documentId,noteId,await readStudyV2Json(req))});
+          if (req.method==='DELETE'&&noteId) {notes.delete(userId,documentId,noteId);return send(200,{deleted:true})}
+          return send(405,{error:'Méthode non autorisée.'});
+        }
             const document = path.match(/^documents\/([a-zA-Z0-9_-]+)(?:\/(job|retry|sources))?$/);
             if (document) {
                 const [, id, action] = document;

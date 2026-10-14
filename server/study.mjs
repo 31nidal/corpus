@@ -177,7 +177,7 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
       }
 
       if(subpath.startsWith('v2/')) {
-        v2Service ||= createStudyV2Service({db:d,config,provider,getStorageDir,...dependencies.v2})
+        v2Service ||= createStudyV2Service({db:d,config,provider,getStorageDir,localSummary:generateLocalSummary,...dependencies.v2})
         return await v2Service.handle({req,url,userId:user.id,send})
       }
 
@@ -817,11 +817,11 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
   handler.resume=()=>{
     const d=getDb()
     if(d.prepare("SELECT 1 FROM sqlite_schema WHERE type='table' AND name='study_v2_jobs'").get()) {
-      v2Service ||= createStudyV2Service({db:d,config,provider,getStorageDir,...dependencies.v2})
+      v2Service ||= createStudyV2Service({db:d,config,provider,getStorageDir,localSummary:generateLocalSummary,...dependencies.v2})
     }
     return v2Service
   }
-  handler.close=async()=>{await v2Service?.pipeline.close()}
+  handler.close=async()=>{await Promise.all([v2Service?.pipeline.close(),v2Service?.notes.close()])}
   return handler
 }
 
