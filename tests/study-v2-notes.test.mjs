@@ -271,3 +271,9 @@ test('Fiches V2 : les compléments chiffrés restent bornés et les erreurs refu
   assert.equal(result.refused,1);assert.ok(noteCoverage(scope,result.items).missingQuantities.length>=5)
   assert.ok(result.items.every(item=>content.includes(item.sourceExcerpt)))
 })
+
+test('Fiches V2 : une référence C2 suivie de L’axis ne devient pas une quantité en litres',()=>{
+  const scope={sections:[{id:'s',title:'Axis',content:'Un pivot appartenant à C2\nL’axis porte la dent, ou processus odontoïde.',startPage:1,endPage:1}],pages:[]}
+  const coverage=noteCoverage(scope,[{sectionId:'s',text:'L’axis, C2, porte la dent, ou processus odontoïde.'}])
+  assert.equal(coverage.missingQuantities.length,0)
+})

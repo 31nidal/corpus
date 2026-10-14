@@ -63,6 +63,7 @@ export async function generateSummary(provider, context, schema, sourceRules) {
           onUsage: usage => collectUsage(generation.usage, usage)})
         const repaired = validateSummary(raw, chunk.fragments)
         generation.rejected += repaired.rejected
+        for (const item of repaired.rejectedItems) generation.rejectionReasons[item.reason] = (generation.rejectionReasons[item.reason] || 0) + 1
         for (const item of repaired.items) if (!points.some(point => point.sourceSectionId === item.sourceSectionId && normalize(point.text) === normalize(item.text))) {
           points.push(item)
           generation.summaryRepaired++

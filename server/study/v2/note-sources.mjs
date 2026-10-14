@@ -7,7 +7,7 @@ export {canonicalSource} from '../source-selection.mjs'
 
 // Conservative check of written quantities, not unit conversion or medical truth.
 // Common compound units are retained; unrecognized scientific notation still needs review.
-export const NOTE_QUANTITY_PATTERN = /(?<![\p{N}])[-+−]?\d+(?:[.,]\d+)?(?:\s*(?:mm\s*Hg|mL\s*\/\s*min|L\s*\/\s*min|mg\s*\/\s*(?:kg|mL|min)|mmol\s*\/\s*L|%|µg|μg|mg|kg|mL|ml|mmol|mol|mV|ms|kPa|Pa|cm|mm|°\s*C|min|g|L|V|s|h)(?!\p{L}))?/gu
+export const NOTE_QUANTITY_PATTERN = /(?<![\p{N}])[-+−]?\d+(?:[.,]\d+)?(?:\s*(?:mm\s*Hg|mL\s*\/\s*min|L\s*\/\s*min|mg\s*\/\s*(?:kg|mL|min)|mmol\s*\/\s*L|%|µg|μg|mg|kg|mL|ml|mmol|mol|mV|ms|kPa|Pa|cm|mm|°\s*C|min|g|L|V|s|h)(?![\p{L}'’‘]))?/gu
 export const writtenQuantities = text => [...new Set((canonicalSource(text).match(NOTE_QUANTITY_PATTERN) || []).map(value => value.replace(/\s+/g, '').replace(',', '.').replace(/−/g, '-').replace(/^\+/, '').replace(/μ/g, 'µ')))]
 // Quantitative omissions are restored as labelled literal source paragraphs,
 // never by asking another model to calculate or infer missing values.

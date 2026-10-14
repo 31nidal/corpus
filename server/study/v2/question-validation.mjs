@@ -11,6 +11,9 @@ export function questionSettings(body) {
   if (!Number.isSafeInteger(count) || count < 1 || count > MAX_QUESTIONS_PER_SET || !QUESTION_FORMATS.includes(format) || !QUESTION_DIFFICULTIES.includes(difficulty) || !QUESTION_KINDS.includes(kind)) throw studyError(400, 'Paramètres QCM invalides : 1 à 30 questions, format, difficulté et objectif requis.')
   return {count,format,difficulty,kind}
 }
+// Explicit acknowledgements of absent evidence cannot prove an option false.
+// This narrow guard catches observed failures; it is not a semantic classifier.
+export const absentContradiction = reason => typeof reason === 'string' && /(?:n[’'](?:associe|indique|affirme|mentionne|décrit|decrit|précise|precise|utilise) pas|non (?:décrit|decrit|mentionné|mentionne)|ne (?:mentionne|décrit|decrit|précise|precise) pas|absence\s+(?:de\s+|d[’'])(?:preuve|information|mention))/iu.test(reason)
 const text = (value, min, max) => typeof value === 'string' && value.trim().length >= min && value.length <= max
 /** Literal references and shape are necessary, never sufficient for medical truth. */
 export function validateQuestion(raw, scope, settings) {
@@ -20,6 +23,7 @@ export function validateQuestion(raw, scope, settings) {
   const unique = new Set()
   const options = raw.options.map(option => {
     if (!option || !text(option.text,1,1000) || !text(option.explanation,20,2000) || typeof option.correct !== 'boolean' || !['supports','contradicts'].includes(option.relation) || option.correct !== (option.relation === 'supports') || !text(option.sourceExcerpt,15,2000)) throw studyError(422, 'Chaque proposition exige une explication, une relation cohérente et une preuve source.')
+    if (!option.correct && absentContradiction(option.explanation)) throw studyError(422, 'L’absence d’information dans le cours ne démontre pas qu’une proposition est fausse.', 'QUESTION_ABSENCE_AS_CONTRADICTION')
     const key=canonicalSource(option.text).toLocaleLowerCase('fr')
     if(unique.has(key))throw studyError(422,'Les propositions doivent être distinctes.')
     unique.add(key)
@@ -37,7 +41,7 @@ export function verificationResult(raw, question) {
   const passed=raw.options.every(option=>{
     if(!Number.isSafeInteger(option.index)||option.index<0||option.index>=question.options.length||seen.has(option.index))return false
     seen.add(option.index)
-    return option.adequate===true && option.relation===question.options[option.index].relation && text(option.reason,20,2000)
+    return option.adequate===true && option.relation===question.options[option.index].relation && text(option.reason,20,2000) && !(option.relation==='contradicts' && absentContradiction(option.reason))
   })
   return {passed,reason:raw.reason,options:raw.options,message:'Contrôle IA de cohérence avec le cours, sans certification médicale. Relecture humaine requise.'}
 }

@@ -244,3 +244,14 @@ test('QCM V2 Gemini : un candidat refusé ne bloque pas un QCM pertinent de mêm
   assert.equal(result.questions[0].options[0].sourceSectionId,'last')
   assert.equal(result.generation.rejectionReasons.independent_verification,1)
 })
+
+test('QCM V2 : explications réellement observées confondant absence et contradiction refusées',()=>{
+  const settings=questionSettings({}),scope={sections:[{id:'s',content:source,startPage:1,endPage:1}],pages:[]}
+  for(const explanation of ["Le texte n'associe pas la clairance à ce calcul, la concentration plasmatique représentant un rapport entre solutés et eau.","Le texte décrit simplement qu’il réduit Vmax sans modifier Km, ce qui contredit l’idée d’une suppression totale ou d’une modification de l’affinité non décrite ainsi."]){
+    const question=candidate('s');question.options[1].explanation=explanation
+    assert.throws(()=>validateQuestion(question,scope,settings),error=>error.code==='QUESTION_ABSENCE_AS_CONTRADICTION')
+  }
+  const question=validateQuestion(candidate('s'),scope,settings),checked=verification(question)
+  checked.options[1].reason="Le texte ne mentionne pas cette affirmation, elle est donc fausse."
+  assert.equal(verificationResult(checked,question).passed,false)
+})
