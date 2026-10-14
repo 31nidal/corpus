@@ -1,12 +1,12 @@
 import {test,expect,type Page} from '@playwright/test'
 import {referencePdf} from './helpers/study-v2-pdf'
 const headers={'x-mycorpus-request':'1'}
-async function prepare(page:Page){
+async function prepare(page:Page,pdf=referencePdf()){
   expect((await page.request.post('/api/account/register',{headers,data:{name:'Sources',email:`sources-${crypto.randomUUID()}@example.test`,password:'Sources-test-solide-2026'}})).status()).toBe(201)
   const deck=(await (await page.request.post('/api/flashcards/decks',{headers,data:{name:'Sources PDF'}})).json()).deck
   await page.goto('/#tab=mes-cours')
   await page.getByRole('button',{name:'Essayer Study 2.0 · bêta',exact:true}).click()
-  await page.getByLabel('Fichier PDF',{exact:true}).setInputFiles({name:'rein.pdf',mimeType:'application/pdf',buffer:referencePdf()})
+  await page.getByLabel('Fichier PDF',{exact:true}).setInputFiles({name:'rein.pdf',mimeType:'application/pdf',buffer:pdf})
   await page.getByRole('button',{name:'Importer le PDF',exact:true}).click()
   await expect(page.locator('.sv2-document-card .sv2-state')).toHaveText('Prêt',{timeout:30000})
   await page.locator('.sv2-document-open').click()
@@ -90,4 +90,18 @@ test('Flashcards visuelles mobile et interface actuelle : masque au clavier, Éc
   await expect(page.getByRole('dialog',{name:'Sélection du PDF',exact:true})).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(page.getByRole('button',{name:'Flashcard visuelle',exact:true})).toBeFocused()
+})
+
+test('PDF de grandes dimensions : lecteur et recadrage restent dans leur budget canvas',async({page})=>{
+  await prepare(page,referencePdf({width:14400,height:14400}))
+  await page.getByRole('navigation',{name:'Espaces du cours'}).getByRole('button',{name:'Flashcards',exact:true}).click()
+  await page.getByRole('button',{name:'Créer une carte visuelle depuis le PDF',exact:true}).click()
+  const crop=page.getByRole('dialog',{name:'Sélection du PDF',exact:true})
+  await expect(crop.getByRole('button',{name:'Utiliser la page entière',exact:true})).toBeEnabled({timeout:30000})
+  const size=await crop.locator('canvas').evaluate(canvas=>({width:(canvas as HTMLCanvasElement).width,height:(canvas as HTMLCanvasElement).height}))
+  expect(size.width).toBeGreaterThan(0);expect(size.height).toBeGreaterThan(0)
+  expect(size.width*size.height).toBeLessThanOrEqual(4000000)
+  await crop.getByRole('button',{name:'Utiliser la page entière',exact:true}).click()
+  await expect(page.getByRole('dialog',{name:'Éditeur de carte visuelle',exact:true}).getByAltText('Source à masquer')).toBeVisible()
+  await page.keyboard.press('Escape')
 })

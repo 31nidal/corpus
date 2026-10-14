@@ -1,12 +1,12 @@
 import {deflateSync} from 'node:zlib'
 
-export function referencePdf() {
+export function referencePdf({width=612,height=792}: {width?:number;height?:number} = {}) {
   const objects: Buffer[] = []
   const put = (id: number, value: string | Buffer) => objects[id - 1] = Buffer.concat([Buffer.from(`${id} 0 obj\n`), Buffer.isBuffer(value) ? value : Buffer.from(value), Buffer.from('\nendobj\n')])
   put(1, '<< /Type /Catalog /Pages 2 0 R >>')
   put(2, '<< /Type /Pages /Kids [3 0 R 4 0 R] /Count 2 >>')
-  put(3, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 6 0 R >>')
-  put(4, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 7 0 R >>')
+  put(3, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${width} ${height}] /Resources << /Font << /F1 5 0 R >> >> /Contents 6 0 R >>`)
+  put(4, `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${width} ${height}] /Resources << /Font << /F1 5 0 R >> >> /Contents 7 0 R >>`)
   put(5, '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>')
   const pages = [
     ['Chapitre 1 : Anatomie renale', 'Le rein filtre le plasma sanguin.', 'Le cortex renal contient les glomerules.', 'Le rein assure la filtration glomerulaire.'],

@@ -27,6 +27,7 @@ export const PdfCropSelector: React.FC<PdfCropSelectorProps> = ({
   readOnly = false,
 }) => {
   const [loading, setLoading] = useState(true)
+  const [rendering, setRendering] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pdfDoc, setPdfDoc] = useState<pdfjsLib.PDFDocumentProxy | null>(null)
   const [currentPage, setCurrentPage] = useState(initialPage)
@@ -106,12 +107,17 @@ export const PdfCropSelector: React.FC<PdfCropSelectorProps> = ({
     let cancelled = false
 
     async function renderPage() {
+      setRendering(true)
       try {
         if (!pdfDoc) return
         const page = await pdfDoc.getPage(currentPage)
         if (cancelled) return
 
-        const viewport = page.getViewport({scale})
+        const natural = page.getViewport({scale: 1})
+        if (![natural.width, natural.height].every(value => Number.isFinite(value) && value > 0)) throw new Error('Dimensions PDF invalides.')
+        // Match the original reader's canvas budget, including legacy sources.
+        const renderScale = Math.min(scale, Math.sqrt(4000000 / (natural.width * natural.height)), 8192 / natural.width, 8192 / natural.height)
+        const viewport = page.getViewport({scale: renderScale})
         const canvas = canvasRef.current!
         canvas.width = viewport.width
         canvas.height = viewport.height
@@ -125,6 +131,8 @@ export const PdfCropSelector: React.FC<PdfCropSelectorProps> = ({
         if (!cancelled && err.name !== 'RenderingCancelledException') {
           setError('Impossible d’afficher cette page du PDF source.')
         }
+      } finally {
+        if (!cancelled) setRendering(false)
       }
     }
 
@@ -243,7 +251,7 @@ export const PdfCropSelector: React.FC<PdfCropSelectorProps> = ({
         <div className="flex items-center gap-2 bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700">
           <button
             type="button"
-            disabled={currentPage <= 1 || loading}
+            disabled={currentPage <= 1 || loading || rendering}
             onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
             className="p-1 hover:bg-slate-700 disabled:opacity-30 rounded transition text-slate-300"
             title="Page précédente"
@@ -255,7 +263,7 @@ export const PdfCropSelector: React.FC<PdfCropSelectorProps> = ({
           </span>
           <button
             type="button"
-            disabled={currentPage >= totalPages || loading}
+            disabled={currentPage >= totalPages || loading || rendering}
             onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
             className="p-1 hover:bg-slate-700 disabled:opacity-30 rounded transition text-slate-300"
             title="Page suivante"
@@ -276,7 +284,7 @@ export const PdfCropSelector: React.FC<PdfCropSelectorProps> = ({
           {!readOnly && <button
             type="button"
             onClick={handleValidate}
-            disabled={loading || !!error}
+            disabled={loading || rendering || !!error}
             className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 rounded-lg shadow-sm transition"
           >
             <Check className="w-4 h-4" />
