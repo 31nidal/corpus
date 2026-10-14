@@ -29,7 +29,7 @@ export const processingLabels: Record<ProcessingState, string> = {
 
 export type RevisionNoteItem = {
   id: string; sectionId: string | null; sectionTitle: string
-  text: string; originalText: string; originalCategory?: string; category: string; sourceExcerpt: string
+  sourceSupplement?: boolean; text: string; originalText: string; originalCategory?: string; category: string; sourceExcerpt: string
   page: number; endPage: number; exactPage: boolean; edited: boolean; proofStatus: 'matched' | 'unverified'; sourceTable?: string[][]
 }
 export type RevisionNote = {

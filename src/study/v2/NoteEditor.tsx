@@ -38,6 +38,7 @@ export function NoteEditor({note, onSaved, onSource}: {
           <h3>{source.sectionTitle}</h3>
           <label>Point {index + 1}<textarea disabled={editor.busy} maxLength={2000} rows={4} value={item.text} onChange={event => setDraft({...draft, items: draft.items.map(point => point.id === item.id ? {...point, text: event.target.value} : point)})}/></label>
           <label>Rubrique du point {index + 1}<input disabled={editor.busy} maxLength={100} value={item.category} onChange={event => setDraft({...draft, items: draft.items.map(point => point.id === item.id ? {...point, category: event.target.value} : point)})}/></label>
+          {source.sourceSupplement && <p>Passage chiffré conservé mot pour mot depuis le cours.</p>}
           <blockquote>{source.sourceExcerpt || 'Ancienne synthèse sans extrait source précis.'}</blockquote>
           {source.proofStatus === 'unverified' && <p>Preuve historique à vérifier dans le PDF.</p>}
           <div className="sv2-row"><button disabled={editor.busy} onClick={() => onSource(source.page)}>Voir la source · p. {source.page}</button><button disabled={editor.busy} onClick={() => setDraft({...draft, items: draft.items.filter(point => point.id !== item.id)})}>Retirer le point {index + 1}</button></div>

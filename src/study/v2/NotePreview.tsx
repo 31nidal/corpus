@@ -14,6 +14,7 @@ export function NotePreview({note, title, items, id, onSource}: {
       {items.filter(item => item.sectionId === sectionId).map(item => <div className="sv2-note-point" key={item.id}>
         {item.category && <h3>{item.category}</h3>}<p>{item.text}</p>
         {item.sourceTable && <div className="sv2-note-table"><table><caption>Tableau présent dans le cours</caption><thead><tr>{item.sourceTable[0].map((cell, index) => <th scope="col" key={index}>{cell}</th>)}</tr></thead><tbody>{item.sourceTable.slice(1).map((row, index) => <tr key={index}>{row.map((cell, column) => <td key={column}>{cell}</td>)}</tr>)}</tbody></table></div>}
+        {item.sourceSupplement && !item.edited && <small>Passage chiffré conservé mot pour mot depuis le cours.</small>}
         {item.edited && <small>Point modifié par vous · sa formulation n’a pas été revalidée automatiquement.</small>}
         <details><summary>Source · {item.exactPage ? `page ${item.page}` : `pages ${item.page}–${item.endPage}`}</summary>
           {item.sourceExcerpt ? <blockquote>{item.sourceExcerpt}</blockquote> : <p>Aucune preuve précise dans cette ancienne synthèse.</p>}

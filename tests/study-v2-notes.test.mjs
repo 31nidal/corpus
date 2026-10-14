@@ -238,3 +238,36 @@ test('Fiches V2 locales : regroupement de prose ne fragmente pas les tableaux de
   const result=noteItems(localNoteSummary('Mesures',sections,'detailed',generateLocalSummary),{sections,pages:[{page:1,text:content}]},'detailed')
   assert.deepEqual(result.items[0].sourceTable,[['Paramètre','Valeur'],['Pression','44 mmHg']])
 })
+
+test('Fiches V2 : conservation bornée et verbatim des valeurs omises, sans inventer d’unité ni modifier le résumé court',()=>{
+  const explanation='Le bilan rénal distingue les quantités filtrées, réabsorbées et sécrétées.'
+  const calculation='Le bilan d’une substance est : excrété = filtré − réabsorbé + sécrété. Si 100 mg/min sont filtrés, 80 réabsorbés et 5 sécrétés, l’excrétion est de 25 mg/min. Si l’urine contient 5 mg/mL de cette substance, ce débit de masse correspond à 5 mL/min d’urine. Cette seconde étape vérifie la distinction entre débit massique et débit volumique.'
+  const content=explanation+'\n\n'+calculation,scope={sections:[{id:'s',title:'Bilan',content,startPage:2,endPage:2}],pages:[{page:2,text:content}]}
+  const generated={chapters:[{id:'s',proofs:[{text:explanation,sourceExcerpt:explanation,category:'Comprendre'}]}]}
+  const result=noteItems(generated,scope,'structured',{preserveQuantities:true})
+  assert.equal(result.items.length,2);assert.equal(result.items[1].text,calculation)
+  assert.equal(result.items[1].sourceSupplement,true);assert.equal(result.items[1].page,2)
+  assert.equal(result.items[1].sourceExcerpt,calculation)
+  assert.equal(noteCoverage(scope,result.items).missingQuantities.length,0)
+  assert.equal(noteItems(generated,scope,'short',{preserveQuantities:true}).items.length,1)
+  assert.ok(noteCoverage(scope,noteItems(generated,scope,'short').items).missingQuantities.length>0)
+  const forged={chapters:[{id:'s',proofs:[{text:'Une valeur inventée atteint 999 mg/min.',sourceExcerpt:explanation}]}]}
+  assert.throws(()=>noteItems(forged,scope,'structured',{preserveQuantities:true}),error=>error.status===422)
+})
+test('Fiches V2 : couverture normalise virgules, espaces, signes et unités composées sans perdre les unités',()=>{
+  const content='La concentration mesurée est de 1,5 mg/mL et la pression de 44 mm Hg.'
+  const scope={sections:[{id:'s',title:'Mesures',content,startPage:1,endPage:1}],pages:[]}
+  assert.equal(noteCoverage(scope,[{sectionId:'s',text:'La concentration mesurée est de 1.5 mg/mL et la pression de 44 mmHg.'}]).missingQuantities.length,0)
+  assert.ok(noteCoverage(scope,[{sectionId:'s',text:'La concentration mesurée est de 1,5 mg et la pression de 44.'}]).missingQuantities.length>0)
+})
+
+test('Fiches V2 : les compléments chiffrés restent bornés et les erreurs refusées restent visibles',()=>{
+  const definition='Le rein assure la filtration glomérulaire du plasma sanguin.'
+  const paragraphs=Array.from({length:25},(_,index)=>`Dans cet exemple du cours, la quantité filtrée vaut ${index+1} mg/min et reste définie par unité de temps.`)
+  const content=[definition,...paragraphs].join('\n\n'),scope={sections:[{id:'s',title:'Mesures',content,startPage:1,endPage:1}],pages:[]}
+  const summary={chapters:[{id:'s',proofs:[{text:definition,sourceExcerpt:definition},{text:'La filtration mesurée est de 999 mg/min.',sourceExcerpt:paragraphs[0]}]}]}
+  const result=noteItems(summary,scope,'detailed',{preserveQuantities:true})
+  assert.equal(result.items.filter(item=>item.sourceSupplement).length,20)
+  assert.equal(result.refused,1);assert.ok(noteCoverage(scope,result.items).missingQuantities.length>=5)
+  assert.ok(result.items.every(item=>content.includes(item.sourceExcerpt)))
+})

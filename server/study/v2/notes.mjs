@@ -127,7 +127,7 @@ export class StudyNotes {
       result = await generateWithQuota({db: this.db, userId: row.user_id, provider: this.provider?.name === 'gemini' ? this.provider : null, config: this.config,
         task: row.kind === 'short' ? 'summary' : 'revision', context: {documentTitle: doc.title, sections: scope.sections, kind: row.kind === 'short' ? 'summary' : 'revision', detailLevel: row.kind},
         local: () => localNoteSummary(doc.title, scope.sections, row.kind, this.localSummary)})
-      const {items, refused, rejectionReasons} = noteItems(result.value, scope, row.kind)
+      const {items, refused, rejectionReasons} = noteItems(result.value, scope, row.kind, {preserveQuantities:true})
       const content = items.map(item => ({...item, originalText: item.text, originalCategory: item.category}))
       const reasons = {...result.generation.rejectionReasons}
       for (const [reason,count] of Object.entries(rejectionReasons)) reasons[reason] = (reasons[reason] || 0) + count

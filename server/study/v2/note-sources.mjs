@@ -7,8 +7,11 @@ export {canonicalSource} from '../source-selection.mjs'
 
 // Conservative check of written quantities, not unit conversion or medical truth.
 // Common compound units are retained; unrecognized scientific notation still needs review.
-export const NOTE_QUANTITY_PATTERN = /(?<![\p{N}])[-+−]?\d+(?:[.,]\d+)?(?:\s*(?:mm\s*Hg|mL\s*\/\s*min|L\s*\/\s*min|mg\s*\/\s*kg|mmol\s*\/\s*L|%|µg|μg|mg|kg|mL|ml|mmol|mol|mV|ms|kPa|Pa|cm|mm|°\s*C|min|g|L|V|s|h)(?!\p{L}))?/gu
-const writtenQuantities = text => [...new Set(canonicalSource(text).match(NOTE_QUANTITY_PATTERN) || [])].map(value => value.replace(/\s+/g, '').replace(',', '.').replace(/−/g, '-').replace(/^\+/, ''))
+export const NOTE_QUANTITY_PATTERN = /(?<![\p{N}])[-+−]?\d+(?:[.,]\d+)?(?:\s*(?:mm\s*Hg|mL\s*\/\s*min|L\s*\/\s*min|mg\s*\/\s*(?:kg|mL|min)|mmol\s*\/\s*L|%|µg|μg|mg|kg|mL|ml|mmol|mol|mV|ms|kPa|Pa|cm|mm|°\s*C|min|g|L|V|s|h)(?!\p{L}))?/gu
+export const writtenQuantities = text => [...new Set((canonicalSource(text).match(NOTE_QUANTITY_PATTERN) || []).map(value => value.replace(/\s+/g, '').replace(',', '.').replace(/−/g, '-').replace(/^\+/, '').replace(/μ/g, 'µ')))]
+// Quantitative omissions are restored as labelled literal source paragraphs,
+// never by asking another model to calculate or infer missing values.
+export const MAX_NOTE_QUANTITY_SUPPLEMENTS_PER_SECTION = 20
 export const MAX_NOTE_ITEMS = 500
 export const MAX_NOTE_SELECTION_CHARACTERS = MAX_SOURCE_SELECTION_CHARACTERS
 export const NOTE_LEVELS = Object.freeze({short: {pointsPerSection: 2, label: 'Résumé court'}, structured: {pointsPerSection: 5, label: 'Fiche de révision'}, detailed: {pointsPerSection: 20, label: 'Fiche détaillée'}})
@@ -79,7 +82,7 @@ function sourceTable(proof) {
   return rows.length >= 2 && rows[0].length >= 2 && rows.every(row => row.length === rows[0].length) ? rows : undefined
 }
 
-export function noteItems(summary, scope, kind) {
+export function noteItems(summary, scope, kind, {preserveQuantities = false} = {}) {
   if (!summary || !Array.isArray(summary.chapters)) throw studyError(422, 'Format de fiche invalide. Aucun contenu enregistré.')
   let refused = 0
   const rejectionReasons = {}
@@ -102,7 +105,19 @@ export function noteItems(summary, scope, kind) {
       const page = matchedPage?.page ?? section.startPage
       valid.push({id: randomUUID(), sectionId: section.id, sectionTitle: section.title, text, category: typeof point.category === 'string' ? point.category.slice(0, 100) : '', sourceExcerpt: rawProof(section.content, point.sourceExcerpt), sourceTable: sourceTable(rawProof(section.content, point.sourceExcerpt)), page, endPage: section.endPage, exactPage: Boolean(matchedPage), edited: false, proofStatus: 'matched'})
     }
-    return valid.slice(0, NOTE_LEVELS[kind].pointsPerSection)
+    const retained = valid.slice(0, NOTE_LEVELS[kind].pointsPerSection)
+    if (preserveQuantities && kind !== 'short' && retained.length) {
+      for (const paragraph of section.content.split(/\n\n+/).map(text => text.trim())) {
+        if (retained.filter(item => item.sourceSupplement).length >= MAX_NOTE_QUANTITY_SUPPLEMENTS_PER_SECTION) break
+        const represented = new Set(writtenQuantities(retained.map(item => item.text).join(' ')))
+        if (!writtenQuantities(paragraph).some(value => !represented.has(value))) continue
+        if (paragraph.length < 15 || paragraph.length > 2000 || /```|^(?:chapitre|figure|tableau|schéma)\s+\d/iu.test(paragraph) || !summaryText({text:paragraph,sourceExcerpt:paragraph})) continue
+        const matchedPage = scope.pages.find(page => page.page >= section.startPage && page.page <= section.endPage && canonicalSource(page.text).includes(canonicalSource(paragraph)))
+        retained.push({id:randomUUID(),sectionId:section.id,sectionTitle:section.title,text:paragraph,category:'Données et calculs du cours',sourceExcerpt:paragraph,sourceTable:sourceTable(paragraph),
+          sourceSupplement:true,page:matchedPage?.page ?? section.startPage,endPage:section.endPage,exactPage:Boolean(matchedPage),edited:false,proofStatus:'matched'})
+      }
+    }
+    return retained
   })
   if (items.length > MAX_NOTE_ITEMS) throw studyError(422, 'Trop de points pour une seule fiche. Sélectionnez moins de sections.')
   if (!items.length) throw Object.assign(studyError(422, 'Aucun point suffisamment étayé n’a été généré.'), {generation: {refusedPoints: refused, rejectionReasons}})
@@ -112,11 +127,11 @@ export function noteItems(summary, scope, kind) {
 /** Presence/quantity coverage is a review aid, never a semantic or medical certificate. */
 export function noteCoverage(scope, items) {
   const missingSections = scope.sections.filter(section => !items.some(item => item.sectionId === section.id)).map(({id, title}) => ({id, title}))
-  const quantities = text => [...new Set(canonicalSource(text).match(/\d+(?:[.,]\d+)?(?:\s*(?:%|mmHg|mg|g|kg|ml|mL|L|mmol|cm|mm|s|min|h))?/g) || [])]
+  const quantities = writtenQuantities
   const missingQuantities = scope.sections.flatMap(section => {
     const output = items.filter(item => item.sectionId === section.id).map(item => item.text).join(' ')
     const represented = new Set(quantities(output))
-    return quantities(section.content).filter(value => !represented.has(value)).map(value => ({sectionId: section.id, sectionTitle: section.title, value}))
+    return [...new Set(canonicalSource(section.content).match(NOTE_QUANTITY_PATTERN) || [])].filter(value => !represented.has(writtenQuantities(value)[0])).map(value => ({sectionId: section.id, sectionTitle: section.title, value}))
   }).slice(0, 100)
   return {sectionsTotal: scope.sections.length, sectionsRepresented: scope.sections.length - missingSections.length, missingSections, missingQuantities, edited: items.some(item => item.edited), message: 'Présence des sections et valeurs contrôlée ; fidélité sémantique et validité médicale à relire dans les sources.'}
 }
