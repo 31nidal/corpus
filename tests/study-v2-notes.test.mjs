@@ -218,3 +218,23 @@ test('Fiches V2 : origine partiellement extraite signalée même après une réc
     assert.deepEqual(saved.extraction.warnings,['Une page est illisible.'])
   }finally{await api.close()}
 })
+
+test('Fiches V2 locales : phrase pronominale conservée avec son antécédent verbatim, sans assouplir le garde-fou',()=>{
+  const content='La veine médiane cubitale relie les réseaux superficiels. Elle est souvent utilisée pour la ponction veineuse, mais ses configurations sont variables.'
+  const sections=[{id:'s',title:'Veine médiane cubitale',content,startPage:1,endPage:1}]
+  for(const kind of ['short','structured','detailed']){
+    const result=noteItems(localNoteSummary('Veines',sections,kind,generateLocalSummary),{sections,pages:[{page:1,text:content}]},kind)
+    assert.ok(result.items.some(item=>item.text.includes('Elle est souvent utilisée')))
+    assert.ok(result.items.every(item=>!item.text.startsWith('Elle')))
+    assert.equal(result.items[0].sourceExcerpt,content)
+  }
+  const separated=[{...sections[0],content:'La veine médiane cubitale relie les réseaux superficiels.\nElle est souvent utilisée pour la ponction veineuse.'}]
+  const result=noteItems(localNoteSummary('Veines',separated,'structured',generateLocalSummary),{sections:separated,pages:[{page:1,text:separated[0].content}]},'structured')
+  assert.ok(!result.items.some(item=>item.text.includes('Elle est souvent utilisée')))
+})
+test('Fiches V2 locales : regroupement de prose ne fragmente pas les tableaux de source',()=>{
+  const content='Paramètre | Valeur\nPression | 44 mmHg'
+  const sections=[{id:'s',title:'Mesures',content,startPage:1,endPage:1}]
+  const result=noteItems(localNoteSummary('Mesures',sections,'detailed',generateLocalSummary),{sections,pages:[{page:1,text:content}]},'detailed')
+  assert.deepEqual(result.items[0].sourceTable,[['Paramètre','Valeur'],['Pression','44 mmHg']])
+})

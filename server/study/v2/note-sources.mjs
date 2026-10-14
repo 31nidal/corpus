@@ -39,15 +39,35 @@ export function localNoteSummary(title, sections, kind, legacySummary) {
   }).join('\n')}))
   const legacy = legacySummary(title, cleaned)
   return {title, chapters: cleaned.map(section => {
-    const complete = section.content.split(/\n\n+|(?<=[.!?])\s+/).map(text => text.trim()).filter(text => text.length >= 15 && text.length <= 2000)
+    const complete = sourcePassageGroups(section.content)
     const ranked = legacy.chapters.find(chapter => chapter.id === section.id)?.keyPoints || []
     // Keep a concise opening definition even when legacy's 35-character ranking
     // omitted it. Reject only the exact 220-character truncation fallback.
     const uncut = ranked.filter(text => !(canonicalSource(text).length === 220 && canonicalSource(section.content).startsWith(canonicalSource(text)) && !/[.!?]$/.test(text)))
+      .map(text => complete.find(group => canonicalSource(group).includes(canonicalSource(text))) || text)
     const points = kind === 'detailed' ? complete : [complete[0], ...uncut, ...complete].filter(Boolean)
     const seen = new Set()
     return {id:section.id,title:section.title,keyPoints:points.filter(text => {const key=canonicalSource(text);if(seen.has(key))return false;seen.add(key);return true})}
   })}
+}
+
+/** Keep a pronoun with its preceding sentence in the same source paragraph.
+ * Never infer an antecedent from a title or join separate bullet/source lines.
+ * Existing quality guards remain unchanged; every group stays verbatim. */
+function sourcePassageGroups(content) {
+  const pronoun = /^(?:ce processus|cela|ceci|ils|elles|il|elle)\b/i
+  return content.split(/\n\n+/).flatMap(paragraph => {
+    if (/```/.test(paragraph) || paragraph.split('\n').filter(line => line.includes('|')).length >= 2) return [paragraph.trim()]
+    return paragraph.split(/\n+/).flatMap(line => {
+      const groups = []
+      for (const sentence of line.split(/(?<=[.!?])\s+/).map(text => text.trim()).filter(Boolean)) {
+        const prior = groups.at(-1)
+        if (pronoun.test(sentence) && prior && !pronoun.test(prior) && prior.length + sentence.length + 1 <= 2000) groups[groups.length - 1] = prior + ' ' + sentence
+        else groups.push(sentence)
+      }
+      return groups
+    })
+  }).filter(text => text.length >= 15 && text.length <= 2000)
 }
 
 function rawProof(source, proof) {
