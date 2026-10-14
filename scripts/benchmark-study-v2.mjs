@@ -30,7 +30,7 @@ const report={date:new Date().toISOString(),baseline,catalog:[],pdfs:[],live:[],
 const sha=bytes=>createHash('sha256').update(bytes).digest('hex')
 const hash=value=>{let result=2166136261;for(const letter of value){result^=letter.charCodeAt(0);result=Math.imul(result,16777619)}return result>>>0}
 const duplicates=cards=>cards.length-new Set(cards.map(card=>normalize(card.front))).size
-const medical=['Anatomie','Physiologie','Pharmacologie'].flatMap(category=>courses.filter(course=>course.category===category)
+const medical=['Anatomie','Physiologie','Pharmacologie','Biochimie'].flatMap(category=>courses.filter(course=>course.category===category)
   .sort((a,b)=>hash('validation-quality-v1:'+a.id)-hash('validation-quality-v1:'+b.id)).slice(0,15))
 const sectionsFor=course=>course.sections.map((section,index)=>({id:section.id||`${course.id}-${index}`,title:section.title,
   content:[section.title,section.text,...(section.bullets||[])].filter(Boolean).join('\n'),startPage:index+1,endPage:index+1}))
@@ -50,7 +50,7 @@ function proofCharacterCoverage(scope,items){
 }
 function measureNotes(module,course,sections,scope,kind){
   try{
-    const result=module.noteItems(module.localNoteSummary(course.title,sections,kind,generateLocalSummary),scope,kind)
+    const result=module.noteItems(module.localNoteSummary(course.title,sections,kind,generateLocalSummary),scope,kind,{preserveQuantities:true})
     const coverage=noteCoverage(scope,result.items)
     return {points:result.items.length,refused:result.refused,reasons:result.rejectionReasons,
       sectionsTotal:coverage.sectionsTotal,sectionsRepresented:coverage.sectionsRepresented,
@@ -127,7 +127,8 @@ if(process.argv.includes('--live')){
       if(++invocations>callLimit)throw Object.assign(new Error('Limite de huit appels de benchmark atteinte.'),{code:'AI_BENCHMARK_LIMIT',status:429})
       return original(options)
     }
-    const course=medical.find(course=>course.id==='phys-renal')||medical.find(course=>course.category==='Physiologie')
+    const course=courses.find(course=>course.id===arg('live-course','phys-renal'))
+    if(!course)throw new Error('Cours du catalogue introuvable.')
     const sections=sectionsFor(course),scope=scopeFor(sections)
     try{
       for(const task of tasks){
@@ -138,18 +139,19 @@ if(process.argv.includes('--live')){
           const result=await generateWithQuota({db,userId:'benchmark',provider,config,task,context,allowLocalFallback:false,
             local:()=>{throw new Error('Pas de résultat local pour le benchmark distant.')}})
           if(task==='revision'){
-            const notes=noteItems(result.value,scope,'structured'),coverage=noteCoverage(scope,notes.items)
+            const notes=noteItems(result.value,scope,'structured',{preserveQuantities:true}),coverage=noteCoverage(scope,notes.items)
             Object.assign(row,{points:notes.items.length,refused:notes.refused,coverage})
           }else if(task==='study_questions')Object.assign(row,{questions:result.value.questions.length,verificationPassed:result.value.questions.every(question=>question.verification.passed)})
           else{const response=validateAssistantResponse(result.value,scope);Object.assign(row,{answered:response.answered,paragraphs:response.paragraphs.length,verified:result.value.verified===true})}
           Object.assign(row,{state:'succeeded',generation:result.generation})
+          if(process.argv.includes('--include-generated'))row.generated=result.value
         }catch(error){Object.assign(row,{state:'failed',errorCode:error.code||'AI_FAILED',message:error.message,generation:error.generation});row.durationMs=Math.round(performance.now()-started);break}
         row.durationMs=Math.round(performance.now()-started)
       }
     }finally{report.liveHttpCalls=httpCalls;db.close()}
   }
 }
-report.summary=['Anatomie','Physiologie','Pharmacologie'].map(category=>{
+report.summary=['Anatomie','Physiologie','Pharmacologie','Biochimie'].map(category=>{
   const rows=report.catalog.filter(row=>row.category===category)
   return {category,courses:rows.length,before:rows.reduce((n,row)=>n+row.before,0),after:rows.reduce((n,row)=>n+row.after,0),
     duplicates:rows.reduce((n,row)=>n+row.duplicatesAfter,0),proofFailures:rows.reduce((n,row)=>n+row.proofFailures,0),lost:rows.reduce((n,row)=>n+row.lost.length,0),
@@ -158,5 +160,5 @@ report.summary=['Anatomie','Physiologie','Pharmacologie'].map(category=>{
       sectionsRepresented:rows.reduce((n,row)=>n+(row.notes[kind].sectionsRepresented||0),0),refused:rows.reduce((n,row)=>n+(row.notes[kind].refused||0),0)}]))}
 })
 writeFileSync(output,JSON.stringify(report,null,2))
-console.log(JSON.stringify({output,summary:report.summary,pdfs:report.pdfs.map(({warnings,...row})=>({...row,warnings: warnings?.length})),live:report.live},null,2))
+console.log(JSON.stringify({output,summary:report.summary,pdfs:report.pdfs.map(({warnings,...row})=>({...row,warnings: warnings?.length})),live:report.live.map(({generated,...row})=>row)},null,2))
 if(report.pdfs.some(row=>row.errorCode)||report.live.some(row=>row.state!=='succeeded')||report.catalog.some(row=>row.proofFailures||row.lost.length))process.exitCode=1
