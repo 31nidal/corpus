@@ -166,3 +166,20 @@ for(const noteType of ['cloze','typed'])test(`Flashcards V2 : ${noteType} en ré
   await page.getByRole('button',{name:'Retour aux flashcards du cours',exact:true}).click()
   await expect(page.getByRole('link',{name:'Réviser cette carte',exact:true})).toBeFocused()
 })
+
+test('Flashcards V2 : carte supprimée recréée depuis son brouillon permanent, sans nouvelle génération',async({page})=>{
+  const {doc,deck}=await prepare(page)
+  const generated=await page.request.post(`/api/flashcards/documents/${doc}/drafts/generate`,{headers,data:{count:1,selection:{page:2,text:'La filtration glomerulaire depend de la pression sanguine.'}}})
+  expect(generated.status()).toBe(201)
+  const {ids}=await generated.json()
+  const accepted=await (await page.request.post(`/api/flashcards/drafts/${ids[0]}/accept`,{headers,data:{deckId:deck.id}})).json()
+  expect((await page.request.delete(`/api/flashcards/notes/${accepted.noteId}`,{headers,data:{expectedVersion:accepted.note.noteVersion}})).status()).toBe(200)
+  await page.getByRole('navigation',{name:'Espaces du cours'}).getByRole('button',{name:'Flashcards',exact:true}).click()
+  await page.getByRole('combobox',{name:'Filtrer les brouillons',exact:true}).selectOption('accepted')
+  await page.getByRole('button',{name:'Recréer la carte supprimée',exact:true}).click()
+  await expect(page.getByRole('link',{name:/Réviser la carte créée/})).toHaveCount(1)
+  const after=(await (await page.request.get(`/api/flashcards/documents/${doc}/drafts`)).json()).drafts
+  expect(after).toHaveLength(1);expect(after[0].id).toBe(ids[0]);expect(after[0].acceptedNoteId).not.toBe(accepted.noteId)
+  const notes=(await (await page.request.get('/api/flashcards/notes')).json()).notes
+  expect(notes).toHaveLength(1);expect(notes[0].id).toBe(after[0].acceptedNoteId)
+})

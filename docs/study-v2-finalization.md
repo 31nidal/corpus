@@ -29,7 +29,7 @@ Ordre d’intégration éventuel : #15 → #16 → #17 → #18 → #19 → #20 �
 | Fiches | Trois niveaux, édition/sauvegarde/version, export PDF téléchargé, preuves, conservation des valeurs reconnues | Résumé court volontairement partiel ; pas de contrôle d’exhaustivité sémantique |
 | QCM | Unique/multiple, preuves, vérification indépendante, édition/régénération, validation humaine, correction immédiate/différée, score/historique | Cohérence IA imparfaite ; aucune validation médicale automatique |
 | Assistant | Réponse positive rénale/anatomique confrontée aux citations, abstention, histoire, erreurs/quota, isolation | Question générale parfois trop peu couverte ; assistant biochimique bloqué par 429 lors du test |
-| Flashcards | Passage/document/section, édition/acceptation idempotente, occlusion/page source, FSRS et retour classique | La session FSRS utilise l’espace flashcards existant ; pas de nouveau moteur |
+| Flashcards | Passage/document/section, édition/acceptation idempotente, occlusion/page source, FSRS et retour classique | Session FSRS existante embarquée dans le cours, puis retour au PDF et au focus ; aucun scheduler réécrit |
 | Comptes/persistance | Changement de compte, 404 pour autrui, rechargement/sauvegarde, CAS, cascades, migrations additives | Pas de test manuel multi-appareils sur le déploiement de production |
 
 ## Bugs corrigés et preuve
@@ -40,6 +40,9 @@ Ordre d’intégration éventuel : #15 → #16 → #17 → #18 → #19 → #20 �
 - Diagnostic de réparation : les nouveaux refus après l’appel de réparation sont aussi classés dans `rejectionReasons`, au lieu d’augmenter seulement le total.
 - QCM : vérification par lots de quatre maximum, avec un résultat indexé distinct par question et contrôle complet de chaque proposition. Index manquants/dupliqués refusés, chaque question reste contrôlée séparément. Un candidat refusé ne bloque pas une meilleure question de même énoncé dans une section suivante.
 - QCM : deux réponses réellement observées utilisaient « le texte n’associe pas » / « non décrite » pour justifier une contradiction. Un garde-fou ciblé refuse ces justifications d’absence, y compris dans le contrôle indépendant. Le prompt privilégie trois propositions homogènes, un seul paramètre modifié et une contradiction explicitement citée. Ce garde-fou ne prétend pas reconnaître toute erreur sémantique.
+- Compatibilité classique/V2 : un document importé après la migration avait une version de métadonnées `null` ; la création de la projection avant le contrôle CAS produisait un faux 409 au premier renommage. La comparaison se fait désormais sous transaction avant création de la projection, puis un ancien `null` est refusé normalement. Un import classique fini ne reste plus artificiellement « importé » quand aucun job V2 ne le traite ; un ancien import inachevé sans job actif affiche une intervention nécessaire avec reprise explicite. Lecture du statut canonique sans réécriture de la source.
+- Réacceptation : l’API pouvait recréer une note supprimée depuis son brouillon permanent, mais l’interface ne proposait aucune action pour ce cas. Bouton explicite sur les brouillons acceptés sans note ; aucune génération supplémentaire, l’id du brouillon est conservé et une seule nouvelle note est créée.
+- Révision dans le cours : le lien accepté quittait « Mes cours ». Il ouvre maintenant le renderer FSRS existant dans le document, avec le même endpoint de queue ciblée, preview/version et notation. Retour au PDF et au lien d’origine, état des brouillons conservé, raccourcis limités à la session. L’espace global absolu a un override CSS scoped pour rejoindre le flux du cours ; hauteur réelle de navigation mobile prise en compte, pas de clic forcé. Aucun nouveau scheduler/API/format de carte. En mode ciblé, chargement des decks uniquement, sans liste générale ni statistiques inutiles.
 - Bibliothèque : `nextOffset` était ignoré par l’interface. Les documents après le centième étaient inaccessibles. Ajout du chargement suivant, dédoublonnage, double clic bloqué et abort/version sur changement de recherche/dossier.
 - Interface : ordre des espaces original → fiches → QCM → flashcards → assistant, pluriel des pages corrigé et chargement de pagination annoncé dans la région de statut existante.
 - Mises à jour QCM : utilisation de l’état courant lors des retours d’édition pour éviter de remplacer la réponse d’une autre carte par un instantané ancien.
@@ -77,12 +80,12 @@ Le timeout initial à 15 s n’est plus reproduit avec la configuration normale 
 ## Tests, migrations, performance et captures
 
 - Build TypeScript/Vite vert ; aucun script lint présent dans le projet.
-- 278 tests backend verts : Study 132, flashcards 111, comptes 7, progression 2, taxonomie 11, catalogue 6, qualité catalogue 6, feedback 2, sécurité 1.
-- 27 Playwright ciblés verts sans retry, sur serveur et base isolés : parcours import/lecture/édition/sauvegarde/PDF, QCM/assistant, sélection précise/acceptation/FSRS, image/mask, mobile 390 px, clavier/focus, erreurs, comptes, pagination et scan.
+- 280 tests backend verts : Study 134, flashcards 111, comptes 7, progression 2, taxonomie 11, catalogue 6, qualité catalogue 6, feedback 2, sécurité 1.
+- 32 Playwright ciblés verts sans retry, sur serveur et base isolés : parcours import/lecture/édition/sauvegarde/PDF, QCM/assistant, sélection précise/acceptation/FSRS, image/mask, mobile 390 px, clavier/focus, erreurs, comptes, pagination, scan et transition classique/V2. Cartes basic desktop/mobile, cloze et typed notées avec historique persistant dans le cours ; aucun clic forcé pour contourner la navigation mobile. Réacceptation d’une note supprimée vérifiée aussi dans l’interface.
 - Les parcours UI QCM/assistant utilisent des réponses contrôlées pour les tests de contrat ; les appels réels et leurs limites sont décrits séparément ci-dessus.
 - Migrations V2 `[1,2,3,4]` idempotentes et additives, sources immuables, contrôles des clés étrangères et conservation des cartes/historiques FSRS vérifiés. Cette PR ne modifie aucun schéma.
-- Bundle principal 760,52 ko, gzip 189,71 ko, contre 760,48 ko sur #22. Modules Study 2.0 chargés à la demande. L’avertissement Vite des anciens gros chunks reste présent.
-- Captures recréées par les E2E dans `tests/artifacts/design/study-v2-*.png`, ignorées par Git : bibliothèque, lecteur clair/sombre, fiches desktop/mobile, QCM/assistant desktop/mobile, occlusion mobile, scan. La galerie locale ne sert que ces images de fixtures contrôlées.
+- Bundle principal 760,52 ko, gzip 189,72 ko, contre 760,48 ko sur #22. Modules Study 2.0 chargés à la demande. L’avertissement Vite des anciens gros chunks reste présent.
+- Captures recréées par les E2E dans `tests/artifacts/design/study-v2-*.png`, ignorées par Git : bibliothèque, lecteur clair/sombre, fiches desktop/mobile, QCM/assistant desktop/mobile, occlusion mobile, scan et FSRS dans le cours (1440/390 px). La galerie locale ne sert que ces images de fixtures contrôlées.
 
 Commandes reproductibles :
 

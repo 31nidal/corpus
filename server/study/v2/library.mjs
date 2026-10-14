@@ -5,11 +5,14 @@ const escapeLike = value => value.replace(/[\\%_]/g, '\\$&');
 const select = `SELECT d.id,d.title,d.filename,d.file_size AS fileSize,d.page_count AS pageCount,
   d.created_at AS createdAt,d.updated_at AS updatedAt,m.folder_id AS folderId,m.archived_at AS archivedAt,
   m.last_opened_at AS lastOpenedAt,COALESCE(m.reading_page,1) AS readingPage,
-  CASE WHEN m.processing_state='imported' AND d.status!='processing'
+  CASE WHEN m.processing_state='imported'
     AND NOT EXISTS(SELECT 1 FROM study_v2_jobs j WHERE j.document_id=d.id AND j.user_id=d.user_id)
-    THEN CASE d.status WHEN 'ready' THEN 'ready' ELSE 'failed' END
+    THEN CASE d.status WHEN 'ready' THEN 'ready' WHEN 'processing' THEN 'needs_attention' ELSE 'failed' END
     ELSE COALESCE(m.processing_state,CASE d.status WHEN 'ready' THEN 'ready' WHEN 'processing' THEN 'imported' ELSE 'failed' END) END AS processingState,
-  COALESCE(m.current_version,1) AS version,m.updated_at AS metadataUpdatedAt,d.error_message AS errorMessage,
+  COALESCE(m.current_version,1) AS version,m.updated_at AS metadataUpdatedAt,CASE WHEN m.processing_state='imported' AND d.status='processing'
+    AND NOT EXISTS(SELECT 1 FROM study_v2_jobs j WHERE j.document_id=d.id AND j.user_id=d.user_id)
+    THEN COALESCE(d.error_message,'Cet import ancien ne possède aucun traitement actif. Reprenez le traitement depuis le PDF original.')
+    ELSE d.error_message END AS errorMessage,
   (SELECT COUNT(*) FROM study_sections s WHERE s.document_id=d.id AND s.user_id=d.user_id) AS sectionCount
   FROM study_documents d LEFT JOIN study_v2_document_meta m ON m.document_id=d.id AND m.user_id=d.user_id`;
 export class StudyLibrary {

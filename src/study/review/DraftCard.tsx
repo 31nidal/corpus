@@ -26,6 +26,7 @@ export function DraftCard({draft,index,selected,busy,editing,sourceText,onSelect
       {['pending','edited'].includes(draft.status)&&<><button disabled={busy} onClick={()=>onAction('accept')}>Accepter</button><button disabled={busy} onClick={()=>onAction('reject')}>Rejeter</button></>}
       {draft.status!=='accepted'&&!editing&&onRegenerate&&<button disabled={busy} onClick={onRegenerate}>Régénérer avec l’IA</button>}
       {draft.status==='rejected'&&<button disabled={busy} onClick={()=>onAction('restore')}>Restaurer</button>}
+      {!busy&&draft.status==='accepted'&&!draft.acceptedNoteId&&<><p>La carte a été supprimée ; le brouillon source reste conservé.</p><button disabled={busy} onClick={()=>onAction('accept')}>Recréer la carte supprimée</button></>}
       {draft.acceptedNoteId&&<ReviewNoteLink noteId={draft.acceptedNoteId} onReview={onReviewNote}>Réviser cette carte</ReviewNoteLink>}
     </div>
   </article>
