@@ -1,6 +1,6 @@
 import type {DocumentPatch, DocumentResult, LibraryResult, StudyFolder} from './types'
 
-async function request<T>(route: string, options: RequestInit = {}, prefix = '/api/study/v2/'): Promise<T> {
+export async function request<T>(route: string, options: RequestInit = {}, prefix = '/api/study/v2/'): Promise<T> {
   const timeout = AbortSignal.timeout(30000)
   const signal = options.signal ? AbortSignal.any([options.signal, timeout]) : timeout
   let response: Response
@@ -18,7 +18,7 @@ async function request<T>(route: string, options: RequestInit = {}, prefix = '/a
   if (!response.ok) throw Object.assign(new Error(body.error || 'Le serveur n’a pas pu répondre.'), {status: response.status, code: body.code})
   return body
 }
-const json = (method: string, body: unknown) => ({method, headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)})
+export const json = (method: string, body: unknown) => ({method, headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)})
 export function listLibrary(filters: {q: string; folderId?: string | null; archived: boolean}, signal?: AbortSignal) {
   const query = new URLSearchParams({q: filters.q, archived: String(filters.archived), limit: '100'})
   if (filters.folderId !== undefined) query.set('folderId', filters.folderId ?? '')
