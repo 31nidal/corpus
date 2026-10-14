@@ -26,3 +26,23 @@ export const processingLabels: Record<ProcessingState, string> = {
   imported: 'Importé · en attente', processing: 'Traitement en cours', ready: 'Prêt',
   partial: 'Extraction partielle · à vérifier', needs_attention: 'Intervention nécessaire', failed: 'Échec du traitement',
 }
+
+export type RevisionNoteItem = {
+  id: string; sectionId: string | null; sectionTitle: string
+  text: string; originalText: string; originalCategory?: string; category: string; sourceExcerpt: string
+  page: number; endPage: number; exactPage: boolean; edited: boolean; proofStatus: 'matched' | 'unverified'; sourceTable?: string[][]
+}
+export type RevisionNote = {
+  id: string; documentId: string; title: string; kind: 'short' | 'structured' | 'detailed'
+  origin: 'generated' | 'legacy'; state: 'draft' | 'saved'
+  generationState: 'queued' | 'running' | 'succeeded' | 'failed' | 'interrupted'
+  extraction: {method: string; warnings: string[]}; sourceState: string
+  sourceVersion: number; editVersion: number; items: RevisionNoteItem[]
+  sections: {id: string; title: string; startPage: number; endPage: number}[]
+  selection: PdfSelection | null; generation: import('../ai/GenerationNotice').GenerationInfo
+  coverage: {sectionsTotal: number; sectionsRepresented: number; missingSections: {id: string; title: string}[]; missingQuantities: {sectionId: string; sectionTitle: string; value: string}[]; edited: boolean; message: string}
+  errorCode: string | null; errorMessage: string | null; createdAt: number; updatedAt: number
+}
+export type RevisionNoteHeader = Omit<RevisionNote, 'items'> & {itemCount: number}
+export type NoteGeneration = {requestId: string; kind: RevisionNote['kind']; sectionIds?: string[]; selection?: PdfSelection}
+export type NoteEdit = {expectedEditVersion: number; title: string; state: 'draft' | 'saved'; items: Pick<RevisionNoteItem, 'id' | 'text' | 'category'>[]}

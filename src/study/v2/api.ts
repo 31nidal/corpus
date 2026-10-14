@@ -41,3 +41,9 @@ export async function getLegacyDocument(id: string, signal: AbortSignal): Promis
   const body = await request<{document: import('../myCoursesTypes').StudyDocument}>('documents/' + encodeURIComponent(id), {signal}, '/api/study/')
   return body.document
 }
+
+export const listNotes = (documentId: string, signal?: AbortSignal) => request<{notes: import('./types').RevisionNoteHeader[]}>(`documents/${encodeURIComponent(documentId)}/notes`, {signal})
+export const getNote = (documentId: string, noteId: string, signal?: AbortSignal) => request<{note: import('./types').RevisionNote}>(`documents/${encodeURIComponent(documentId)}/notes/${encodeURIComponent(noteId)}`, {signal})
+export const generateNote = (documentId: string, body: import('./types').NoteGeneration) => request<{note: import('./types').RevisionNote; reused: boolean}>(`documents/${encodeURIComponent(documentId)}/notes`, json('POST', body))
+export const editNote = (documentId: string, noteId: string, body: import('./types').NoteEdit) => request<{note: import('./types').RevisionNote}>(`documents/${encodeURIComponent(documentId)}/notes/${encodeURIComponent(noteId)}`, json('PATCH', body))
+export const deleteNote = (documentId: string, noteId: string) => request(`documents/${encodeURIComponent(documentId)}/notes/${encodeURIComponent(noteId)}`, {method: 'DELETE'})
