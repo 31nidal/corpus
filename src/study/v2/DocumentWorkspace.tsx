@@ -7,6 +7,7 @@ import {processingLabels, type PdfSelection} from './types'
 import {useDocument} from './useDocument'
 const NotesWorkspace = lazy(() => import('./NotesWorkspace'))
 const QuestionsWorkspace = lazy(() => import('./QuestionsWorkspace'))
+const AssistantWorkspace = lazy(() => import('./AssistantWorkspace'))
 const ReviewWorkspace = lazy(() => import('../review/ReviewWorkspace'))
 
 export function DocumentWorkspace({id, initialSectionId, onBack, versionControl}: {
@@ -17,6 +18,9 @@ export function DocumentWorkspace({id, initialSectionId, onBack, versionControl}
   const [space, setSpace] = useState<'original' | 'flashcards' | 'notes' | 'questions'>('original')
   const [questionsVisited, setQuestionsVisited] = useState(false)
   const [questionSelection, setQuestionSelection] = useState<PdfSelection | null>(null)
+  const [assistantOpen, setAssistantOpen] = useState(false)
+  const [assistantVisited, setAssistantVisited] = useState(false)
+  const [assistantSelection, setAssistantSelection] = useState<PdfSelection | null>(null)
   const [notesVisited, setNotesVisited] = useState(false)
   const [noteSelection, setNoteSelection] = useState<PdfSelection | null>(null)
   const [selection, setSelection] = useState<PdfSelection | null>(null)
@@ -41,17 +45,19 @@ export function DocumentWorkspace({id, initialSectionId, onBack, versionControl}
         <button aria-pressed={space === 'flashcards'} onClick={() => setSpace('flashcards')}>Flashcards</button>
         <button aria-pressed={space === 'notes'} onClick={() => {setNotesVisited(true); setSpace('notes')}}>Fiches de révision</button>
         <button aria-pressed={space === 'questions'} onClick={() => {setQuestionsVisited(true); setSpace('questions')}}>QCM et entraînements</button>
+        <button aria-pressed={space === 'original' && assistantOpen} onClick={() => {setAssistantOpen(true); setAssistantVisited(true); setSpace('original')}}>Assistant IA</button>
       </nav>
-      <div hidden={space !== 'original'} className="sv2-reading-layout">
+      <div hidden={space !== 'original'} className={'sv2-reading-layout' + (assistantOpen ? ' sv2-assistant-open' : '')}>
         <aside className="sv2-outline"><details open={outlineOpen} onToggle={event => setOutlineOpen(event.currentTarget.open)}><summary>Sommaire du cours</summary>
           {course.document?.sections?.length ? <nav aria-label="Chapitres du PDF">{course.document.sections.map(section => <button key={section.id} aria-current={course.page >= section.startPage && course.page <= section.endPage ? 'location' : undefined} onClick={() => course.setPage(section.startPage)}><span>{section.title}</span><small>p. {section.startPage}{section.endPage !== section.startPage ? `–${section.endPage}` : ''}</small></button>)}</nav>
             : <p>Le PDF reste consultable. Le sommaire apparaîtra après extraction des passages lisibles.</p>}
         </details></aside>
         <div className="sv2-reading-main">
           <PdfReader documentId={id} title={data.document.title} page={course.page} onPage={course.setPage} onSelection={setSelection}/>
-          {selection && <section className="sv2-selection" aria-label="Passage sélectionné"><h2>Sélection · page {selection.page}</h2><blockquote>{selection.text}</blockquote><button onClick={() => {setNoteSelection(selection); setNotesVisited(true); setSpace('notes')}} disabled={selection.text.length < 35}>Résumer ce passage</button><button onClick={() => {setQuestionSelection(selection); setQuestionsVisited(true); setSpace('questions')}} disabled={selection.text.length < 35}>Générer un QCM sur ce passage</button><button onClick={copy}>Copier le passage</button><button onClick={() => setSelection(null)}>Fermer la sélection</button><p role="status">{copied}</p></section>}
+          {selection && <section className="sv2-selection" aria-label="Passage sélectionné"><h2>Sélection · page {selection.page}</h2><blockquote>{selection.text}</blockquote><button disabled={selection.text.length < 35} onClick={() => {setAssistantSelection(selection); setAssistantVisited(true); setAssistantOpen(true)}}>Expliquer ce passage</button><button onClick={() => {setNoteSelection(selection); setNotesVisited(true); setSpace('notes')}} disabled={selection.text.length < 35}>Résumer ce passage</button><button onClick={() => {setQuestionSelection(selection); setQuestionsVisited(true); setSpace('questions')}} disabled={selection.text.length < 35}>Générer un QCM sur ce passage</button><button onClick={copy}>Copier le passage</button><button onClick={() => setSelection(null)}>Fermer la sélection</button><p role="status">{copied}</p></section>}
           <p role="status">{course.positionMessage}</p>
         </div>
+        {assistantVisited && course.document && <aside hidden={!assistantOpen} className="sv2-assistant-pane"><Suspense fallback={<p role="status">Chargement de l’assistant…</p>}><AssistantWorkspace document={course.document} selection={assistantSelection} onClose={() => setAssistantOpen(false)} onSource={course.setPage}/></Suspense></aside>}
       </div>
       {notesVisited && course.document && <div hidden={space !== 'notes'}><Suspense fallback={<p role="status">Chargement des fiches…</p>}><NotesWorkspace document={course.document} selection={noteSelection} onSource={page => {course.setPage(page); setSpace('original')}}/></Suspense></div>}
       {questionsVisited && course.document && <div hidden={space !== 'questions'}><Suspense fallback={<p role="status">Chargement des QCM…</p>}><QuestionsWorkspace document={course.document} selection={questionSelection} onSource={page => {course.setPage(page); setSpace('original')}}/></Suspense></div>}
