@@ -20,7 +20,7 @@ export function Library({onOpen, versionControl}: {onOpen: (id: string) => void;
       <FolderNavigation folders={library.data.folders} selected={folderId} archived={archived} onSelect={setFolderId} onArchived={setArchived} onCreated={library.reload}/>
       <main className="sv2-library-main">
         <label className="sv2-search"><Search size={18}/><span className="sr-only">Rechercher dans les titres et le contenu</span><input type="search" value={q} maxLength={200} placeholder="Rechercher dans vos cours…" onChange={event => setQ(event.target.value)}/></label>
-        <p role="status">{library.loading ? 'Chargement de la bibliothèque…' : `${library.data.documents.length} cours${archived ? ' archivés' : ''}`}</p>
+        <p role="status">{library.loading ? 'Chargement de la bibliothèque…' : library.loadingMore ? 'Chargement des cours suivants…' : `${library.data.documents.length} cours${archived ? ' archivés' : ''}`}</p>
         {library.error && <div role="alert"><p>{library.error}</p><button onClick={library.reload}>Réessayer</button></div>}
         {!library.loading && !library.error && !library.data.documents.length && <div className="sv2-empty"><h2>{q ? 'Aucun cours trouvé' : archived ? 'Aucun cours archivé' : 'Aucun cours ici'}</h2><p>{q ? 'Essayez un autre titre ou un passage du cours.' : archived ? 'Les cours archivés pourront être restaurés ici.' : 'Importez un PDF ou classez un cours dans ce dossier.'}</p></div>}
         {recent.length > 0 && !q && folderId === undefined && !archived && <nav className="sv2-recents" aria-label="Cours récemment consultés"><h2>Récemment consultés</h2>{recent.map(doc => <button key={doc.id} onClick={() => onOpen(doc.id)}>{doc.title}</button>)}</nav>}

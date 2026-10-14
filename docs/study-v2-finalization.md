@@ -36,10 +36,12 @@ Ordre d’intégration éventuel : #15 → #16 → #17 → #18 → #19 → #20 �
 
 - Fiches structurées : un plafond de cinq points et les omissions du modèle pouvaient laisser des chiffres du cours hors du résultat. Ajout borné de paragraphes chiffrés **verbatim**, marqués `sourceSupplement`, avec les références originales. Aucun calcul, conversion ou connaissance extérieure. Les points IA refusés restent comptés ; une section sans point valide n’est pas masquée par ce mécanisme. Aucun complément imposé au résumé court, ni aux fiches déjà enregistrées.
 - Quantités : un seul motif pour attestation et couverture, unités `mg/min` et `mg/mL` distinguées, virgules/espaces normalisés pour la comparaison, affichage original conservé. Les lettres d’un mot et `L’axis` ne sont pas des unités ; le précédent signal `5 s` issu de « 5 sécrétés » était un défaut de détection, pas une donnée en secondes. Ce contrôle reste limité aux notations reconnues.
+- Gestion des erreurs Gemini : une interruption pendant la lecture du corps HTTP conserve désormais `AI_TIMEOUT` au lieu d’être présentée comme un JSON invalide. Une seule requête, aucune relance réseau implicite ; consommation conservée comme incertaine.
 - Diagnostic de réparation : les nouveaux refus après l’appel de réparation sont aussi classés dans `rejectionReasons`, au lieu d’augmenter seulement le total.
 - QCM : vérification par lots de quatre maximum, avec un résultat indexé distinct par question et contrôle complet de chaque proposition. Index manquants/dupliqués refusés, chaque question reste contrôlée séparément. Un candidat refusé ne bloque pas une meilleure question de même énoncé dans une section suivante.
 - QCM : deux réponses réellement observées utilisaient « le texte n’associe pas » / « non décrite » pour justifier une contradiction. Un garde-fou ciblé refuse ces justifications d’absence, y compris dans le contrôle indépendant. Le prompt privilégie trois propositions homogènes, un seul paramètre modifié et une contradiction explicitement citée. Ce garde-fou ne prétend pas reconnaître toute erreur sémantique.
 - Bibliothèque : `nextOffset` était ignoré par l’interface. Les documents après le centième étaient inaccessibles. Ajout du chargement suivant, dédoublonnage, double clic bloqué et abort/version sur changement de recherche/dossier.
+- Interface : ordre des espaces original → fiches → QCM → flashcards → assistant, pluriel des pages corrigé et chargement de pagination annoncé dans la région de statut existante.
 - Mises à jour QCM : utilisation de l’état courant lors des retours d’édition pour éviter de remplacer la réponse d’une autre carte par un instantané ancien.
 
 Les régressions reproduisent les valeurs/citations fautives, les index de lots, la pagination réelle et la requête obsolète. Les tests de scan utilisent un PDF valide contenant une image de cours, sans couche texte ; le worker et le lecteur sont réels, aucun OCR factice présenté comme une extraction réelle.
@@ -75,7 +77,7 @@ Le timeout initial à 15 s n’est plus reproduit avec la configuration normale 
 ## Tests, migrations, performance et captures
 
 - Build TypeScript/Vite vert ; aucun script lint présent dans le projet.
-- 277 tests backend verts : Study 131, flashcards 111, comptes 7, progression 2, taxonomie 11, catalogue 6, qualité catalogue 6, feedback 2, sécurité 1.
+- 278 tests backend verts : Study 132, flashcards 111, comptes 7, progression 2, taxonomie 11, catalogue 6, qualité catalogue 6, feedback 2, sécurité 1.
 - 27 Playwright ciblés verts sans retry, sur serveur et base isolés : parcours import/lecture/édition/sauvegarde/PDF, QCM/assistant, sélection précise/acceptation/FSRS, image/mask, mobile 390 px, clavier/focus, erreurs, comptes, pagination et scan.
 - Les parcours UI QCM/assistant utilisent des réponses contrôlées pour les tests de contrat ; les appels réels et leurs limites sont décrits séparément ci-dessus.
 - Migrations V2 `[1,2,3,4]` idempotentes et additives, sources immuables, contrôles des clés étrangères et conservation des cartes/historiques FSRS vérifiés. Cette PR ne modifie aucun schéma.
@@ -107,4 +109,4 @@ GO pour la revue technique de l’ensemble corrigé et la bêta avec relecture h
 
 Restent ouverts : assistant biochimique après le 429, un échantillon Gemini plus large après autorisation, appréciation humaine des QCM/synthèses et des 20 cartes préexistantes signalées dans la revue précédente, questions générales de l’assistant parfois partielles, OCR Google réel, figures/formules complexes, très longs PDF au-delà des 125 pages réellement mesurées, Safari/iPhone/tactile/lecteur d’écran, charge multi-utilisateurs et comportement sous limites mémoire Railway. Les données et l’interface classique restent conservées.
 
-CI de la branche de finalisation : à confirmer sur le SHA poussé ; les 32 checks verts de la pile antérieure ne sont pas utilisés comme substitut.
+CI finale : consulter les checks de la [PR #23](https://github.com/31nidal/corpus/pull/23) sur son HEAD courant. Les 32 checks verts de la pile antérieure ne sont pas utilisés comme substitut.

@@ -37,15 +37,15 @@ export function DocumentWorkspace({id, initialSectionId, onBack, versionControl}
     {course.error && <div role="alert"><p>{course.error}</p><button onClick={course.reload}>Réessayer</button></div>}
     {!data && !course.error && <p role="status">Chargement du cours…</p>}
     {data && <>
-      <header className="sv2-heading"><div><h1>{data.document.title}</h1><p>{data.document.filename} · {data.document.pageCount || '—'} pages · <span className="sv2-state" data-state={data.document.processingState}>{processingLabels[data.document.processingState]}</span></p></div>
+      <header className="sv2-heading"><div><h1>{data.document.title}</h1><p>{data.document.filename} · {data.document.pageCount || '—'} page{data.document.pageCount === 1 ? '' : 's'} · <span className="sv2-state" data-state={data.document.processingState}>{processingLabels[data.document.processingState]}</span></p></div>
         <a href={`/api/study/documents/${encodeURIComponent(id)}/pdf`} download={data.document.filename}><Download size={16}/> PDF original</a></header>
       <DocumentRecovery data={data} onRetry={course.reload}/>
       {course.document?.extraction?.warnings?.length ? <details className="sv2-warnings"><summary>Vérifications de l’extraction ({course.document.extraction.warnings.length})</summary><ul>{course.document.extraction.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul></details> : null}
       <nav className="sv2-spaces" aria-label="Espaces du cours">
         <button aria-pressed={space === 'original'} onClick={() => setSpace('original')}>Document original</button>
-        <button aria-pressed={space === 'flashcards'} onClick={() => setSpace('flashcards')}>Flashcards</button>
         <button aria-pressed={space === 'notes'} onClick={() => {setNotesVisited(true); setSpace('notes')}}>Fiches de révision</button>
         <button aria-pressed={space === 'questions'} onClick={() => {setQuestionsVisited(true); setSpace('questions')}}>QCM et entraînements</button>
+        <button aria-pressed={space === 'flashcards'} onClick={() => setSpace('flashcards')}>Flashcards</button>
         <button aria-pressed={space === 'original' && assistantOpen} onClick={() => {setAssistantOpen(true); setAssistantVisited(true); setSpace('original')}}>Assistant IA</button>
       </nav>
       <div hidden={space !== 'original'} className={'sv2-reading-layout' + (assistantOpen ? ' sv2-assistant-open' : '')}>
