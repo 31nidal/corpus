@@ -79,3 +79,18 @@ test('Découpage : 30 pages toutes couvertes, formules préservées, refus expli
   assert.throws(()=>planChunks(sections,{maxCharacters:100}),{code:'AI_DOCUMENT_TOO_LARGE'})
   assert.throws(()=>planChunks(sections,{maxChunks:1}),{code:'AI_TOO_MANY_CHUNKS'})
 })
+
+test('Gemini : interruption pendant la lecture du corps conserve AI_TIMEOUT, sans nouvelle requête',async()=>{
+  const controller=new AbortController(),usage=[]
+  let calls=0
+  const client=new GeminiClient({GEMINI_API_KEY:'test'},{fetchImpl:async(_url,{signal})=>{
+    calls++
+    const stream=new ReadableStream({start(body){
+      signal.addEventListener('abort',()=>body.error(new DOMException('Lecture interrompue','AbortError')),{once:true})
+      setTimeout(()=>controller.abort(),5)
+    }})
+    return new Response(stream)
+  }})
+  await assert.rejects(client.json({...request,signal:controller.signal,onUsage:value=>usage.push(value)}),error=>error.code==='AI_TIMEOUT')
+  assert.equal(calls,1);assert.equal(usage[0].usageKnown,false)
+})
