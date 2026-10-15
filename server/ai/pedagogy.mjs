@@ -1,4 +1,6 @@
 import {generateSummary} from './summary.mjs'
+import {generateDocumentQuestions} from './study-questions.mjs'
+import {answerDocument} from './document-assistant.mjs'
 import {GeminiClient, aiError} from './gemini-client.mjs'
 import {planChunks, evenlySelect} from './chunks.mjs'
 import {emptyUsage, collectUsage} from './usage.mjs'
@@ -120,6 +122,8 @@ export class GeminiPedagogy {
     return attach(items,result.generation)
   }
   async generateStudySummary(context) {return generateSummary(this,context,SUMMARY_SCHEMA,SOURCE_RULES)}
+  async generateDocumentQuestions(context) {return generateDocumentQuestions(this,context)}
+  async answerDocument(context) {return answerDocument(this,context)}
   async generateStudyQuestions(context) {
     const result=await this.run('questions',context,QUESTION_SCHEMA,
       `Génère des QCM à une seule bonne réponse, question autonome d'au moins 20 caractères, 3 à 5 options distinctes, correct est le tableau contenant l'indice de la bonne réponse. La bonne réponse est verbatim dans sourceExcerpt. Les distracteurs sont plausibles mais incontestablement incorrects pour la question ; évite toute ambiguïté ou proposition partiellement correcte.`,(raw,fragments)=>{

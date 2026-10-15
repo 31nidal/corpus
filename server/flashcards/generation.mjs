@@ -32,7 +32,7 @@ const relations = [
   ['anatomie', /(?:s['’]articule(?:nt)?(?: proximalement| distalement)? avec|s['’]insère(?:nt)? sur|innerve(?:nt)?|vascularise(?:nt)?|relie(?:nt)?|sépare(?:nt)?|entoure(?:nt)?|recouvre(?:nt)?|protège(?:nt)?)/i, 'Quelle relation anatomique est décrite pour'],
   ['fonction', /(?:agit sur|permet|permettent|assure(?:nt)?|participe(?:nt)? à|joue(?:nt)? un rôle dans|fléchit|fléchissent|étend(?:ent)?|sécrète(?:nt)?|produit|produisent|transporte(?:nt)?|régule(?:nt)?|contrôle(?:nt)?|filtre(?:nt)?|draine(?:nt)?|favorise(?:nt)?|éjecte(?:nt)?)/i, 'Quel rôle est décrit pour'],
   ['cause', /(?:réduit|réduisent|provoque(?:nt)?|entra[iî]ne(?:nt)?|cause(?:nt)?|induit|induisent|augmente(?:nt)?|diminue(?:nt)?)/i, 'Quel effet est décrit pour'],
-  ['dépendance', /(?:dépend(?:ent)? de|varie(?:nt)? avec)/i, 'De quoi dépend'],
+  ['dépendance', /(?:d[ée]pend(?:ent)? de|varie(?:nt)? avec)/i, 'De quoi dépend'],
   ['valeur', /(?:vaut|valent|mesure(?:nt)?|atteint|atteignent|est égal(?:e)? à|sont égal(?:e)?s à)/i, 'Quelle valeur est indiquée pour'],
   ['définition', /(?:est|sont|correspond(?:ent)? à|désigne(?:nt)?|se définit comme|constitue(?:nt)?|décrit|décrivent|représente(?:nt)?)/i, 'Que précise le cours à propos de'],
 ]

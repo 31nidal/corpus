@@ -1,0 +1,467 @@
+{
+  "date": "2026-10-14",
+  "flashcardBaseline": "c6e98d1",
+  "notesBaseline": "db7f7f3",
+  "localCourses": 60,
+  "localSections": 331,
+  "categories": [
+    {
+      "category": "Anatomie",
+      "courses": 15,
+      "before": 155,
+      "after": 155,
+      "duplicates": 0,
+      "proofFailures": 0,
+      "lost": 0,
+      "notes": {
+        "short": {
+          "points": 166,
+          "failures": 0,
+          "sectionsTotal": 84,
+          "sectionsRepresented": 84,
+          "refused": 1
+        },
+        "structured": {
+          "points": 325,
+          "failures": 0,
+          "sectionsTotal": 84,
+          "sectionsRepresented": 84,
+          "refused": 1
+        },
+        "detailed": {
+          "points": 372,
+          "failures": 0,
+          "sectionsTotal": 84,
+          "sectionsRepresented": 84,
+          "refused": 1
+        }
+      }
+    },
+    {
+      "category": "Physiologie",
+      "courses": 15,
+      "before": 136,
+      "after": 136,
+      "duplicates": 0,
+      "proofFailures": 0,
+      "lost": 0,
+      "notes": {
+        "short": {
+          "points": 170,
+          "failures": 0,
+          "sectionsTotal": 85,
+          "sectionsRepresented": 85,
+          "refused": 0
+        },
+        "structured": {
+          "points": 289,
+          "failures": 0,
+          "sectionsTotal": 85,
+          "sectionsRepresented": 85,
+          "refused": 0
+        },
+        "detailed": {
+          "points": 330,
+          "failures": 0,
+          "sectionsTotal": 85,
+          "sectionsRepresented": 85,
+          "refused": 0
+        }
+      }
+    },
+    {
+      "category": "Pharmacologie",
+      "courses": 15,
+      "before": 66,
+      "after": 66,
+      "duplicates": 0,
+      "proofFailures": 0,
+      "lost": 0,
+      "notes": {
+        "short": {
+          "points": 154,
+          "failures": 0,
+          "sectionsTotal": 78,
+          "sectionsRepresented": 78,
+          "refused": 0
+        },
+        "structured": {
+          "points": 225,
+          "failures": 0,
+          "sectionsTotal": 78,
+          "sectionsRepresented": 78,
+          "refused": 0
+        },
+        "detailed": {
+          "points": 225,
+          "failures": 0,
+          "sectionsTotal": 78,
+          "sectionsRepresented": 78,
+          "refused": 0
+        }
+      }
+    },
+    {
+      "category": "Biochimie",
+      "courses": 15,
+      "before": 100,
+      "after": 100,
+      "duplicates": 0,
+      "proofFailures": 0,
+      "lost": 0,
+      "notes": {
+        "short": {
+          "points": 167,
+          "failures": 0,
+          "sectionsTotal": 84,
+          "sectionsRepresented": 84,
+          "refused": 0
+        },
+        "structured": {
+          "points": 252,
+          "failures": 0,
+          "sectionsTotal": 84,
+          "sectionsRepresented": 84,
+          "refused": 0
+        },
+        "detailed": {
+          "points": 255,
+          "failures": 0,
+          "sectionsTotal": 84,
+          "sectionsRepresented": 84,
+          "refused": 0
+        }
+      }
+    }
+  ],
+  "missingQuantities": {
+    "short": {
+      "before": 29,
+      "after": 29
+    },
+    "structured": {
+      "before": 7,
+      "after": 0
+    },
+    "detailed": {
+      "before": 3,
+      "after": 0
+    }
+  },
+  "pdfs": [
+    {
+      "name": "cardiologie-uness",
+      "bytes": 1304520,
+      "sha256": "6871cb0b189e0a99baf26c8d99be7d06cb5037692ef790cb10cc37938ebb3050",
+      "matchesPreviousReference": true,
+      "pages": 18,
+      "characters": 27801,
+      "sections": 24,
+      "method": "pdfjs",
+      "pagesWithoutText": [],
+      "durationMs": 767,
+      "warnings": 0
+    },
+    {
+      "name": "physiologie-grenoble",
+      "bytes": 1365226,
+      "sha256": "7e81b2060d74374bf46b0500d9ed1ad85bd350a300b9c8843d0e9066abee13ed",
+      "matchesPreviousReference": true,
+      "pages": 29,
+      "characters": 6837,
+      "sections": 11,
+      "method": "pdfjs",
+      "pagesWithoutText": [],
+      "durationMs": 383,
+      "warnings": 22
+    },
+    {
+      "name": "pharmacologie-lyon",
+      "bytes": 1592121,
+      "sha256": "698fdb0bd16e660900399a1717513f2887e735435d1da7e36529539f9b76ae65",
+      "matchesPreviousReference": true,
+      "pages": 70,
+      "characters": 24007,
+      "sections": 24,
+      "method": "pdfjs",
+      "pagesWithoutText": [],
+      "durationMs": 737,
+      "warnings": 54
+    },
+    {
+      "name": "cardiologie-college",
+      "bytes": 5233127,
+      "sha256": "b99ed323d1f8120ad92c7e5b9303075559702327280b16f7994754ec9b73f51a",
+      "matchesPreviousReference": true,
+      "pages": 125,
+      "characters": 234819,
+      "sections": 230,
+      "method": "pdfjs",
+      "pagesWithoutText": [],
+      "durationMs": 2085,
+      "warnings": 0
+    },
+    {
+      "name": "derivee",
+      "bytes": 203536,
+      "sha256": "47b4cedacdfbb9ef199baec4c0c8ad224e4ee82f8c8785d3fa60e4d9b9961fd7",
+      "matchesPreviousReference": null,
+      "pages": 14,
+      "characters": 29624,
+      "sections": 15,
+      "method": "pdfjs",
+      "pagesWithoutText": [],
+      "durationMs": 333,
+      "warnings": 14
+    },
+    {
+      "name": "python",
+      "bytes": 387949,
+      "sha256": "eb425b72474787b6e8d5f2757603d781ac204341d7b1d095cb08cc70f14ced16",
+      "matchesPreviousReference": null,
+      "pages": 25,
+      "characters": 69065,
+      "sections": 28,
+      "method": "pdfjs",
+      "pagesWithoutText": [],
+      "durationMs": 398,
+      "warnings": 25
+    },
+    {
+      "name": "inflation",
+      "bytes": 329887,
+      "sha256": "0ff665b973fb494cdb5c02cc6146075022fdf9ec1f9a8fa93367f90597b22b0f",
+      "matchesPreviousReference": null,
+      "pages": 3,
+      "characters": 13326,
+      "sections": 7,
+      "method": "pdfjs",
+      "pagesWithoutText": [],
+      "durationMs": 382,
+      "warnings": 3
+    }
+  ],
+  "geminiHttpRequests": 23,
+  "geminiRequestLimit": 24,
+  "estimatedGeminiUsd": 0.041555,
+  "liveAuditAgainstFinalCode": [
+    {
+      "run": "renal",
+      "course": "phys-renal",
+      "task": "revision",
+      "state": "succeeded",
+      "httpCallsInRun": 8,
+      "durationMs": 8683,
+      "beforePoints": 19,
+      "afterPoints": 20,
+      "supplements": 1,
+      "beforeMissing": [
+        {
+          "sectionId": "phys-renal-7",
+          "sectionTitle": "Bilan intégré et équilibre acide-base",
+          "value": "5 mg/mL"
+        },
+        {
+          "sectionId": "phys-renal-7",
+          "sectionTitle": "Bilan intégré et équilibre acide-base",
+          "value": "5 mL/min"
+        }
+      ],
+      "coverage": {
+        "sectionsTotal": 8,
+        "sectionsRepresented": 8,
+        "missingSections": [],
+        "missingQuantities": [],
+        "edited": false,
+        "message": "Présence des sections et valeurs contrôlée ; fidélité sémantique et validité médicale à relire dans les sources."
+      }
+    },
+    {
+      "run": "renal",
+      "course": "phys-renal",
+      "task": "study_questions",
+      "state": "succeeded",
+      "httpCallsInRun": 8,
+      "durationMs": 5794,
+      "questionAudit": [
+        {
+          "prompt": "Quels éléments composent le filtre glomérulaire selon le texte ?",
+          "sourceShape": "valid",
+          "medicalCertification": false
+        },
+        {
+          "prompt": "Quelle est la formule de la clairance d'une substance telle qu'indiquée dans le texte ?",
+          "sourceShape": "rejected",
+          "code": "QUESTION_ABSENCE_AS_CONTRADICTION",
+          "message": "L’absence d’information dans le cours ne démontre pas qu’une proposition est fausse."
+        }
+      ]
+    },
+    {
+      "run": "renal",
+      "course": "phys-renal",
+      "task": "document_assistant",
+      "state": "succeeded",
+      "httpCallsInRun": 8,
+      "durationMs": 5879,
+      "answered": true,
+      "paragraphs": 1,
+      "verified": true
+    },
+    {
+      "run": "anatomy",
+      "course": "anat-cervical",
+      "task": "revision",
+      "state": "succeeded",
+      "httpCallsInRun": 5,
+      "durationMs": 6882,
+      "beforePoints": 16,
+      "afterPoints": 18,
+      "supplements": 2,
+      "beforeMissing": [
+        {
+          "sectionId": "anat-cervical-1",
+          "sectionTitle": "C3 à C6 : reconnaître le type cervical",
+          "value": "3"
+        },
+        {
+          "sectionId": "anat-cervical-1",
+          "sectionTitle": "C3 à C6 : reconnaître le type cervical",
+          "value": "6"
+        },
+        {
+          "sectionId": "anat-cervical-3",
+          "sectionTitle": "Axis : un pivot appartenant à C2",
+          "value": "1"
+        },
+        {
+          "sectionId": "anat-cervical-3",
+          "sectionTitle": "Axis : un pivot appartenant à C2",
+          "value": "3"
+        }
+      ],
+      "coverage": {
+        "sectionsTotal": 6,
+        "sectionsRepresented": 6,
+        "missingSections": [],
+        "missingQuantities": [],
+        "edited": false,
+        "message": "Présence des sections et valeurs contrôlée ; fidélité sémantique et validité médicale à relire dans les sources."
+      }
+    },
+    {
+      "run": "anatomy",
+      "course": "anat-cervical",
+      "task": "study_questions",
+      "state": "succeeded",
+      "httpCallsInRun": 5,
+      "durationMs": 5003,
+      "questionAudit": [
+        {
+          "prompt": "Combien de paires de nerfs spinaux cervicaux compte-t-on par rapport aux sept vertèbres cervicales ?",
+          "sourceShape": "valid",
+          "medicalCertification": false
+        },
+        {
+          "prompt": "Où se situe le premier disque intervertébral cervical habituel ?",
+          "sourceShape": "valid",
+          "medicalCertification": false
+        }
+      ]
+    },
+    {
+      "run": "anatomy",
+      "course": "anat-cervical",
+      "task": "document_assistant",
+      "state": "succeeded",
+      "httpCallsInRun": 5,
+      "durationMs": 803,
+      "answered": false,
+      "paragraphs": 0,
+      "verified": false
+    },
+    {
+      "run": "biochemistry",
+      "course": "biochem-enzymes-kinetics",
+      "task": "revision",
+      "state": "succeeded",
+      "httpCallsInRun": 5,
+      "durationMs": 2467,
+      "beforePoints": 5,
+      "afterPoints": 5,
+      "supplements": 0,
+      "beforeMissing": [],
+      "coverage": {
+        "sectionsTotal": 5,
+        "sectionsRepresented": 5,
+        "missingSections": [],
+        "missingQuantities": [],
+        "edited": false,
+        "message": "Présence des sections et valeurs contrôlée ; fidélité sémantique et validité médicale à relire dans les sources."
+      }
+    },
+    {
+      "run": "biochemistry",
+      "course": "biochem-enzymes-kinetics",
+      "task": "study_questions",
+      "state": "succeeded",
+      "httpCallsInRun": 5,
+      "durationMs": 3958,
+      "questionAudit": [
+        {
+          "prompt": "Quel est l'effet d'un inhibiteur non compétitif pur sur les paramètres cinétiques ?",
+          "sourceShape": "rejected",
+          "code": "QUESTION_ABSENCE_AS_CONTRADICTION",
+          "message": "L’absence d’information dans le cours ne démontre pas qu’une proposition est fausse."
+        }
+      ]
+    },
+    {
+      "run": "biochemistry",
+      "course": "biochem-enzymes-kinetics",
+      "task": "document_assistant",
+      "state": "failed",
+      "httpCallsInRun": 5,
+      "durationMs": 828,
+      "errorCode": "AI_RATE_LIMIT"
+    },
+    {
+      "run": "anatomy-assistant",
+      "course": "anat-cervical",
+      "task": "document_assistant",
+      "state": "succeeded",
+      "httpCallsInRun": 3,
+      "durationMs": 4427,
+      "answered": true,
+      "paragraphs": 2,
+      "verified": true
+    },
+    {
+      "run": "biochemistry-qcm",
+      "course": "biochem-enzymes-kinetics",
+      "task": "study_questions",
+      "state": "succeeded",
+      "httpCallsInRun": 2,
+      "durationMs": 6862,
+      "questionAudit": [
+        {
+          "prompt": "Quel est l'effet de l'enzyme sur le bilan thermodynamique ou la position finale de l'équilibre de la réaction ?",
+          "sourceShape": "valid",
+          "medicalCertification": false
+        },
+        {
+          "prompt": "Quel est l'effet d'un inhibiteur non compétitif pur sur les paramètres cinétiques de l'enzyme ?",
+          "sourceShape": "valid",
+          "medicalCertification": false
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Valeurs et présence des sections, sans exhaustivité sémantique ni certification médicale.",
+    "Cours Gemini issus du catalogue ; pages de benchmark synthétiques, pas pages universitaires.",
+    "Erreur Gemini 429 sur assistant biochimique ; aucune réponse positive vérifiée pour ce cours.",
+    "Captures QCM/assistant de contrat UI, pas réponses médicales Gemini.",
+    "Safari/iPhone, lecteur d’écran et OCR Google réel non vérifiés manuellement."
+  ]
+}

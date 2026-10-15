@@ -39,6 +39,7 @@ async function limitedJson(response, signal) {
   } catch (error) {
     await reader.cancel().catch(() => {})
     if (error.code?.startsWith('AI_')) throw error
+    if (signal.aborted) throw aiError('AI_TIMEOUT', 'Le délai de lecture de la réponse IA est dépassé. Réessayez.')
     throw aiError('AI_INVALID_JSON', 'La réponse IA est illisible. Réessayez.')
   }
 }

@@ -1,0 +1,12 @@
+.sv2-assistant-pane { min-width: 0; }
+.sv2-assistant { padding: 16px; border: 1px solid var(--mc-border); border-radius: 10px; background: var(--mc-surface); min-width: 0; }
+.sv2-assistant .sv2-heading { margin-bottom: 8px; }
+.sv2-assistant fieldset { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 12px; }
+.sv2-assistant textarea { width: 100%; min-height: 100px; padding: 10px; font: inherit; line-height: 1.6; color: var(--mc-text); background: var(--mc-surface); border: 1px solid var(--mc-border); border-radius: 7px; }
+.sv2-assistant textarea:focus-visible { outline: 2px solid var(--mc-brand); outline-offset: 3px; }
+.sv2-assistant-messages { max-height: 48vh; overflow-y: auto; overscroll-behavior: contain; margin-block: 16px; }
+.sv2-assistant-message { padding-block: 12px; border-top: 1px solid var(--mc-border); overflow-wrap: anywhere; }
+.sv2-assistant-message h3 { font-size: 14px; line-height: 1.6; }
+.sv2-assistant blockquote { margin: 10px 0; border-left: 2px solid var(--mc-brand); padding-left: 10px; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+@media (min-width: 1200px) { .sv2-reading-layout.sv2-assistant-open { grid-template-columns: 190px minmax(0, 1fr) minmax(280px, 340px); } }
+@media (min-width: 901px) and (max-width: 1199px) { .sv2-assistant-pane { grid-column: 2; } }
