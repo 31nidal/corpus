@@ -19,6 +19,32 @@ async function importReference(page: Page) {
   return card
 }
 
+test('Compatibilité Safari 18 : lecture et recadrage PDF sans API JS récentes', async ({page}) => {
+  await page.addInitScript(() => {
+    Reflect.deleteProperty(Map.prototype, 'getOrInsertComputed')
+    Reflect.deleteProperty(Math, 'sumPrecise')
+    Reflect.deleteProperty(ReadableStream.prototype, Symbol.asyncIterator)
+    if (Reflect.get(ReadableStream.prototype, Symbol.asyncIterator)) throw new Error('Le test doit retirer les itérateurs de flux.')
+  })
+  await register(page, 'Compatibilité Safari')
+  await enable(page)
+  const card = await importReference(page)
+  await card.locator('.sv2-document-open').click()
+  await expect(page.locator('.sv2-text-layer')).toContainText('Le rein filtre le plasma sanguin.')
+  expect(await page.evaluate(() => typeof Reflect.get(ReadableStream.prototype, Symbol.asyncIterator))).toBe('undefined')
+  await page.getByRole('button', {name: 'Page suivante', exact: true}).click()
+  await expect(page.locator('.sv2-text-layer')).toContainText('Chapitre 2 : Physiologie renale')
+  expect((await page.request.post('/api/flashcards/decks', {headers, data: {name: 'Safari PDF'}})).status()).toBe(201)
+  await page.getByRole('navigation', {name: 'Espaces du cours'}).getByRole('button', {name: 'Flashcards', exact: true}).click()
+  const opener = page.getByRole('button', {name: 'Créer une carte visuelle depuis le PDF', exact: true})
+  await opener.click()
+  const crop = page.getByRole('dialog', {name: 'Sélection du PDF', exact: true})
+  await expect(crop.getByRole('button', {name: 'Utiliser la page entière', exact: true})).toBeEnabled({timeout: 30000})
+  await expect(crop.locator('canvas')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(opener).toBeFocused()
+})
+
 test('Study 2.0 : import persisté, dossiers, contenu, PDF sélectionnable, position et retour classique', async ({page}) => {
   await register(page)
   await enable(page)

@@ -1,11 +1,9 @@
 import {useEffect, useRef, useState} from 'react'
-import * as pdfjs from 'pdfjs-dist'
-import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
+import * as pdfjs from '../../pdf/pdfjs'
 import type {PdfSelection} from './types'
 import type {StudySection} from '../myCoursesTypes'
 import './pdfTextLayer.css'
 
-pdfjs.GlobalWorkerOptions.workerSrc = workerUrl
 const MAX_CANVAS_PIXELS = 4_000_000
 export function PdfReader({documentId, title, page, onPage, onSelection, sourceSections = []}: {
   documentId: string; title: string; page: number; onPage: (page: number) => void; onSelection: (selection: PdfSelection | null) => void
@@ -80,7 +78,7 @@ export function PdfReader({documentId, title, page, onPage, onSelection, sourceS
         render = pdfPage.render({canvas, viewport, transform: [pixelRatio, 0, 0, pixelRatio, 0, 0]})
         await render.promise
         if (cancelled) return
-        const content = await pdfPage.getTextContent()
+        const content = await pdfjs.readPageText(pdfPage)
         if (cancelled) return
         layer = new pdfjs.TextLayer({textContentSource: content, container: text, viewport})
         await layer.render()

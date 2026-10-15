@@ -2,7 +2,7 @@
 
 État au 14 octobre 2026. Branche `fix/study-v2-finalization`, basée sur `feat/study-v2-quality-validation` (#22). Aucun merge, déploiement, changement de dépendance ou migration supplémentaire. `main` reste `c6e98d1d7eef91fd899e5b0bca13aa3803fff279`.
 
-Mise à jour du 15 octobre : [contrôles préalables OCR, WebKit et accessibilité](study-v2-predeployment.md). L’OCR réel synthétique y est désormais vérifié ; les essais natifs Safari/VoiceOver restent conditionnés aux accès du Mac. L’autorisation utilisateur de fusion et déploiement est acquise, avec ces vérifications préalables.
+Mise à jour du 15 octobre : [contrôles préalables OCR, WebKit et accessibilité](study-v2-predeployment.md). L’OCR réel synthétique y est désormais vérifié ; Safari 18.5 et les contrôles VoiceOver ciblés ont été exécutés après activation des accès par l’utilisateur. L’autorisation utilisateur de fusion et déploiement est acquise, avec ces vérifications préalables.
 
 ## PR et dépendances vérifiées
 
@@ -19,7 +19,7 @@ Les huit PR sont ouvertes, non brouillon, `MERGEABLE` / `CLEAN`, avec `validate`
 | #21 | #20 | 80fbfc0 | Flashcards précises/visuelles | Prête à la revue technique, moteur conservé |
 | #22 | #21 | db7f7f3 | Validation/performance | Compléter avec ce rapport et la PR de finalisation |
 
-Ordre d’intégration éventuel : #15 → #16 → #17 → #18 → #19 → #20 → #21 → #22 → finalisation, après revue de l’ensemble final et checks sur chaque nouvelle base. Cette liste n’autorise aucune fusion ni mise en production. La CI des anciennes PR ne valide pas à elle seule les corrections finales.
+Intégration autorisée le 15 octobre : conserver tous les commits #15–#22 dans la PR finale, ciblée sur `main`, puis effectuer un seul merge après CI complète verte. Cela évite des déploiements intermédiaires incomplets. La CI des anciennes PR ne valide pas à elle seule les corrections finales ; vérifier ensuite `main`, les migrations et le déploiement Railway.
 
 ## Bilan de chaque fonctionnalité
 
@@ -112,6 +112,6 @@ Le script est local par défaut. `--live-course`, `--live-task`, `--live-limit` 
 
 GO pour la revue technique de l’ensemble corrigé et la bêta avec relecture humaine. Pas de GO pour activation générale ou affirmation de fiabilité médicale complète. Aucune fusion ni mise en production effectuée.
 
-Restent ouverts : assistant biochimique après le 429, un échantillon Gemini plus large après autorisation, appréciation humaine des QCM/synthèses et des 20 cartes préexistantes signalées dans la revue précédente, questions générales de l’assistant parfois partielles, OCR Google réel, figures/formules complexes, très longs PDF au-delà des 125 pages réellement mesurées, Safari/iPhone/tactile/lecteur d’écran, charge multi-utilisateurs et comportement sous limites mémoire Railway. Les données et l’interface classique restent conservées.
+Restent ouverts : assistant biochimique après le 429, un échantillon Gemini plus large après autorisation, appréciation humaine des QCM/synthèses et des 20 cartes préexistantes signalées dans la revue précédente, questions générales de l’assistant parfois partielles, OCR complexe au-delà du PDF synthétique réel vérifié, figures/formules complexes, très longs PDF au-delà des 125 pages réellement mesurées, Safari sur iPhone/tactile, contrôle exhaustif par lecteur d’écran (contrôles ciblés Safari/VoiceOver documentés), charge multi-utilisateurs et comportement sous limites mémoire Railway. Les données et l’interface classique restent conservées.
 
 CI finale : consulter les checks de la [PR #23](https://github.com/31nidal/corpus/pull/23) sur son HEAD courant. Les 32 checks verts de la pile antérieure ne sont pas utilisés comme substitut.

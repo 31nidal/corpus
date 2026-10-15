@@ -1,9 +1,7 @@
 import React, {useEffect, useRef, useState} from 'react'
-import * as pdfjsLib from 'pdfjs-dist'
-import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
+import * as pdfjsLib from '../pdf/pdfjs'
 import {ChevronLeft, ChevronRight, Crop, Check, Loader2, AlertCircle} from 'lucide-react'
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker
 
 interface PdfCropSelectorProps {
   documentId: string
