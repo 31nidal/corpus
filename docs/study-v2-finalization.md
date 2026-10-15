@@ -2,6 +2,8 @@
 
 État au 14 octobre 2026. Branche `fix/study-v2-finalization`, basée sur `feat/study-v2-quality-validation` (#22). Aucun merge, déploiement, changement de dépendance ou migration supplémentaire. `main` reste `c6e98d1d7eef91fd899e5b0bca13aa3803fff279`.
 
+Mise à jour du 15 octobre : [contrôles préalables OCR, WebKit et accessibilité](study-v2-predeployment.md). L’OCR réel synthétique y est désormais vérifié ; les essais natifs Safari/VoiceOver restent conditionnés aux accès du Mac. L’autorisation utilisateur de fusion et déploiement est acquise, avec ces vérifications préalables.
+
 ## PR et dépendances vérifiées
 
 Les huit PR sont ouvertes, non brouillon, `MERGEABLE` / `CLEAN`, avec `validate` et les trois shards E2E verts sur leurs SHA respectifs. Les corrections de ce rapport se trouvent au-dessus de la pile, sans réécriture des branches précédentes.
