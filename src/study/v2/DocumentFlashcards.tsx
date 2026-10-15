@@ -23,7 +23,7 @@ export default function DocumentFlashcards({document, selection, page, onClose}:
   }
   return <section aria-label="Flashcards du cours">
     <div hidden={Boolean(reviewNoteId)}>
-      <button onClick={() => setVisual(true)}>Créer une carte visuelle depuis le PDF</button>
+      <button onClick={event => {event.currentTarget.focus(); setVisual(true)}}>Créer une carte visuelle depuis le PDF</button>
       <p role="status">{message}</p>
       <Suspense fallback={<p role="status">Chargement des flashcards…</p>}>
         {visual && <VisualCardCreator document={document} initialPage={page} onClose={() => setVisual(false)}

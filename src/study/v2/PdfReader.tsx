@@ -2,12 +2,14 @@ import {useEffect, useRef, useState} from 'react'
 import * as pdfjs from 'pdfjs-dist'
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 import type {PdfSelection} from './types'
+import type {StudySection} from '../myCoursesTypes'
 import './pdfTextLayer.css'
 
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl
 const MAX_CANVAS_PIXELS = 4_000_000
-export function PdfReader({documentId, title, page, onPage, onSelection}: {
+export function PdfReader({documentId, title, page, onPage, onSelection, sourceSections = []}: {
   documentId: string; title: string; page: number; onPage: (page: number) => void; onSelection: (selection: PdfSelection | null) => void
+  sourceSections?: StudySection[]
 }) {
   const [pdf, setPdf] = useState<pdfjs.PDFDocumentProxy | null>(null)
   const [error, setError] = useState('')
@@ -15,6 +17,7 @@ export function PdfReader({documentId, title, page, onPage, onSelection}: {
   const [revision, setRevision] = useState(0)
   const [width, setWidth] = useState(600)
   const [zoom, setZoom] = useState(1)
+  const [hasNativeText, setHasNativeText] = useState<boolean | null>(null)
   const container = useRef<HTMLDivElement>(null)
   const sheet = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -54,7 +57,7 @@ export function PdfReader({documentId, title, page, onPage, onSelection}: {
     let render: pdfjs.RenderTask | undefined
     let layer: pdfjs.TextLayer | undefined
     const node = sheet.current
-    setLoading(true); setError(''); onSelection(null)
+    setLoading(true); setError(''); setHasNativeText(null); onSelection(null)
     async function draw() {
       try {
         const pdfPage = await pdf!.getPage(currentPage)
@@ -77,9 +80,14 @@ export function PdfReader({documentId, title, page, onPage, onSelection}: {
         render = pdfPage.render({canvas, viewport, transform: [pixelRatio, 0, 0, pixelRatio, 0, 0]})
         await render.promise
         if (cancelled) return
-        layer = new pdfjs.TextLayer({textContentSource: await pdfPage.getTextContent(), container: text, viewport})
+        const content = await pdfPage.getTextContent()
+        if (cancelled) return
+        layer = new pdfjs.TextLayer({textContentSource: content, container: text, viewport})
         await layer.render()
-        if (!cancelled) setLoading(false)
+        if (!cancelled) {
+          setHasNativeText(content.items.some(item => 'str' in item && item.str.trim()))
+          setLoading(false)
+        }
       } catch {if (!cancelled) {setError('Cette page ne peut pas être affichée. Vous pouvez télécharger le PDF original.'); setLoading(false)}}
     }
     void draw()
@@ -92,6 +100,9 @@ export function PdfReader({documentId, title, page, onPage, onSelection}: {
     const text = selection.toString().trim().slice(0, 5000)
     onSelection(text ? {text, page: currentPage} : null)
   }
+  const transcripts = hasNativeText === false && !loading && !error
+    ? sourceSections.filter(section => section.startPage <= currentPage && section.endPage >= currentPage && section.content.trim())
+    : []
   return <section className="sv2-reader" aria-label="Lecteur du PDF original">
     <div className="sv2-reader-controls">
       <button disabled={!pdf || currentPage <= 1} onClick={() => onPage(currentPage - 1)}>Page précédente</button>
@@ -101,6 +112,16 @@ export function PdfReader({documentId, title, page, onPage, onSelection}: {
     </div>
     <p role="status">{loading ? 'Chargement de la page…' : error ? '' : `Page ${currentPage} affichée · texte sélectionnable lorsqu’il est présent dans l’original.`}</p>
     {error && <div role="alert"><p>{error}</p><button onClick={() => setRevision(value => value + 1)}>Réessayer</button></div>}
-    <div className="sv2-pdf-scroll" ref={container}><div className="sv2-pdf-sheet" ref={sheet} onPointerUp={selected} onKeyUp={selected}/></div>
+    <div className="sv2-pdf-scroll" ref={container} tabIndex={0} role="group" aria-label="Page PDF à faire défiler"><div className="sv2-pdf-sheet" ref={sheet} onPointerUp={selected} onKeyUp={selected}/></div>
+    {transcripts.length > 0 && <details className="sv2-transcript" key={currentPage}>
+      <summary>Lire le texte extrait associé à cette page</summary>
+      <section aria-label={`Texte extrait associé à la page ${currentPage}`}>
+        <p>Transcription automatique à comparer au PDF original. Chaque passage ci-dessous peut couvrir plusieurs pages ; sa plage est indiquée. Les chiffres, tableaux et formules restent à vérifier.</p>
+        {transcripts.map(section => <section key={section.id}>
+          <h3>{section.title} · {section.startPage === section.endPage ? `page ${section.startPage}` : `pages ${section.startPage}–${section.endPage}`}</h3>
+          <p className="sv2-transcript-text">{section.content}</p>
+        </section>)}
+      </section>
+    </details>}
   </section>
 }

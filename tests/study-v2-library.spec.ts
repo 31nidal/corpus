@@ -236,7 +236,30 @@ test('Study 2.0 : vrai PDF image sans couche texte, original lisible et OCR jama
   await expect(recovery.getByRole('checkbox')).not.toBeChecked()
   await expect(page.locator('.sv2-pdf-sheet canvas')).toBeVisible()
   await expect.poll(()=>page.locator('.sv2-text-layer').innerText()).toBe('')
+  await expect(page.getByText('Lire le texte extrait associé à cette page',{exact:true})).toHaveCount(0)
   await page.screenshot({path:'tests/artifacts/design/study-v2-scanned-desktop.png',fullPage:true})
+  // UI contract only: the paid OCR/persistence path is tested separately with
+  // verify-study-v2-ocr.mjs. Keep the actual image PDF and mock saved OCR text.
+  const id=new URLSearchParams(new URL(page.url()).hash.slice(1)).get('doc')!
+  await page.route(`**/api/study/documents/${id}`,async route=>{
+    const response=await route.fetch(),body=await response.json()
+    body.document.sections=[{
+      id:'ocr-accessibility-section',title:'Transcription rénale',sectionOrder:1,
+      startPage:1,endPage:1,tokenCount:20,
+      content:'Le rein filtre le plasma sanguin.\nLe cortex rénal contient les glomérules.',
+    }]
+    body.document.extraction={method:'ocr',warnings:['Transcription automatique à vérifier.']}
+    await route.fulfill({response,json:body})
+  })
+  await page.reload()
+  const transcript=page.getByText('Lire le texte extrait associé à cette page',{exact:true})
+  await expect(transcript).toBeVisible({timeout:30000})
+  await transcript.focus();await transcript.press('Enter')
+  const accessibleText=page.getByRole('region',{name:'Texte extrait associé à la page 1',exact:true})
+  await expect(accessibleText).toContainText('Le cortex rénal contient les glomérules.')
+  expect(await accessibleText.ariaSnapshot()).toContain('Le rein filtre le plasma sanguin.')
+  await expect(page.locator('.sv2-pdf-sheet canvas')).toBeVisible()
+  await expect.poll(()=>page.locator('.sv2-text-layer').innerText()).toBe('')
 })
 
 test('Study 2.0 : import classique après initialisation V2, premier renommage sans conflit et PDF conservé',async({page})=>{

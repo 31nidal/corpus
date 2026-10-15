@@ -54,7 +54,7 @@ export function DocumentWorkspace({id, initialSectionId, onBack, versionControl}
             : <p>Le PDF reste consultable. Le sommaire apparaîtra après extraction des passages lisibles.</p>}
         </details></aside>
         <div className="sv2-reading-main">
-          <PdfReader documentId={id} title={data.document.title} page={course.page} onPage={course.setPage} onSelection={setSelection}/>
+          <PdfReader documentId={id} title={data.document.title} page={course.page} onPage={course.setPage} onSelection={setSelection} sourceSections={course.document?.sections}/>
           {selection && <section className="sv2-selection" aria-label="Passage sélectionné"><h2>Sélection · page {selection.page}</h2><blockquote>{selection.text}</blockquote><button disabled={selection.text.length < 35} onClick={() => {setAssistantSelection(selection); setAssistantVisited(true); setAssistantOpen(true)}}>Expliquer ce passage</button><button onClick={() => {setNoteSelection(selection); setNotesVisited(true); setSpace('notes')}} disabled={selection.text.length < 35}>Résumer ce passage</button><button onClick={() => {setQuestionSelection(selection); setQuestionsVisited(true); setSpace('questions')}} disabled={selection.text.length < 35}>Générer un QCM sur ce passage</button><button disabled={selection.text.length < 15} onClick={() => {setFlashcardSelection(selection); setSpace('flashcards')}}>Créer des flashcards sur ce passage</button><button onClick={copy}>Copier le passage</button><button onClick={() => setSelection(null)}>Fermer la sélection</button><p role="status">{copied}</p></section>}
           <p role="status">{course.positionMessage}</p>
         </div>

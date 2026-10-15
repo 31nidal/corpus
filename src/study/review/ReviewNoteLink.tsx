@@ -7,6 +7,8 @@ export function ReviewNoteLink({noteId, onReview, children}: {
   return <a href={`#tab=flashcards&revision=due&note=${encodeURIComponent(noteId)}`}
     onClick={event => {
       if (!onReview || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
-      event.preventDefault(); onReview(noteId)
+      // Safari does not focus links clicked with a pointer. Capture the actual
+      // trigger before hiding the list so closing review restores its focus.
+      event.preventDefault(); event.currentTarget.focus(); onReview(noteId)
     }}>{children}</a>
 }

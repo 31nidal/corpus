@@ -328,7 +328,7 @@ export default function MyCoursesWorkspace(props: {
             <button className="mycourses-action-btn" onClick={()=>setFlashReview('review')}>Réviser les brouillons</button>
             <button className="mycourses-action-btn" onClick={()=>{setSupportOptions({count:5,replace:false});setSupportTask('summary')}} title="Synthèse, fiche de révision ou QCM à relire et modifier avant enregistrement">Préparer un support à relire</button>
             {currentDoc.summary&&activeTab==='summary'&&<DownloadPdfButton title={currentDoc.title} selector=".mycourses-summary-content" label="Exporter la synthèse en PDF" className="mycourses-action-btn"/>}
-            <button className="mycourses-action-btn mycourses-action-secondary" onClick={()=>void openVisualCrop(currentDoc)} title="Créer une flashcard d’occlusion d’image à partir d’une page de ce PDF"><Crop size={16}/>Flashcard visuelle</button>
+            <button className="mycourses-action-btn mycourses-action-secondary" onClick={event=>{event.currentTarget.focus();openVisualCrop(currentDoc)}} title="Créer une flashcard d’occlusion d’image à partir d’une page de ce PDF"><Crop size={16}/>Flashcard visuelle</button>
             {!currentDoc.summary ? (
               <button
                 className="mycourses-action-btn mycourses-action-primary"

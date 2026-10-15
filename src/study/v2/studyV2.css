@@ -1,8 +1,9 @@
 .sv2-workspace {max-width: none; padding: 28px clamp(16px, 3vw, 48px) calc(40px + max(var(--sv2-nav-inset, 0px), env(safe-area-inset-bottom))); color: var(--mc-text); background: var(--mc-bg)}
+.study-workspace.sv2-workspace {color: var(--mc-text)}
 .sv2-workspace *, .sv2-workspace *::before, .sv2-workspace *::after {box-sizing: border-box}
 .sv2-workspace button, .sv2-workspace a {display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; border: 1px solid var(--mc-border); border-radius: 8px; padding: 9px 12px; color: var(--mc-text); background: var(--mc-surface); font-size: 13px; text-decoration: none; text-align: left}
 .sv2-workspace button:disabled {opacity: .55; cursor: default}
-.sv2-workspace :is(button, input, select, summary, a):focus-visible {outline: 2px solid var(--mc-brand); outline-offset: 3px}
+.sv2-workspace :is(button, input, select, textarea, summary, a, [tabindex]):focus-visible {outline: 2px solid var(--mc-brand); outline-offset: 3px}
 .sv2-workspace h1 {font-size: clamp(26px, 3vw, 36px); line-height: 1.2; letter-spacing: -.7px; margin: 8px 0 12px; overflow-wrap: anywhere}
 .sv2-workspace h2 {font-size: 16px; margin: 0 0 12px}
 .sv2-workspace p, .sv2-workspace small {color: var(--mc-text-secondary); line-height: 1.55; overflow-wrap: anywhere}
@@ -63,11 +64,14 @@
 .sv2-outline button[aria-current=location] {border-color: var(--mc-border); color: var(--mc-brand); background: var(--mc-surface-soft)}
 .sv2-reading-main {min-width: 0}
 .sv2-reader {min-width: 0; padding: 12px; border: 1px solid var(--mc-border); border-radius: 10px; background: var(--mc-surface)}
-.sv2-reader-controls {display: flex; flex-wrap: wrap; align-items: center; gap: 8px}
+.sv2-reader-controls {display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--mc-text)}
 .sv2-reader-controls label {flex-direction: row; align-items: center}
 .sv2-reader-controls input {width: 65px; font-size: 12px}
 .sv2-reader-controls button {font-size: 11px}
 .sv2-reader-controls select {font-size: 11px}
+.sv2-transcript {margin-top: 16px; color: var(--mc-text)}
+.sv2-transcript summary {cursor: pointer; padding: 8px 0}
+.sv2-transcript-text {white-space: pre-wrap}
 .sv2-pdf-scroll {height: 68vh; min-height: 300px; overflow: auto; padding: 12px; border: 1px solid var(--mc-border); border-radius: 6px; background: var(--mc-surface-soft); scrollbar-width: thin}
 .sv2-pdf-sheet {position: relative; margin: 0 auto; background: white; box-shadow: 0 2px 8px rgb(0 0 0 / 10%)}
 .sv2-pdf-sheet canvas {display: block}

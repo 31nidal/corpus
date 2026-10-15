@@ -12,6 +12,11 @@ export default function VisualCardCreator({document,initialPage=1,onClose,onCrea
   const [decks,setDecks]=useState<FlashcardDeck[]|null>(null),[error,setError]=useState(''),[reload,setReload]=useState(0)
   const [crop,setCrop]=useState<CropResult|null>(null),[url,setUrl]=useState(''),[deckName,setDeckName]=useState(''),[busy,setBusy]=useState(false)
   useEffect(()=>{
+    // Keep the original trigger through the crop -> mask dialog transition.
+    const trigger=window.document.activeElement as HTMLElement|null
+    return()=>{requestAnimationFrame(()=>{if(trigger?.isConnected)trigger.focus()})}
+  },[])
+  useEffect(()=>{
     let active=true
     listDecks().then(value=>{if(active){setDecks(value);setError('')}}).catch(problem=>{if(active)setError(problem.message)})
     return()=>{active=false}
