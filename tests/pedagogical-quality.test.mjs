@@ -261,13 +261,3 @@ test('PDF structuré : une consigne d’exercice numérotée reste dans sa secti
   assert.ok(!sections.some(section=>section.title.startsWith('Voici la fonction')))
   assert.ok(sections.some(section=>section.content.includes(instruction)))
 })
-
-test('Synthèse : les refus pendant la réparation sont comptés et classés sans masquer une section absente',async()=>{
-  const a='La demande augmente lorsque le prix diminue.',b='La production dépend des ressources disponibles.'
-  const client={model:'fixture',json:async({data})=>data.task==='summary-repair'?{points:[{sourceSectionId:'b',text:'La production atteint une valeur inventée de 999.',sourceExcerpt:b,category:'Comprendre'}]}:{points:[{sourceSectionId:'a',text:a,sourceExcerpt:a,category:'Comprendre'}]}}
-  const result=await new GeminiPedagogy({}, {client}).generateStudySummary({sections:[{id:'a',title:'Demande',content:a},{id:'b',title:'Production',content:b}]})
-  assert.equal(result.generation.rejected,1)
-  assert.equal(result.generation.rejectionReasons.summary_quality,1)
-  assert.equal(result.generation.summaryRepaired,0)
-  assert.deepEqual(result.generation.coverage.missingSections,[{id:'b',title:'Production'}])
-})

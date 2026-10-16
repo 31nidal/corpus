@@ -1,6 +1,5 @@
 import {randomUUID} from 'node:crypto'
 import {sourcePage} from '../../study/source-page.mjs'
-import {selectSourcePassage} from '../../study/source-selection.mjs'
 import {disambiguateDraftFronts} from '../draftFronts.mjs'
 import {generateLocalNoteDrafts} from '../generation.mjs'
 import {validateNote} from '../validation.mjs'
@@ -49,7 +48,7 @@ export class DraftReviewRepository {
     return {drafts:filtered.slice(offset,offset+limit),counts,filteredTotal:filtered.length,limit,offset,
       nextOffset:offset+limit<filtered.length?offset+limit:null}
   }
-  generationContext(userId,documentId,{count=12,level='standard',sectionId,sectionIds,startPage,endPage,selection}={}) {
+  generationContext(userId,documentId,{count=12,level='standard',sectionId,sectionIds,startPage,endPage}={}) {
     if(!Number.isSafeInteger(count)||count<1)throw error(400,'Le nombre demandé doit être un entier positif.')
     if(!['essential','standard','complete'].includes(level))throw error(400,'Niveau de génération invalide.')
     const doc=this.document(userId,documentId);if(!doc)throw error(404,'Document introuvable.')
@@ -59,20 +58,15 @@ export class DraftReviewRepository {
     if(sectionIds!==undefined && (!Array.isArray(sectionIds)||!sectionIds.length||sectionIds.length>100||sectionIds.some(id=>typeof id!=='string'||!sections.some(s=>s.id===id))))throw error(404,'Section introuvable.')
     if(sectionId!==undefined && sectionIds!==undefined)throw error(400,'Choisissez sectionId ou sectionIds.')
     if([startPage,endPage].some(p=>p!==undefined&&(!Number.isSafeInteger(p)||p<1||p>doc.page_count)) || (startPage!==undefined&&endPage!==undefined&&startPage>endPage))throw error(400,'La plage de pages est invalide.')
-    let allSections=sections
+    const allSections=sections
     if(sectionId!==undefined)sections=sections.filter(s=>s.id===sectionId)
     if(sectionIds!==undefined)sections=sections.filter(s=>sectionIds.includes(s.id))
     if(startPage!==undefined||endPage!==undefined)sections=sections.filter(s=>s.endPage>=(startPage??1)&&s.startPage<=(endPage??doc.page_count))
-    if(selection!==undefined){
-      const selected=selectSourcePassage(this.db,userId,doc,sections,selection,{minCharacters:15})
-      sections=[selected]
-      allSections=allSections.map(section=>section.id===selected.id?selected:section)
-    }
     if(!sections.length)throw error(422,'Aucune section disponible pour générer des brouillons.')
-    return {doc,requestedCount,sections,allSections,level,selection}
+    return {doc,requestedCount,sections,allSections,level}
   }
   generate(userId,documentId,options={},provided=null) {
-    const {doc,requestedCount,sections,allSections,level,selection}=this.generationContext(userId,documentId,options)
+    const {doc,requestedCount,sections,allSections,level}=this.generationContext(userId,documentId,options)
     // Generate per section, then round-robin before the global cap. Later sections
     // get the same opportunity as the first; source attribution stays exact.
     const allQueues=provided ? allSections.map(section=>provided.filter(draft=>draft.source.sectionId===section.id).map(draft=>({draft,section}))) : allSections.map(section=>generateLocalNoteDrafts({text:section.content,level,requestedCount,
@@ -100,7 +94,7 @@ export class DraftReviewRepository {
         // Never attribute a quote assembled across sections to a fabricated page.
         if(!draftEvidenceSignals(draft,section).verbatimProof){unattributed++;continue}
         const signals=draftEvidenceSignals(draft,section),id=randomUUID(),time=this.now()
-        const changes=insert.run(id,userId,documentId,section.id,selection?.page??sourcePage(this.db,userId,documentId,draft.source.excerpt,section.startPage),draft.noteType,
+        const changes=insert.run(id,userId,documentId,section.id,sourcePage(this.db,userId,documentId,draft.source.excerpt,section.startPage),draft.noteType,
           draft.front,draft.back,JSON.stringify(draft.fields),draft.source.excerpt,
           draftContentHash(draft.front,draft.source.excerpt),draft.subject||'',draft.chapter||'',
           JSON.stringify(draft.tags||[]),signals.confidence,Number(signals.verbatimProof),time,time).changes

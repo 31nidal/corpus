@@ -21,7 +21,6 @@ export type ReviewOptions = {
   document: StudyDocument;
   initialGenerate?: boolean;
   generationRequest?: number;
-  sourceSelection?: {page:number;text:string};
 };
 export function useDraftReview({
   document,

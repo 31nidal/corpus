@@ -48,7 +48,6 @@ export function createApiHandler(config=process.env){
  const pedagogy=createGeminiPedagogy(config)
  const studyProvider=pedagogy||createStudyProvider(config,{remoteProvider:provider})
  const study=createStudyHandler(config,{provider:studyProvider})
- study.resume()
  const flashcards=createFlashcardHandler(config,{provider:pedagogy||provider})
  return async(req,res,next)=>{
   const path=req.url?.split('?')[0]

@@ -1,5 +1,5 @@
 import {SummaryChapter} from './ai/SummaryChapter'
-import { useState, useEffect, useRef, type ReactNode } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   Crop, FileText, Upload, Trash2, ArrowRight, ArrowLeft, BookOpen,
   CheckCircle2, Sparkles, AlertCircle, RefreshCw,
@@ -20,7 +20,10 @@ import {ExtractedSection} from './ExtractedSection'
 import DownloadPdfButton from './DownloadPdfButton'
 import {GenerationNotice,useGenerationProvider} from './ai/GenerationNotice'
 import {SupportPreview, type SupportTask} from './ai/SupportPreview'
-import VisualCardCreator from './VisualCardCreator'
+import type {FlashcardDeck} from '../flashcards/flashcardsTypes'
+import {listDecks} from '../flashcards/flashcardsApi'
+import {PdfCropSelector} from '../flashcards/PdfCropSelector'
+import {ImageOcclusionEditor} from '../flashcards/ImageOcclusionEditor'
 
 type Records = Record<string, ReviewRecord>
 
@@ -40,7 +43,6 @@ export default function MyCoursesWorkspace(props: {
   initialSectionId?: string | null
   onOpenDocument?: (id: string | null) => void
   onNavigateAtlas?: () => void
-  versionControl?: ReactNode
 }) {
   const account = useAccount()
   const [accountStorage] = useState(storageScope)
@@ -70,7 +72,22 @@ export default function MyCoursesWorkspace(props: {
   const [ocrRequested,setOcrRequested]=useState(false)
   const [generationRequest,setGenerationRequest]=useState(0)
   const [visualCropDoc, setVisualCropDoc] = useState<StudyDocument | null>(null)
-  const openVisualCrop = (doc: StudyDocument) => setVisualCropDoc(doc)
+  const [cropResult, setCropResult] = useState<{
+    blob: Blob
+    pageNumber: number
+    crop: {x: number; y: number; width: number; height: number} | null
+  } | null>(null)
+  const [studyDecks, setStudyDecks] = useState<FlashcardDeck[]>([])
+
+  const openVisualCrop = async (doc: StudyDocument) => {
+    try {
+      const d = await listDecks()
+      setStudyDecks(d)
+    } catch {
+      // best effort
+    }
+    setVisualCropDoc(doc)
+  }
 
   const [toast, setToast] = useState('')
   useEffect(() => {
@@ -270,7 +287,6 @@ export default function MyCoursesWorkspace(props: {
   if (!account.user) {
     return (
       <section className="study-workspace mycourses-workspace" aria-label="Mes cours MyCorpus Study">
-      {props.versionControl}
         <header className="mycourses-header">
           <div>
             <span className="study-eyebrow">MYCORPUS STUDY · ESPACE PERSONNEL</span>
@@ -299,7 +315,6 @@ export default function MyCoursesWorkspace(props: {
   if (currentDoc) {
     return (
       <section className="study-workspace mycourses-workspace mycourses-detail" aria-label={`Détail du cours : ${currentDoc.title}`}>
-        {props.versionControl}
         <div className="mycourses-breadcrumb">
           <button onClick={() => { setSelectedDocId(null); props.onOpenDocument?.(null) }}>
             <ArrowLeft size={16} /> Revenir à Mes cours
@@ -328,7 +343,7 @@ export default function MyCoursesWorkspace(props: {
             <button className="mycourses-action-btn" onClick={()=>setFlashReview('review')}>Réviser les brouillons</button>
             <button className="mycourses-action-btn" onClick={()=>{setSupportOptions({count:5,replace:false});setSupportTask('summary')}} title="Synthèse, fiche de révision ou QCM à relire et modifier avant enregistrement">Préparer un support à relire</button>
             {currentDoc.summary&&activeTab==='summary'&&<DownloadPdfButton title={currentDoc.title} selector=".mycourses-summary-content" label="Exporter la synthèse en PDF" className="mycourses-action-btn"/>}
-            <button className="mycourses-action-btn mycourses-action-secondary" onClick={event=>{event.currentTarget.focus();openVisualCrop(currentDoc)}} title="Créer une flashcard d’occlusion d’image à partir d’une page de ce PDF"><Crop size={16}/>Flashcard visuelle</button>
+            <button className="mycourses-action-btn mycourses-action-secondary" onClick={()=>void openVisualCrop(currentDoc)} title="Créer une flashcard d’occlusion d’image à partir d’une page de ce PDF"><Crop size={16}/>Flashcard visuelle</button>
             {!currentDoc.summary ? (
               <button
                 className="mycourses-action-btn mycourses-action-primary"
@@ -749,11 +764,38 @@ export default function MyCoursesWorkspace(props: {
             </div>
           </div>
         )}
-        {visualCropDoc && <VisualCardCreator key={visualCropDoc.id} document={visualCropDoc}
-          onClose={() => setVisualCropDoc(null)} onCreated={count => {
-            setVisualCropDoc(null)
-            setToast(`Note d'occlusion créée avec succès (${count} carte(s))`)
-          }}/>}
+        {visualCropDoc && (
+          <PdfCropSelector
+            documentId={visualCropDoc.id}
+            documentTitle={visualCropDoc.title}
+            onSelectCrop={({ blob, pageNumber, crop }) => {
+              setVisualCropDoc(null)
+              setCropResult({ blob, pageNumber, crop })
+            }}
+            onCancel={() => setVisualCropDoc(null)}
+          />
+        )}
+        {cropResult && currentDoc && (
+          <ImageOcclusionEditor
+            imageSrc={URL.createObjectURL(cropResult.blob)}
+            imageBlob={cropResult.blob}
+            defaultDeckId={studyDecks[0]?.id || ''}
+            decks={studyDecks}
+            sourceMetadata={{
+              sourceKind: 'study_document',
+              sourceDocumentId: currentDoc.id,
+              sourcePage: cropResult.pageNumber,
+              sourceCrop: cropResult.crop || undefined,
+            }}
+            initialSubject={currentDoc.title}
+            initialChapter={currentDoc.title}
+            onCreated={note => {
+              setCropResult(null)
+              setToast(`Note d'occlusion créée avec succès (${note.cards?.length || 1} carte(s))`)
+            }}
+            onCancel={() => setCropResult(null)}
+          />
+        )}
         {flashReview&&currentDoc&&<ReviewWorkspace key={currentDoc.id} document={currentDoc} initialGenerate={flashReview==='generate'} generationRequest={generationRequest} onClose={()=>setFlashReview(null)}/>}
         {supportTask&&currentDoc&&<SupportPreview document={currentDoc} task={supportTask} count={supportOptions.count} replace={supportOptions.replace} onClose={()=>setSupportTask(null)} onSaved={task=>{setToast(task==='questions'?'QCM relus enregistrés':'Support relu enregistré');void loadDoc(currentDoc.id)}}/>}
         {toast&&<div className="flash-toast" role="status"><Check size={16}/><span>{toast}</span></div>}
@@ -764,7 +806,6 @@ export default function MyCoursesWorkspace(props: {
   // --- Dashboard View (List of courses + Upload) ---
   return (
     <section className="study-workspace mycourses-workspace" aria-label="Mes cours MyCorpus Study">
-      {props.versionControl}
       <header className="mycourses-header">
         <div>
           <span className="study-eyebrow">MYCORPUS STUDY · VOS DOCUMENTS PERSONNELS</span>

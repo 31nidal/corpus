@@ -8,7 +8,7 @@ import { useDraftReview } from "./useDraftReview";
 import type { ReviewOptions } from "./useDraftReview";
 import "./review.css";
 
-export default function ReviewWorkspace(props: ReviewOptions & { onClose: () => void; onReviewNote?: (noteId:string)=>void }) {
+export default function ReviewWorkspace(props: ReviewOptions & { onClose: () => void }) {
   const review = useDraftReview(props);
   const { document, onClose } = props;
 
@@ -26,18 +26,18 @@ export default function ReviewWorkspace(props: ReviewOptions & { onClose: () => 
       <GenerationNotice generation={review.generation} provider={review.provider} />
       <ReviewActions review={review} />
       {review.showGeneration && (
-        <GenerationOptions document={document} busy={review.busy} onGenerate={review.generate} sourceSelection={props.sourceSelection}/>
+        <GenerationOptions document={document} busy={review.busy} onGenerate={review.generate} />
       )}
       <ReviewDestination review={review} />
       <ReviewSelectionActions review={review} />
       <ReviewStatus review={review} />
-      <ReviewList document={document} review={review} onReviewNote={props.onReviewNote}/>
+      <ReviewList document={document} review={review} />
       {review.data.drafts.length < review.data.filteredTotal && (
         <button disabled={review.busy} onClick={review.loadMore}>
           Charger la suite
         </button>
       )}
-      <CreatedCards review={review} onReviewNote={props.onReviewNote}/>
+      <CreatedCards review={review} />
       {review.viewer && (
         <PdfCropSelector
           documentId={document.id}

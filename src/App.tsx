@@ -8,7 +8,7 @@ const AccountPanel = lazy(() => import('./account/AccountPanel'))
 const DashboardWorkspace = lazy(() => import('./dashboard/DashboardWorkspace'))
 const CoursesWorkspace = lazy(() => import('./study/CoursesWorkspace'))
 const PracticeWorkspace = lazy(() => import('./study/PracticeWorkspace'))
-const MyCoursesWorkspace = lazy(() => import('./study/StudyEntry'))
+const MyCoursesWorkspace = lazy(() => import('./study/MyCoursesWorkspace'))
 const FlashcardsWorkspace = lazy(() => import('./flashcards/FlashcardsWorkspace'))
 import courses from './study/courseIndex.json'
 import {structureCourseCandidates} from './study/structureCourse'
