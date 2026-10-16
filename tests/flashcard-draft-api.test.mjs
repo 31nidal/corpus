@@ -11,45 +11,12 @@ import {createStudyHandler} from '../server/study.mjs'
 import {MAX_DRAFT_GENERATION_COUNT,MAX_DRAFT_BATCH_SIZE,MAX_DRAFT_PAGE_SIZE} from '../server/flashcards/review/repository.mjs'
 import {purgeRejectedDraftsOnStartup} from '../server/flashcards/review/startup.mjs'
 import {REJECTED_DRAFT_RETENTION_MS} from '../server/flashcards/review/policy.mjs'
-import {generateLocalNoteDrafts} from '../server/flashcards/generation.mjs'
 
 const password='Brouillons-tests-solides-2026'
 const source='Le nerf médian innerve le muscle pronateur rond. Le rein filtre le plasma sanguin. Le cœur est situé dans le médiastin thoracique.'
 const root='/api/flashcards'
 const docRoute=id=>`${root}/documents/${id}/drafts`
 const draftRoute=id=>`${root}/drafts/${id}`
-
-test('génération locale : dépendance accentuée ou ASCII reconnue, citation et réponse conservées',()=>{
-  for(const text of ['La filtration glomérulaire dépend de la pression sanguine.','La filtration glomerulaire depend de la pression sanguine.']){
-    const drafts=generateLocalNoteDrafts({text})
-    assert.equal(drafts.length,1)
-    assert.equal(drafts[0].source.excerpt,text)
-    assert.ok(drafts[0].front.startsWith('De quoi dépend'))
-    assert.match(drafts[0].back,/pression sanguine/)
-  }
-})
-
-test('brouillons API : sélection exacte, page non ambiguë, aucune phrase extérieure et FSRS inchangé',async()=>{
-  const f=await fixture()
-  try{
-    const selected='Le nerf médian innerve le muscle pronateur rond.'
-    f.db.prepare('INSERT INTO study_pdf_pages VALUES(?,?,?,?)').run('doc-a',f.alice.data.user.id,3,source)
-    f.db.prepare('INSERT INTO study_pdf_pages VALUES(?,?,?,?)').run('doc-a',f.alice.data.user.id,4,source)
-    const created=await f.generate('doc-a',{selection:{page:4,text:selected},level:'complete'})
-    assert.equal(created.status,201);assert.ok(created.data.created>0)
-    const list=await f.list()
-    assert.ok(list.drafts.every(draft=>draft.page===4&&draft.sectionId==='doc-a-section'&&selected.includes(draft.sourceExcerpt)))
-    assert.ok(list.drafts.every(draft=>!draft.back.includes('rein')&&!draft.back.includes('cœur')))
-    assert.equal((await f.generate('doc-a',{selection:{page:4,text:'Le nerf médian innerve le muscle biceps brachial.'}})).status,400)
-    assert.equal((await f.generate('doc-a',{selection:{page:99,text:selected}})).status,400)
-    assert.equal((await f.call(docRoute('doc-a')+'/generate','POST',{selection:{page:4,text:selected}},f.bob.cookie)).status,404)
-    assert.equal((await f.generate('doc-a',{selection:{page:4,text:selected}})).data.created,0)
-    const note=await f.call(draftRoute(list.drafts[0].id)+'/accept','POST',{deckId:f.deck.id},f.alice.cookie)
-    assert.equal(note.status,200);assert.ok(note.data.noteId)
-    const accepted=await f.call(draftRoute(list.drafts[0].id)+'/accept','POST',{deckId:f.deck.id},f.alice.cookie)
-    assert.equal(accepted.data.noteId,note.data.noteId)
-  }finally{f.close()}
-})
 
 async function fixture() {
   const directory=mkdtempSync(path.join(tmpdir(),'corpus-draft-api-'))

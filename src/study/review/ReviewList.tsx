@@ -1,9 +1,8 @@
-import {ReviewNoteLink} from './ReviewNoteLink';
 import type { StudyDocument } from "../myCoursesTypes";
 import type { DraftReview } from "./useDraftReview";
 import { DraftCard } from "./DraftCard";
 
-export function ReviewList({ document, review, onReviewNote }: { document: StudyDocument; review: DraftReview; onReviewNote?: (noteId:string)=>void }) {
+export function ReviewList({ document, review }: { document: StudyDocument; review: DraftReview }) {
   return (
     <div
       className="draft-review-list"
@@ -23,7 +22,6 @@ export function ReviewList({ document, review, onReviewNote }: { document: Study
             document.sections?.find((section) => section.id === draft.sectionId)?.content ||
             draft.sourceExcerpt
           }
-          onReviewNote={onReviewNote}
           onSelect={(shift) => review.select(draft.id, shift)}
           onEdit={() => review.setEditing(draft.id)}
           onRegenerate={review.provider?.mode==='gemini'?()=>review.regenerate(draft.id):undefined}
@@ -39,16 +37,19 @@ export function ReviewList({ document, review, onReviewNote }: { document: Study
   );
 }
 
-export function CreatedCards({ review, onReviewNote }: { review: DraftReview; onReviewNote?: (noteId:string)=>void }) {
+export function CreatedCards({ review }: { review: DraftReview }) {
   const results = Object.values(review.results).filter((result) => result.noteId);
   if (!results.length) return null;
   return (
     <div className="draft-review-created" aria-label="Cartes créées">
       {results.map((result) => (
-        <ReviewNoteLink key={result.id} noteId={result.noteId!} onReview={onReviewNote}>
+        <a
+          key={result.id}
+          href={`#tab=flashcards&revision=due&note=${encodeURIComponent(result.noteId!)}`}
+        >
           Réviser la carte créée ·{" "}
           {result.note?.fields.front || result.note?.fields.text || "Flashcard"}
-        </ReviewNoteLink>
+        </a>
       ))}
     </div>
   );

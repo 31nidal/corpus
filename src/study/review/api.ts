@@ -4,7 +4,7 @@ export type DraftStatus = 'pending'|'edited'|'accepted'|'rejected'
 export type Draft = {id:string;documentId:string;sectionId:string|null;page:number;noteType:NoteType;front:string;back:string;fields:Record<string,unknown>;sourceExcerpt:string;subject:string;chapter:string;tags:string[];confidence:number;verbatimProof:boolean;status:DraftStatus;rejectedFrom:'pending'|'edited'|null;acceptedNoteId:string|null;createdAt:number;updatedAt:number;faithfulToCourse:boolean}
 export type DraftList = {drafts:Draft[];counts:Record<DraftStatus|'total'|'faithfulToCourse',number>;filteredTotal:number;limit:number;offset:number;nextOffset:number|null}
 export type ActionResult = {id:string;status:'accepted'|'already_accepted'|'rejected'|'restored'|'not_found'|'invalid';noteId?:string;note?:FlashcardNote;draft?:Draft;error?:string}
-export type GenerationOptions = {count:number;level:'essential'|'standard'|'complete';sectionIds?:string[];startPage?:number;endPage?:number;selection?:{page:number;text:string}}
+export type GenerationOptions = {count:number;level:'essential'|'standard'|'complete';sectionIds?:string[];startPage?:number;endPage?:number}
 export class ReviewRequestError extends Error {constructor(message:string, public status?:number){super(message)}}
 async function request<T>(path:string,method='GET',body?:unknown):Promise<T> {
   let response:Response
