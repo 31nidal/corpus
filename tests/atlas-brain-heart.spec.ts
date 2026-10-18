@@ -6,10 +6,10 @@ test.describe('Atlas anatomique - Cerveau & Cœur', () => {
     await page.waitForLoadState('domcontentloaded')
   })
 
-  test('1. Les trois blocs sélectionnent une structure du modèle 3D et ouvrent sa fiche', async ({ page }) => {
+  test('1. Les quatre blocs sélectionnent une structure du modèle 3D et ouvrent sa fiche', async ({ page }) => {
     await page.getByRole('button', { name: 'Atlas 3D', exact: true }).click()
     const regions = page.locator('.region-blocks')
-    await expect(regions.locator('.region-block')).toHaveCount(3)
+    await expect(regions.locator('.region-block')).toHaveCount(4)
     const detail = page.locator('[data-testid="structure-detail"]')
 
     await regions.getByRole('button', { name: 'Explorer Cœur en 3D' }).click()

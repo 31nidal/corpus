@@ -1937,7 +1937,7 @@
 @media (max-width: 1100px) {
   .atlas-workspace .discovery { display: block; top: auto; right: 20px; bottom: 108px; left: 245px; width: auto; padding: 0; border: 0; background: transparent; }
   .discovery-index, .discovery > p, .discovery-secondary, .discovery h2 { display: none; }
-  .region-blocks { grid-template-columns: repeat(3, minmax(0,1fr)); gap: 6px; }
+  .region-blocks { grid-template-columns: repeat(4, minmax(0,1fr)); gap: 6px; }
   .region-block { display: flex; flex-direction: column; justify-content: center; gap: 4px; min-height: 52px; padding: 5px 2px; border-radius: var(--mc-radius-sm); box-shadow: 0 3px 12px #2546400a; }
   .region-block-icon { width: 24px; height: 24px; border-radius: var(--mc-radius-sm); }
   .region-block-icon svg { width: 15px; height: 15px; }

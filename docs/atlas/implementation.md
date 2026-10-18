@@ -97,3 +97,8 @@ Avant l’intégration de la référence détaillée : 38 tests navigateur réus
 Une vérification visuelle complémentaire a renforcé les assertions mobiles : le statut de chargement ne suffit pas à prouver que le premier rendu WebGL est déjà composé. Les tests attendent désormais des pixels correspondant aux surfaces anatomiques dans une capture réelle. Ils ne se contentent pas de compter les objets en mémoire. La création de flashcards depuis l’atlas a également révélé une dépendance aux styles du module Flashcards chargé à la demande : la fenêtre importe maintenant elle-même sa feuille de styles.
 
 Dernière campagne après correction de la fenêtre de flashcards : **7 tests navigateur réussis** (référence détaillée, partage/rechargement, composants du cœur féminin, capture de flashcard avec le bon modèle et la bonne révision, rendu mobile vérifié sur les pixels et trois parcours historiques régionaux). Les 19 tests précédents restent consignés séparément ; ces campagnes se recouvrent et ne sont pas additionnées comme des cas uniques. La compilation finale réussit et `git diff --check` ne signale aucune erreur.
+
+
+### Accès à la colonne depuis l’accueil
+
+L’accueil du corps masculin propose un quatrième accès « Colonne », à côté du cœur, du cerveau et de la tête. Il ouvre directement la référence détaillée (`FMA13478`) pour exposer les 47 composants disponibles et les codes C1–C7, T1–T12 et L1–L5. Ces raccourcis concernent la référence masculine et ne sont pas proposés comme des structures équivalentes des références féminines. Les tests vérifient le parcours vers C1, le démarrage de la révision, le passage d’un composant du cœur de la vue d’ensemble au modèle détaillé et l’accès mobile. Aucun maillage n’est ajouté par ce changement.
