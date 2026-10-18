@@ -1,5 +1,7 @@
 # Walkthrough - Infrastructure Taxonomique et Couche de Compatibilité
 
+> Document historique de construction de la taxonomie. Pour les fonctionnalités actuelles et le démarrage, consulter [README.md](README.md).
+
 L'infrastructure de la maquette pédagogique canonique de première année Santé (PASS) et sa couche de compatibilité ascendante non destructive ont été intégralement implémentées et testées.
 
 > [!IMPORTANT]

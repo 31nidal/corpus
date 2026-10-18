@@ -1,5 +1,7 @@
 # Bibliothèque et entraînement — septembre 2026
 
+> Document historique : les chiffres ci-dessous décrivent le lot de septembre 2026. Pour l’état actuel, consulter le [README principal](../README.md) et le catalogue versionné `src/study/courseIndex.json`.
+
 MyCorpus contient **98 cours, 98 supports visuels interactifs et 1 492 questions corrigées**. Chaque chapitre possède des prérequis, une durée de lecture calculée sur son contenu et 15 à 19 questions. Seize chapitres pivots de physiologie, embryologie, biochimie et immunologie comprennent 8 à 13 sections et des outils de raisonnement supplémentaires. Les 10 identifications du quiz 3D constituent un entraînement distinct.
 
 La bibliothèque commence par **13 matières séparées** : anatomie, biologie cellulaire, histologie, embryologie, génétique, chimie, biochimie, physiologie, immunologie, biophysique, biostatistiques, pharmacologie et santé publique. Chaque matière est organisée en régions ou thèmes, puis en chapitres. La navigation au chapitre suivant reste dans la même discipline. La recherche parcourt aussi les sections et lexiques, sans imposer les accents.

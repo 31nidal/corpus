@@ -5,9 +5,13 @@ Ce document décrit l’état de validation à conserver pour toute modification
 ## Commandes principales
 
 ```bash
-npm install
+npm ci
 npm run build
 npm run test:accounts
+npm run test:flashcards
+npm run test:anatomy
+npm run audit:anatomy
+npx playwright install chromium
 npm test
 ```
 
@@ -41,7 +45,9 @@ La validation fonctionnelle couvre au minimum les domaines suivants :
 - chargement différé des modèles lourds ;
 - vue d’ensemble au premier lancement, persistance du mode détaillé et ordre de chargement progressif ;
 - comportement mobile et clavier ;
-- explorations féminines régionales.
+- explorations féminines régionales et référence détaillée optionnelle ;
+- séparation des modèles et compatibilité des anciennes cartes ;
+- exercices anatomiques, historique et rendu mobile réel.
 
 ### Apprentissage
 
@@ -54,6 +60,14 @@ La validation fonctionnelle couvre au minimum les domaines suivants :
 - répétition espacée ;
 - quiz d’identification 3D ;
 - persistance de la progression.
+
+### Flashcards
+
+- choix des sept formats et explications dans le menu ;
+- création, modification et révision ;
+- FSRS, sources et brouillons ;
+- images à masquer et scènes 3D versionnées ;
+- persistance et validation des opacités individuelles.
 
 ### Comptes et backend
 

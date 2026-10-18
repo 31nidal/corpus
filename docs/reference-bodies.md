@@ -37,7 +37,7 @@ Les informations de provenance et licences distribuées se trouvent notamment da
 
 ## Explorations féminines
 
-L’interface actuelle ne propose pas un second corps complet. Elle fournit trois explorations féminines spécialisées :
+La sélection régionale historique propose trois explorations féminines spécialisées :
 
 - bassin ;
 - appareil reproducteur ;
@@ -58,7 +58,17 @@ La licence du fichier source est **CC BY 4.0**. Les métadonnées et éléments 
 - `public/licenses/female-provenance.json` ;
 - `public/models/female-regions/LICENSE.txt`.
 
-L’import HRA initial contenait davantage de maillages. Les données intermédiaires complètes servent uniquement à la préparation locale et restent dans `.model-cache/female/`, qui n’est pas versionné. Elles ne doivent pas être confondues avec les 74 maillages réellement utilisés dans l’interface actuelle.
+L’import HRA initial contenait davantage de maillages. Les données intermédiaires complètes servent uniquement à la préparation locale et restent dans `.model-cache/female/`, qui n’est pas versionné. La sélection régionale conserve ses 74 maillages ; une extraction VH_F distincte est désormais distribuée dans la référence détaillée optionnelle décrite ci-dessous.
+
+## Référence féminine détaillée optionnelle
+
+Le sélecteur de référence féminine permet aussi d’ouvrir **591 maillages réels**, dans huit couches, pour **605 entrées** en comptant les ensembles. Les fichiers GLB totalisent 25 655 684 octets. Cette référence conserve uniquement les nœuds explicitement féminins `VH_F_` du cache HRA United Female v1.5 ; les composants Allen et Yao sont exclus.
+
+Les fichiers sont distribués dans `public/models/female-detailed/`, avec la révision `hra-vhf-detail-v1` et le modèle de flashcard `female_extended`. La sélection régionale conserve `hra-female-v1` et `female_detail` : les anciennes cartes restent associées à leurs ressources d’origine.
+
+La licence est CC BY 4.0. Les attributions, empreintes des entrées et adaptations figurent dans `public/licenses/female-detailed-provenance.json` et `public/models/female-detailed/LICENSE.txt`. L’extraction conserve la géométrie du cache préparé ; elle ne prétend pas annuler la simplification réalisée lors de l’import initial.
+
+Le cœur comporte 14 composants réels. Les collections rénales regroupent des maillages identifiés dans les sources ; leur composition reste en attente de relecture et ne constitue pas une hiérarchie PART-OF publiée. La couverture anatomique reste partielle. Voir le [guide d’implémentation](atlas/implementation.md).
 
 ## Nomenclature française
 
@@ -77,7 +87,8 @@ Ils sont utilisés dans la recherche, les cours et les liens profonds. Exemple :
 
 ```text
 /#structure=FMA7088
-/#body=female&structure=HRA-uterus
+/#body=female&structure=HRA-region-reproductive
+/#body=female&femaleModel=detail&mode=detail&structure=HRA-kidney-left
 ```
 
 Un refactor ne doit pas les renommer sans migration explicite.
@@ -92,7 +103,7 @@ Les transformations ne donnent pas aux modèles une valeur diagnostique. Les cou
 
 - les références anatomiques ne couvrent pas toutes les variations humaines ;
 - certaines structures fines sont simplifiées pour le Web ;
-- les explorations féminines sont régionales et non un atlas féminin complet ;
+- les références féminines, régionales ou détaillées, ne constituent pas un atlas féminin complet ;
 - les coupes du moteur 3D ouvrent des surfaces et ne recréent pas des tissus histologiques ou radiologiques ;
 - l’outil est pédagogique et non clinique.
 

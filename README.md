@@ -1,158 +1,116 @@
-# MyCorpus
+# MyCorpus3D
 
-Plateforme web d’apprentissage médical orientée première année : atlas anatomique 3D, cours structurés, entraînement, répétition espacée et progression synchronisée.
+[![CI](https://github.com/31nidal/corpus/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/31nidal/corpus/actions/workflows/ci.yml)
 
-## État actuel
+Plateforme d’apprentissage pour les étudiants en santé : explorer l’anatomie en 3D, étudier ses cours, s’entraîner et réviser avec des flashcards personnelles.
 
-MyCorpus est une application React/TypeScript avec rendu 3D Three.js et un petit backend Node.js. La version actuelle comprend notamment :
+## Fonctionnalités
 
-- 98 cours répartis dans 13 matières ;
-- 98 schémas interactifs ;
-- 1 492 questions corrigées, avec 15 à 19 exercices par cours ;
-- 10 exercices d’identification 3D ;
-- un atlas masculin détaillé de 1 663 structures BodyParts3D ;
-- trois explorations féminines ciblées (bassin, appareil reproducteur, sein) construites à partir de 74 maillages HRA ;
-- comptes persistants, connexion Google facultative, favoris, notes et historique ;
-- répétition espacée pour les questions d’entraînement ;
-- interface ordinateur et mobile.
+### Atlas anatomique
 
-Le produit est pédagogique. Il ne constitue ni un dispositif médical ni un outil de diagnostic, et son contenu ne remplace pas les supports officiels d’une faculté.
+- Vue d’ensemble de **48 maillages** et référence masculine détaillée de **1 663 maillages** BodyParts3D, chargés progressivement.
+- Explorations féminines régionales de **74 maillages** et référence détaillée optionnelle de **591 maillages** HRA Visible Human Female. Ces références restent partielles et distinctes du modèle masculin.
+- Recherche par nom, identifiant ou numéro de vertèbre ; arbre des ressources, composants des ensembles et relations anatomiques sourcées.
+- Sélection, isolation, masquage, opacité individuelle, restauration de scène, six orientations et partage de la vue.
+- Révision par réponse libre, QCM, clic sur le modèle, association et examen, avec correction et historique.
+- Fiches repliables sur mobile pour conserver une scène lisible.
 
-## Stack
+### Cours et entraînement
 
-- React 19 + TypeScript
-- Vite
-- Three.js
-- Node.js
-- SQLite (`node:sqlite`)
-- Playwright
-- Google OAuth 2.0 en option
+- Catalogue de **305 entrées dans 18 catégories**, avec cours, schémas, recherche et entraînement. Le nombre d’entrées ne constitue pas une certification de couverture des programmes universitaires ni de validation scientifique.
+- Favoris, notes, progression et répétition espacée.
+- Espace **Mes cours** pour importer des supports et préparer ses révisions ; génération locale et fournisseurs optionnels configurés côté serveur.
 
-## Démarrage local
+### Flashcards
 
-Prérequis : Node.js 22.13 ou plus récent.
+- Création manuelle, génération depuis du texte et organisation en decks personnels.
+- Menu expliquant les **sept formats** : question/réponse, inversée, dans les deux sens, texte à trous, réponse saisie, image à masquer et repérage en 3D.
+- Exemples de recto/verso et aide au choix du format dans l’éditeur.
+- Révision avec l’ordonnanceur FSRS existant, statistiques et synchronisation entre appareils pour les comptes connectés.
+- Les cartes 3D conservent le modèle, sa révision et les réglages de la scène.
+
+### Comptes
+
+L’exploration et les apprentissages disponibles en mode invité utilisent le stockage local du navigateur. La création de flashcards personnelles nécessite un compte. Les comptes synchronisent leur état dans SQLite ; la connexion Google est facultative.
+
+## Démarrage
+
+**Prérequis : Node.js ≥ 22.13 et < 27**, avec npm. Aucun service IA externe n’est nécessaire pour lancer le projet.
 
 ```bash
-npm install
+git clone https://github.com/31nidal/corpus.git
+cd corpus
+npm ci
 npm run dev
 ```
 
-L’interface de développement est servie par Vite. Pour tester l’application complète avec le backend :
+Ouvrir **http://localhost:5173**. Vite sert l’interface et les routes API de développement.
+
+La configuration locale est facultative : copier [`.env.example`](.env.example) dans `.env` pour configurer les fournisseurs, les comptes ou Google OAuth. Les secrets restent exclusivement côté serveur.
+
+### Version compilée
 
 ```bash
 npm run build
 npm start
 ```
 
-Variables d’environnement disponibles : voir [`.env.example`](.env.example). **Mes cours** démarre par défaut avec ses générateurs locaux gratuits ; pour réactiver Ollama ultérieurement, suivre le [guide des providers Study](docs/study-ollama.md).
+Le serveur écoute `PORT`, ou **8080** sans configuration. L’exemple `.env` définit `PORT=4173` ; adapter l’URL au port choisi.
 
-## Commandes utiles
+Pour un déploiement avec comptes persistants, configurer `APP_ORIGIN` et un volume via `ACCOUNT_DATA_DIR` ou `RAILWAY_VOLUME_MOUNT_PATH`. Voir le [guide backend](server/README.md).
 
-```bash
-npm run dev            # développement frontend
-npm run build          # vérification TypeScript + build Vite
-npm test               # suite Playwright
-npm run test:accounts  # tests backend comptes
-npm start              # serveur de production local
-```
+## Vérifications
 
-Les détails de validation sont regroupés dans [TESTS.md](TESTS.md).
+| Commande | Vérification |
+| --- | --- |
+| `npm run build` | TypeScript et compilation de production |
+| `npm run audit:anatomy` | GLB, correspondances, empreintes et preuves de provenance |
+| `npm run test:anatomy` | Graphe anatomique, ressources et compatibilités |
+| `npm run test:flashcards` | Cartes, FSRS, validation et API |
+| `npm run test:accounts` | Comptes, persistance et synchronisation |
+| `npm run test:study` | Traitement des supports et génération pédagogique |
+| `npm run test:student-progress` | Progression des étudiants |
+| `npm run test:security` | En-têtes de sécurité |
+| `npm test` | Parcours navigateur Playwright |
 
-## Architecture
+Avant le premier lancement des tests navigateur : `npx playwright install chromium`.
+
+La [CI GitHub Actions](https://github.com/31nidal/corpus/actions/workflows/ci.yml) vérifie la compilation et les suites serveur, puis exécute les tests navigateur en trois lots. Les commandes complémentaires et les limites de couverture sont décrites dans [TESTS.md](TESTS.md).
+
+## Organisation
 
 ```text
-src/                  application React
-  account/            état et interface de compte
-  data/               nomenclature et données anatomiques
-  study/              cours, questions, schémas et progression
-server/               API locale, comptes, OAuth et fournisseurs
-public/models/         modèles 3D distribués
-public/licenses/       licences et provenance des données
-scripts/               préparation et audit des modèles/données
-tests/                 tests Playwright, tests backend et outils de validation visuelle
-docs/                  documentation produit et données anatomiques
-shared/                contrats partagés frontend/backend
+src/
+  atlas/          navigation anatomique, graphe et exercices
+  flashcards/     création, formats et révision des cartes
+  study/          cours, supports et entraînement
+  account/        comptes et synchronisation côté client
+  dashboard/      suivi et sessions d’apprentissage
+server/           API, SQLite et fournisseurs optionnels
+shared/           contrats communs au client et au serveur
+public/models/    modèles 3D et manifestes versionnés
+public/licenses/  licences et provenance des ressources
+scripts/          imports, audits et outils de préparation
+tests/            tests serveur et navigateur
+docs/             documentation technique et produit
 ```
-
-Voir [docs/architecture.md](docs/architecture.md) pour la description des responsabilités et des contrats à préserver lors des refactors.
-
-## Atlas 3D
-
-L’atlas principal utilise BodyParts3D. Les structures sont chargées par couches et les modèles lourds sont différés jusqu’à leur activation. Les interactions comprennent notamment recherche, isolation, masquage, coupe, opacité, liens profonds et partage de l’état de vue.
-
-Les explorations féminines utilisent des maillages distincts issus du Human Reference Atlas. Les limites, transformations et licences sont documentées dans [docs/reference-bodies.md](docs/reference-bodies.md).
-
-## Apprentissage
-
-L’espace d’étude contient des cours, schémas, questions théoriques et exercices 3D. Les questions ratées peuvent être reprogrammées rapidement et les réussites suivent une répétition espacée progressive.
-
-La couverture actuelle et l’organisation des matières sont détaillées dans [docs/campus-library.md](docs/campus-library.md).
-
-## Comptes et persistance
-
-Le mode invité fonctionne localement dans le navigateur. Lorsqu’un compte est utilisé, l’état d’apprentissage est synchronisé côté serveur dans SQLite.
-
-Les secrets ne doivent jamais être commités. `.env`, les bases SQLite locales et `.data/` sont ignorés par Git. La connexion Google est optionnelle et n’est activée que lorsque `GOOGLE_CLIENT_ID` et `GOOGLE_CLIENT_SECRET` sont configurés côté serveur.
-
-## Déploiement
-
-Le serveur écoute le port fourni par l’environnement et peut utiliser un volume persistant pour la base des comptes. La configuration actuellement prévue pour Railway repose sur :
-
-- `PORT` ;
-- `APP_ORIGIN` ;
-- un volume persistant ;
-- les variables Google OAuth si la connexion Google est activée.
-
-## Tests et qualité
-
-La suite couvre notamment :
-
-- chargement et interaction avec les modèles 3D ;
-- navigation desktop et mobile ;
-- cours et entraînement ;
-- progression et comptes ;
-- liens profonds ;
-- comportement du serveur et de l’API locale.
-
-Les scripts de validation peuvent générer des captures dans `tests/artifacts/`. Ces PNG sont des sorties locales ignorées par Git et ne sont pas nécessaires au runtime.
-
-## Données, sources et licences
-
-Les modèles anatomiques et la nomenclature proviennent de sources tierces avec leurs propres licences. Les notices distribuées avec le projet se trouvent dans `public/licenses/`, `public/models/` et la documentation associée.
-
-Principales références :
-
-- BodyParts3D / DBCLS ;
-- Human Reference Atlas / HuBMAP ;
-- nomenclature dérivée de TA2 via Z-Anatomy ;
-- sources pédagogiques mentionnées dans `public/SOURCES.md`.
-
-Consulter impérativement [docs/reference-bodies.md](docs/reference-bodies.md), [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) et les fichiers de licence avant toute redistribution des données ou modèles.
-
-## Chargement de l’atlas
-
-Le premier lancement ouvre la vue d’ensemble de 48 structures et transfère environ 7,3 Mo de GLB. La peau, plus légère, est chargée en premier afin de rendre rapidement la rotation et le zoom disponibles ; les organes et le squelette arrivent ensuite. L’atlas détaillé conserve 1 663 maillages séparés et se charge à la demande. Un lien profond vers une structure détaillée ouvre directement ce mode.
-
-Le serveur applique un cache de sept jours aux modèles et un cache immuable aux fichiers JavaScript et CSS versionnés. Les manifestes et la page HTML restent revalidables pour que les mises à jour soient détectées.
-
-## Limites connues
-
-- validation principale sous Chromium ;
-- pas de validation clinique du contenu ;
-- certaines petites structures disposent encore de descriptions générales ;
-- les modèles Web sont simplifiés pour limiter le coût de rendu ;
-- la première visite dépend encore du débit réseau et des capacités WebGL de l’appareil ;
-- les animations sont illustratives et ne simulent pas une physiologie complète.
-
-## Extension de la bibliothèque — septembre 2026
-
-La version actuelle comprend **98 cours classés dans 13 matières, 98 supports visuels interactifs, 1 492 questions corrigées et 10 exercices d’identification 3D**. Chaque chapitre possède des prérequis, une durée de lecture calculée sur son contenu et 15 à 19 questions. Seize chapitres pivots proposent aussi un tableau comparatif, une relation à appliquer, un exemple résolu et des erreurs classiques. Cinq d’entre eux ont été réécrits en huit parties (environ 930 à 1 020 mots hors exercices) et disposent de dessins SVG avec légendes masquables et exercices de repérage : cycle cardiaque, rein, ventilation, gastrulation et immunité adaptative. Les quiz proposent deux niveaux, des cas et calculs, une navigation numérotée en examen et une répétition espacée. Voir [le détail de la bibliothèque](docs/campus-library.md).
 
 ## Documentation
 
-- [Architecture](docs/architecture.md)
-- [Bibliothèque de cours et entraînement](docs/campus-library.md)
+- [Index de la documentation](docs/README.md)
+- [Architecture et contrats à préserver](docs/architecture.md)
+- [Atlas : fonctionnalités, validation et limites](docs/atlas/implementation.md)
 - [Références anatomiques et licences](docs/reference-bodies.md)
-- [Notices tierces](THIRD_PARTY_NOTICES.md)
-- [Tests](TESTS.md)
-- [Backend et contrat API](server/README.md)
+- [Flashcards et FSRS](docs/flashcards-fsrs.md)
+- [Configuration du backend](server/README.md)
+- [Tests et qualité](TESTS.md)
+
+## Sources et limites
+
+Les modèles et la terminologie ont leurs propres licences : BodyParts3D/DBCLS, Human Reference Atlas/HuBMAP et données terminologiques dérivées de Z-Anatomy. Consulter [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), les [références anatomiques](docs/reference-bodies.md) et les notices incluses avant redistribution. Aucun identifiant TA2 ou nom latin vérifié n’est déduit automatiquement d’une simple traduction.
+
+L’application est pédagogique et ne constitue pas un outil de diagnostic. Les modèles sont optimisés pour le Web et leur couverture est partielle. L’estomac reste un maillage global ; aucun fundus, antre ou pylore indépendant n’est revendiqué. La relecture scientifique individuelle et le rapprochement TA2 restent à compléter. Les coupes sont géométriques et les animations illustratives.
+
+La validation automatisée principale utilise Chromium. Safari, Firefox et les appareils physiques nécessitent des vérifications complémentaires. Les limites de performances dépendent du réseau et du matériel WebGL.
+
+Les bases locales, secrets, caches, builds et captures générées ne sont pas versionnés. Les contributions doivent préserver les identifiants anatomiques, les liens, les données des comptes et les licences des ressources.
