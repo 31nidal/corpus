@@ -215,3 +215,21 @@ test('pilotage étudiant : lecture synchronisée, fusion multi-appareils, isolat
   api.restart();assert.deepEqual(JSON.parse((await api.call('session',undefined,alice.cookie)).data.state['corpus-reading-v1']),JSON.parse(state['corpus-reading-v1']))
  } finally {rmSync(dir,{recursive:true,force:true})}
 })
+
+test('atlas : historique par compte, persistance et fusion des appareils',async()=>{
+ const dir=mkdtempSync(path.join(tmpdir(),'mycorpus-anatomy-')),api=harness({ACCOUNT_DATA_DIR:dir})
+ try{
+  const alice=await api.call('register',{email:'anatomy-a@example.test',name:'Anatomie',password:'test-anatomie-solide-2026'})
+  const bob=await api.call('register',{email:'anatomy-b@example.test',name:'Autre compte',password:'test-anatomie-solide-2026'})
+  const key='corpus-anatomy-progress-v1'
+  const attempt=id=>({id,revision:'bp3d-detail-v1',mode:'free',startedAt:'2026-10-17T10:00:00Z',completedAt:'2026-10-17T10:00:30Z',durationSeconds:30,answers:[{structureId:'FMA7148',given:'estomac',correct:true}]})
+  const sync=(id,attempts)=>api.call('sync',{userId:alice.data.user.id,operations:[{id,kind:'value',payload:{key,value:JSON.stringify({version:1,attempts}),before:null}}]},alice.cookie)
+  assert.equal((await sync('atlas-a',[attempt('first')])).status,200)
+  assert.equal((await sync('atlas-b',[attempt('second')])).status,200)
+  api.restart()
+  assert.deepEqual(JSON.parse((await api.call('session',undefined,alice.cookie)).data.state[key]).attempts.map(a=>a.id),['first','second'])
+  assert.equal((await api.call('session',undefined,bob.cookie)).data.state[key],undefined)
+  assert.equal((await sync('atlas-bad',[{...attempt('bad'),answers:[{structureId:'x',given:'x',correct:'yes'}]}])).status,400)
+  assert.equal((await sync('atlas-bad-ref',[{...attempt('badref'),revision:'invented'}])).status,400)
+ }finally{rmSync(dir,{recursive:true,force:true})}
+})

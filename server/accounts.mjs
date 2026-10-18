@@ -1,3 +1,4 @@
+import {validAnatomyProgress, mergeAnatomyProgress} from '../shared/anatomyProgress.mjs'
 import {validReading,mergeReading} from '../shared/studentProgress.mjs'
 import {DatabaseSync} from 'node:sqlite'
 import {createHash, randomBytes, randomUUID, scrypt, timingSafeEqual} from 'node:crypto'
@@ -19,7 +20,7 @@ async function verify(password, stored) {
   return timingSafeEqual(Buffer.from(actual), Buffer.from(stored))
 }
 
-const validKey = key => typeof key === 'string' && /^(corpus-(theme|completed|saved-courses|practice-v1|chat-v1|reading-v1)|corpus-note-[a-zA-Z0-9_-]{1,100})$/.test(key)
+const validKey = key => typeof key === 'string' && /^(corpus-(theme|completed|saved-courses|practice-v1|chat-v1|reading-v1|anatomy-progress-v1)|corpus-note-[a-zA-Z0-9_-]{1,100})$/.test(key)
 
 function validValue(key, value) {
   if (value === null) return true
@@ -29,6 +30,7 @@ function validValue(key, value) {
   try {
     const parsed = JSON.parse(value)
     if (['corpus-completed', 'corpus-saved-courses'].includes(key)) return Array.isArray(parsed) && parsed.length <= 1000 && parsed.every(id => typeof id === 'string' && id.length <= 100)
+    if (key === 'corpus-anatomy-progress-v1') return validAnatomyProgress(parsed)
     if (key === 'corpus-reading-v1') return validReading(parsed)
     if (key === 'corpus-practice-v1') return parsed && typeof parsed === 'object' && !Array.isArray(parsed) && Object.keys(parsed).length <= 2000 && Object.entries(parsed).every(([id, result]) => id.length <= 100 && result && Number.isSafeInteger(result.seen) && result.seen >= 0 && result.seen <= 1000000 && Number.isSafeInteger(result.correct) && result.correct >= 0 && result.correct <= result.seen && typeof result.wrong === 'boolean' && (result.streak === undefined || Number.isSafeInteger(result.streak) && result.streak >= 0 && result.streak <= 10000) && (result.interval === undefined || typeof result.interval === 'number' && result.interval >= 0 && result.interval <= 365) && (result.due === undefined || Number.isSafeInteger(result.due) && result.due >= 0 && result.due <= 8640000000000000) && (result.lastReviewed === undefined || Number.isSafeInteger(result.lastReviewed) && result.lastReviewed >= 0 && result.lastReviewed <= 8640000000000000))
     if (key === 'corpus-chat-v1') return Array.isArray(parsed) && parsed.length <= 20 && parsed.every(message => message && ['user', 'assistant'].includes(message.role) && typeof message.text === 'string' && message.text.length <= 5000 && typeof message.context === 'string' && message.context.length <= 500 && (!message.sources || (Array.isArray(message.sources) && message.sources.length <= 2 && message.sources.every(source => source && typeof source.url === 'string' && /^https:\/\//.test(source.url) && source.url.length <= 1000 && typeof source.label === 'string' && source.label.length <= 150))))
@@ -46,6 +48,7 @@ function mergeValue(key, value, before, current) {
     const saved = JSON.parse(current)
     return JSON.stringify([...new Set([...saved.filter(id => !previous.includes(id) || incoming.includes(id)), ...incoming.filter(id => !previous.includes(id))])])
   }
+  if (key === 'corpus-anatomy-progress-v1') return JSON.stringify(mergeAnatomyProgress(JSON.parse(value),JSON.parse(current)))
   if (key === 'corpus-reading-v1') return JSON.stringify(mergeReading(JSON.parse(value),JSON.parse(current)))
   if (key === 'corpus-practice-v1') {
     const incoming = JSON.parse(value)

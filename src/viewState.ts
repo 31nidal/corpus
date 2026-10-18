@@ -10,8 +10,9 @@ export function decodeView(encoded: string | null): SharedView | null {
     if(v.version!==1 || !triple(v.camera?.position) || !triple(v.camera?.target)) return null
     if(Math.hypot(...v.camera.position.map((n:number,i:number)=>n-v.camera.target[i]))<.05)return null
     if(!groups.every(g=>typeof v.visibility?.[g]==='boolean' && Number.isFinite(v.opacity?.[g]) && v.opacity[g]>=0 && v.opacity[g]<=1))return null
+    if(v.structureOpacities !== undefined && (!v.structureOpacities || typeof v.structureOpacities !== 'object' || Array.isArray(v.structureOpacities) || Object.keys(v.structureOpacities).length > 2000 || !Object.entries(v.structureOpacities).every(([id, value]) => /^[A-Za-z0-9_-]{1,128}$/.test(id) && typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1))) return null
     if(!v.cut || !['x','y','z'].includes(v.cut.axis) || !Number.isFinite(v.cut.position) || Math.abs(v.cut.position)>1 || !['enabled','flipped','guide'].every(k=>typeof v.cut[k]==='boolean'))return null
-    if(!Array.isArray(v.hidden) || v.hidden.length>2000 || !v.hidden.every((id:unknown)=>typeof id==='string' && /^[A-Za-z0-9_-]{1,64}$/.test(id)))return null
+    if(!Array.isArray(v.hidden) || v.hidden.length>2000 || !v.hidden.every((id:unknown)=>typeof id==='string' && /^[A-Za-z0-9_-]{1,128}$/.test(id)))return null
     if(!['off','names','revision'].includes(v.labels) || typeof v.isolated!=='boolean' || typeof v.dark!=='boolean')return null
     return v as SharedView
   } catch { return null }

@@ -103,7 +103,7 @@ export type Atlas3DTarget = {
 }
 
 export type Atlas3DScene = {
-  modelKey: 'bp3d_overview' | 'bp3d_detail' | 'female_detail'
+  modelKey: 'bp3d_overview' | 'bp3d_detail' | 'female_detail' | 'female_extended'
   atlasRevision: string
   camera: {
     position: [number, number, number]
@@ -111,6 +111,7 @@ export type Atlas3DScene = {
   }
   visibility: Partial<Record<string, boolean>>
   opacity: Partial<Record<string, number>>
+  structureOpacities?: Record<string, number>
   cut: {
     enabled: boolean
     axis: 'x' | 'y' | 'z'
@@ -132,7 +133,7 @@ export type FlashcardNoteFields = {
   prompt?: string
   occlusionMode?: 'hide_one'
   masks?: ImageOcclusionMask[]
-  modelKey?: 'bp3d_overview' | 'bp3d_detail' | 'female_detail'
+  modelKey?: 'bp3d_overview' | 'bp3d_detail' | 'female_detail' | 'female_extended'
   atlasRevision?: string
   scene?: Atlas3DScene
   targets?: Atlas3DTarget[]

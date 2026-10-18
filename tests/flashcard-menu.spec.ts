@@ -1,0 +1,23 @@
+import {test,expect} from '@playwright/test'
+test('menu flashcards : comprendre les formats et ouvrir les outils correspondants',async({page})=>{
+ await page.route('**/api/account/session',route=>route.fulfill({json:{available:true,user:{id:'menu-test',name:'Étudiant'},state:{}}}))
+ await page.route('**/api/flashcards/decks',route=>route.fulfill({json:{decks:[{id:'deck-test',name:'Mon cours',cardCount:0,dueCount:0}]}}))
+ await page.route('**/api/flashcards/cards?*',route=>route.fulfill({json:{cards:[],nextCursor:null}}))
+ await page.route('**/api/flashcards/stats',route=>route.fulfill({json:{stats:{dueToday:0,newCards:0,mastered:0,streak:0}}}))
+ await page.goto('/#tab=flashcards')
+ await page.getByRole('button',{name:'Créer une carte',exact:true}).click()
+ const guide=page.getByRole('region',{name:'Choisir un type de flashcard'})
+ await expect(guide.getByRole('article')).toHaveCount(7)
+ await guide.getByRole('article').filter({has:page.getByRole('heading',{name:'Réponse à saisir',exact:true})}).getByRole('button').click()
+ const editor=page.getByRole('dialog',{name:'Éditeur de flashcard'})
+ await expect(editor.getByRole('button',{name:'Réponse saisie',exact:true})).toHaveAttribute('aria-pressed','true')
+ await expect(editor.getByRole('note')).toContainText('Vous tapez votre réponse')
+ await editor.getByRole('button',{name:'Fermer l’éditeur'}).click()
+ const chooser=page.waitForEvent('filechooser')
+ await guide.getByRole('button',{name:'Importer une image',exact:true}).click()
+ await chooser
+ await page.getByRole('button',{name:'Créer une carte',exact:true}).click()
+ await page.setViewportSize({width:390,height:844})
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(390)
+ await page.screenshot({path:'/tmp/flashcard-menu-mobile.png',fullPage:true})
+})

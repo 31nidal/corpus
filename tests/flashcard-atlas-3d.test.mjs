@@ -567,3 +567,38 @@ test('Atlas 3D : cache de note versionné noteId:noteVersion (v1 -> v2 recharge 
   assert.equal(cache.get(keyCard2)?.fields.prompt, 'Prompt V2')
   assert.notEqual(cache.get(keyCard1), cache.get(keyCard2))
 })
+
+test('Atlas 3D : opacité individuelle persistée et validée contre le modèle',()=>{
+ const note={noteType:'atlas_3d',title:'Opacité individuelle',fields:{modelKey:'bp3d_overview',atlasRevision:'bp3d-overview-v1',prompt:'Identifier',targets:[{id:`target_${randomUUID()}`,structureId:'FMA7088'}],scene:{modelKey:'bp3d_overview',atlasRevision:'bp3d-overview-v1',camera:{position:[0,0,6],target:[0,0,0]},visibility:{skin:true,skeleton:true,organs:true},opacity:{skin:.12,skeleton:1,organs:1},structureOpacities:{FMA7088:.45},cut:{enabled:false,axis:'z',position:0,flipped:false,guide:false},isolationStructureId:null,hiddenStructureIds:[]}}}
+ assert.equal(validateNote(note).fields.scene.structureOpacities.FMA7088,.45)
+ for(const values of [{invented:.5},{FMA7088:-1},{FMA7088:NaN},[]])assert.equal(validateNote({...note,fields:{...note.fields,scene:{...note.fields.scene,structureOpacities:values}}}),null)
+ const visible=calculateEffectiveVisibleMeshes('bp3d_overview',{...note.fields.scene,structureOpacities:{FMA7088:0}}).effectiveVisibleMeshes
+ assert.ok(resolveAtlasStructure('bp3d_overview','FMA7088').meshNames.every(name=>!visible.has(name)))
+ assert.equal(checkAtlasCardCompatibility('bp3d_overview','bp3d-overview-v1',{...note.fields.scene,structureOpacities:{invented:.3}},note.fields.targets).reviewable,false)
+})
+
+test('extended female registry preserves regional compatibility and resolves separate real renal mappings',()=>{
+ assert.equal(getAtlasModel('female_extended').currentRevision,'hra-vhf-detail-v1')
+ assert.equal(getAtlasModel('female_detail').currentRevision,'hra-female-v1')
+ assert.ok(resolveAtlasStructure('female_extended','HRA-kidney-left').meshNames.length>5)
+ assert.equal(resolveAtlasStructure('female_detail','HRA-kidney-left'),null)
+ assert.equal(getCanonicalStructureName('female_extended','HRA-kidney-left'),'Rein — côté gauche')
+ const extended=getMeshToRealGroupMap('female_extended'),regional=getMeshToRealGroupMap('female_detail')
+ assert.equal(extended.size,591);assert.equal(regional.size,74)
+ for(const [mesh,group] of regional)assert.equal(extended.get(mesh),group)
+ const scene={visibility:{organs:true},opacity:{organs:1},hiddenStructureIds:[]}
+ const targets=[{id:'target_test',structureId:'HRA-kidney-left'}]
+ assert.equal(checkAtlasCardCompatibility('female_extended','hra-vhf-detail-v1',scene,targets).status,'EXACT')
+ assert.equal(checkAtlasCardCompatibility('female_extended','hra-female-v1',scene,targets).reviewable,false)
+})
+
+test('extended female scenes preserve long source IDs and pass strict note validation',()=>{
+ const model=getAtlasModel('female_extended'),groups=[...model.allowedGroups]
+ const structureId='HRA-VH_F_left_posterior_descending_branch_of_circumflex_branch_of_left_coronary_artery'
+ assert.ok(resolveAtlasStructure('female_extended',structureId))
+ const scene={modelKey:model.modelKey,atlasRevision:model.currentRevision,camera:{position:[0,0,6],target:[0,0,0]},visibility:Object.fromEntries(groups.map(g=>[g,true])),opacity:Object.fromEntries(groups.map(g=>[g,1])),cut:{enabled:false,axis:'z',position:0,flipped:false,guide:false},isolationStructureId:null,hiddenStructureIds:[structureId],structureOpacities:{[structureId]:.5}}
+ const valid=validateNote({noteType:'atlas_3d',title:'Rein féminin',fields:{modelKey:model.modelKey,atlasRevision:model.currentRevision,prompt:'Identifier',scene,targets:[{id:`target_${randomUUID()}`,structureId:'HRA-kidney-left'}]}})
+ assert.ok(valid)
+ assert.deepEqual(valid.fields.scene.hiddenStructureIds,[structureId])
+ assert.equal(valid.fields.scene.structureOpacities[structureId],.5)
+})

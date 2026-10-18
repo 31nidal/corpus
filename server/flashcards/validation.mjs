@@ -251,6 +251,15 @@ export function validateNote(input, partial = false) {
         cleanOpacity[group] = Math.round(val * 1000) / 1000
       }
 
+      const cleanStructureOpacities = {}
+      if (s.structureOpacities !== undefined) {
+        if (!s.structureOpacities || typeof s.structureOpacities !== 'object' || Array.isArray(s.structureOpacities) || Object.keys(s.structureOpacities).length > 2000) return null
+        for (const [id, value] of Object.entries(s.structureOpacities)) {
+          if (!resolveAtlasStructure(modelKey, id) || typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 1) return null
+          cleanStructureOpacities[id] = Math.round(value * 1000) / 1000
+        }
+      }
+
       // Cut
       if (!s.cut || typeof s.cut !== 'object' || Array.isArray(s.cut)) return null
       if (typeof s.cut.enabled !== 'boolean' || typeof s.cut.flipped !== 'boolean' || typeof s.cut.guide !== 'boolean') return null
@@ -271,7 +280,7 @@ export function validateNote(input, partial = false) {
       if (s.hiddenStructureIds.length > 500) return null
       const validatedHidden = []
       for (const hid of s.hiddenStructureIds) {
-        if (typeof hid !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(hid)) return null
+        if (typeof hid !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(hid)) return null
         if (!resolveAtlasStructure(modelKey, hid)) return null
         validatedHidden.push(hid)
       }
@@ -285,6 +294,7 @@ export function validateNote(input, partial = false) {
         },
         visibility: cleanVisibility,
         opacity: cleanOpacity,
+        ...(s.structureOpacities !== undefined ? {structureOpacities: cleanStructureOpacities} : {}),
         cut: {
           enabled: s.cut.enabled,
           axis: s.cut.axis,
