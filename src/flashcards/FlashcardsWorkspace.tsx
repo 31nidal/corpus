@@ -12,6 +12,10 @@ import'./flashcards.css'
 import FlashcardFormatGuide,{FlashcardFormatExplanation,type FlashcardFormatId} from './FlashcardFormatGuide'
 
 type View='today'|'decks'|'cards'|'stats'|'create'
+function readFlashcardView():View {
+ const value=new URLSearchParams(window.location.hash.slice(1)).get('flashView')
+ return ['today','decks','cards','stats','create'].includes(value??'')?value as View:'today'
+}
 
 type EditorState = {
   id?: string
@@ -59,7 +63,13 @@ function checkTypedClient(input: string, target: string, accepted: string[] = []
 }
 
 export default function FlashcardsWorkspace({openCourse,openDocument,openAccount}:{openAccount:()=>void;openCourse:(courseId:string,sectionId?:string|null)=>void;openDocument:(documentId:string,sectionId?:string|null)=>void}){
- const account=useAccount(),[view,setView]=useState<View>('today'),[decks,setDecks]=useState<FlashcardDeck[]>([]),[cards,setCards]=useState<Flashcard[]>([]),[nextCursor,setNextCursor]=useState<string|null>(null),[stats,setStats]=useState<FlashcardStats|null>(null),[query,setQuery]=useState(''),[deckFilter,setDeckFilter]=useState(''),[subjectFilter,setSubjectFilter]=useState(''),[chapterFilter,setChapterFilter]=useState(''),[tagFilter,setTagFilter]=useState(''),[editor,setEditor]=useState<EditorState|null>(null),[newDeck,setNewDeck]=useState(''),[error,setError]=useState(''),[loading,setLoading]=useState(true),[review,setReview]=useState<Flashcard[]|null>(null),[reviewIndex,setReviewIndex]=useState(0),[revealed,setRevealed]=useState(false),[cardPreview,setCardPreview]=useState<FlashcardPreview|null>(null),[previewLoading,setPreviewLoading]=useState(false),[previewError,setPreviewError]=useState(''),[reviewStarted,setReviewStarted]=useState(0),[freeText,setFreeText]=useState(''),[generation,setGeneration]=useState<GenerationSource|null>(null),[toast,setToast]=useState('')
+ const account=useAccount(),[view,setViewState]=useState<View>(readFlashcardView),[decks,setDecks]=useState<FlashcardDeck[]>([]),[cards,setCards]=useState<Flashcard[]>([]),[nextCursor,setNextCursor]=useState<string|null>(null),[stats,setStats]=useState<FlashcardStats|null>(null),[query,setQuery]=useState(''),[deckFilter,setDeckFilter]=useState(''),[subjectFilter,setSubjectFilter]=useState(''),[chapterFilter,setChapterFilter]=useState(''),[tagFilter,setTagFilter]=useState(''),[editor,setEditor]=useState<EditorState|null>(null),[newDeck,setNewDeck]=useState(''),[error,setError]=useState(''),[loading,setLoading]=useState(true),[review,setReview]=useState<Flashcard[]|null>(null),[reviewIndex,setReviewIndex]=useState(0),[revealed,setRevealed]=useState(false),[cardPreview,setCardPreview]=useState<FlashcardPreview|null>(null),[previewLoading,setPreviewLoading]=useState(false),[previewError,setPreviewError]=useState(''),[reviewStarted,setReviewStarted]=useState(0),[freeText,setFreeText]=useState(''),[generation,setGeneration]=useState<GenerationSource|null>(null),[toast,setToast]=useState('')
+ const setView=(next:View)=>{
+  setViewState(next)
+  const params=new URLSearchParams(window.location.hash.slice(1));params.set('tab','flashcards');params.set('flashView',next)
+  window.history.replaceState(null,'','#'+params.toString())
+ }
+ useEffect(()=>{const restore=()=>setViewState(readFlashcardView());window.addEventListener('hashchange',restore);return()=>window.removeEventListener('hashchange',restore)},[])
  const [typedInput, setTypedInput] = useState('')
  const [atlasReady, setAtlasReady] = useState(false)
  const clozeTextareaRef = useRef<HTMLTextAreaElement | null>(null)

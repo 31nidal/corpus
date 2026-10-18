@@ -26,6 +26,7 @@ Plateforme d’apprentissage pour les étudiants en santé : explorer l’anatom
 - Création manuelle, génération depuis du texte et organisation en decks personnels.
 - Menu expliquant les **sept formats** : question/réponse, inversée, dans les deux sens, texte à trous, réponse saisie, image à masquer et repérage en 3D.
 - Exemples de recto/verso et aide au choix du format dans l’éditeur.
+- [Accès direct au menu des sept formats](https://mycorpus3d.com/#tab=flashcards&flashView=create), conservé après rechargement.
 - Révision avec l’ordonnanceur FSRS existant, statistiques et synchronisation entre appareils pour les comptes connectés.
 - Les cartes 3D conservent le modèle, sa révision et les réglages de la scène.
 
