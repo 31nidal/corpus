@@ -1,0 +1,802 @@
+{
+  "description": "Inventory of shipped source-labelled meshes. Classification uses the navigation predicates, is not exhaustive anatomical coverage and does not imply individual scientific validation. Counts overlap between systems.",
+  "revisions": {
+    "male": "bp3d-detail-v1",
+    "female": "hra-female-v1",
+    "femaleDetailed": "hra-vhf-detail-v1"
+  },
+  "systems": [
+    {
+      "id": "skeletal",
+      "name": "Squelette",
+      "male": {
+        "count": 231,
+        "examples": [
+          {
+            "id": "FMA55704",
+            "sourceName": "left lower first secondary molar tooth"
+          },
+          {
+            "id": "FMA55693",
+            "sourceName": "left lower first secondary premolar tooth"
+          },
+          {
+            "id": "FMA55703",
+            "sourceName": "left lower second secondary molar tooth"
+          }
+        ]
+      },
+      "female": {
+        "count": 14,
+        "examples": [
+          {
+            "id": "HRA-VH_F_sacrum",
+            "sourceName": "fused sacrum"
+          },
+          {
+            "id": "HRA-VH_F_coccyx",
+            "sourceName": "coccyx"
+          },
+          {
+            "id": "HRA-VH_F_pubis_spongy_bone_L",
+            "sourceName": "trabecular bone tissue"
+          }
+        ]
+      },
+      "femaleDetailed": {
+        "count": 91,
+        "examples": [
+          {
+            "id": "HRA-VH_F_sacrum",
+            "sourceName": "fused sacrum"
+          },
+          {
+            "id": "HRA-VH_F_coccyx",
+            "sourceName": "coccyx"
+          },
+          {
+            "id": "HRA-VH_F_pubis_spongy_bone_L",
+            "sourceName": "trabecular bone tissue"
+          }
+        ]
+      }
+    },
+    {
+      "id": "articular",
+      "name": "Articulations et cartilages disponibles",
+      "male": {
+        "count": 89,
+        "examples": [
+          {
+            "id": "FMA49145",
+            "sourceName": "check ligament of left lateral rectus"
+          },
+          {
+            "id": "FMA49073",
+            "sourceName": "left common tendinous ring"
+          },
+          {
+            "id": "FMA49148",
+            "sourceName": "check ligament of left medial rectus"
+          }
+        ]
+      },
+      "female": {
+        "count": 13,
+        "examples": [
+          {
+            "id": "HRA-VH_F_suspensory_ligaments_L",
+            "sourceName": "suspensory ligament of left breast"
+          },
+          {
+            "id": "HRA-VH_F_suspensory_ligaments_R",
+            "sourceName": "suspensory ligament of right breast"
+          },
+          {
+            "id": "HRA-VH_F_right_round_ligament_of_uterus",
+            "sourceName": "right round ligament of uterus"
+          }
+        ]
+      },
+      "femaleDetailed": {
+        "count": 35,
+        "examples": [
+          {
+            "id": "HRA-VH_F_suspensory_ligaments_L",
+            "sourceName": "suspensory ligament of left breast"
+          },
+          {
+            "id": "HRA-VH_F_suspensory_ligaments_R",
+            "sourceName": "suspensory ligament of right breast"
+          },
+          {
+            "id": "HRA-VH_F_suspensory_ligament_of_lens_R",
+            "sourceName": "suspensory ligament of right lens"
+          }
+        ]
+      }
+    },
+    {
+      "id": "integumentary",
+      "name": "Tégumentaire · éléments disponibles",
+      "male": {
+        "count": 1,
+        "examples": [
+          {
+            "id": "FMA7163",
+            "sourceName": "skin"
+          }
+        ]
+      },
+      "female": {
+        "count": 0,
+        "examples": []
+      },
+      "femaleDetailed": {
+        "count": 1,
+        "examples": [
+          {
+            "id": "HRA-VH_F_skin",
+            "sourceName": "skin of body"
+          }
+        ]
+      }
+    },
+    {
+      "id": "endocrine",
+      "name": "Endocrinien · éléments disponibles",
+      "male": {
+        "count": 3,
+        "examples": [
+          {
+            "id": "FMA13889",
+            "sourceName": "pituitary gland"
+          },
+          {
+            "id": "FMA15630",
+            "sourceName": "left adrenal gland"
+          },
+          {
+            "id": "FMA15629",
+            "sourceName": "right adrenal gland"
+          }
+        ]
+      },
+      "female": {
+        "count": 0,
+        "examples": []
+      },
+      "femaleDetailed": {
+        "count": 1,
+        "examples": [
+          {
+            "id": "HRA-VH_F_suprarenal_impression_of_liver",
+            "sourceName": "suprarenal impression of liver"
+          }
+        ]
+      }
+    },
+    {
+      "id": "sensory",
+      "name": "Organes des sens · éléments disponibles",
+      "male": {
+        "count": 11,
+        "examples": [
+          {
+            "id": "FMA58082",
+            "sourceName": "anterior chamber of left eyeball"
+          },
+          {
+            "id": "FMA58240",
+            "sourceName": "left cornea"
+          },
+          {
+            "id": "FMA58243",
+            "sourceName": "left lens"
+          }
+        ]
+      },
+      "female": {
+        "count": 0,
+        "examples": []
+      },
+      "femaleDetailed": {
+        "count": 14,
+        "examples": [
+          {
+            "id": "HRA-VH_F_retina_R",
+            "sourceName": "right retina"
+          },
+          {
+            "id": "HRA-VH_F_sclera_R",
+            "sourceName": "right sclera"
+          },
+          {
+            "id": "HRA-VH_F_corneo_scleral_junction_R",
+            "sourceName": "right corneoscleral junction"
+          }
+        ]
+      }
+    },
+    {
+      "id": "reproductive-female",
+      "name": "Reproducteur féminin · éléments disponibles",
+      "male": {
+        "count": 0,
+        "examples": []
+      },
+      "female": {
+        "count": 26,
+        "examples": [
+          {
+            "id": "HRA-VH_F_vagina",
+            "sourceName": "vagina"
+          },
+          {
+            "id": "HRA-VH_F_cervicovaginal_junction",
+            "sourceName": "cervicovaginal junction"
+          },
+          {
+            "id": "HRA-VH_F_ampulla_of_uterine_tube_R",
+            "sourceName": "ampulla of right uterine tube"
+          }
+        ]
+      },
+      "femaleDetailed": {
+        "count": 30,
+        "examples": [
+          {
+            "id": "HRA-VH_F_vagina",
+            "sourceName": "vagina"
+          },
+          {
+            "id": "HRA-VH_F_cervicovaginal_junction",
+            "sourceName": "cervicovaginal junction"
+          },
+          {
+            "id": "HRA-VH_F_ampulla_of_uterine_tube_R",
+            "sourceName": "ampulla of right uterine tube"
+          }
+        ]
+      }
+    },
+    {
+      "id": "muscular",
+      "name": "Musculaire",
+      "male": {
+        "count": 398,
+        "examples": [
+          {
+            "id": "FMA49051",
+            "sourceName": "left inferior oblique"
+          },
+          {
+            "id": "FMA49047",
+            "sourceName": "left inferior rectus"
+          },
+          {
+            "id": "FMA49055",
+            "sourceName": "left lateral rectus"
+          }
+        ]
+      },
+      "female": {
+        "count": 0,
+        "examples": []
+      },
+      "femaleDetailed": {
+        "count": 16,
+        "examples": [
+          {
+            "id": "HRA-VH_F_medial_rectus_extraocular_muscle_L",
+            "sourceName": "left medial rectus"
+          },
+          {
+            "id": "HRA-VH_F_inferior_rectus_extraocular_muscle_L",
+            "sourceName": "left inferior rectus"
+          },
+          {
+            "id": "HRA-VH_F_superior_rectus_extraocular_muscle_L",
+            "sourceName": "left superior rectus"
+          }
+        ]
+      }
+    },
+    {
+      "id": "cardiovascular",
+      "name": "Cardiovasculaire",
+      "male": {
+        "count": 671,
+        "examples": [
+          {
+            "id": "FMA50029",
+            "sourceName": "right anterior cerebral artery"
+          },
+          {
+            "id": "FMA50030",
+            "sourceName": "left anterior cerebral artery"
+          },
+          {
+            "id": "FMA50169",
+            "sourceName": "anterior communicating artery"
+          }
+        ]
+      },
+      "female": {
+        "count": 0,
+        "examples": []
+      },
+      "femaleDetailed": {
+        "count": 118,
+        "examples": [
+          {
+            "id": "HRA-VH_F_interventricular_septum",
+            "sourceName": "interventricular septum"
+          },
+          {
+            "id": "HRA-VH_F_left_cardiac_atrium",
+            "sourceName": "left cardiac atrium"
+          },
+          {
+            "id": "HRA-VH_F_left_ventricle",
+            "sourceName": "heart left ventricle"
+          }
+        ]
+      }
+    },
+    {
+      "id": "nervous",
+      "name": "Nerveux",
+      "male": {
+        "count": 128,
+        "examples": [
+          {
+            "id": "FMA52677",
+            "sourceName": "left anterior ethmoidal nerve"
+          },
+          {
+            "id": "FMA53550",
+            "sourceName": "left ciliary ganglion"
+          },
+          {
+            "id": "FMA52640",
+            "sourceName": "left frontal nerve"
+          }
+        ]
+      },
+      "female": {
+        "count": 0,
+        "examples": []
+      },
+      "femaleDetailed": {
+        "count": 31,
+        "examples": [
+          {
+            "id": "HRA-VH_F_right_optic_nerve",
+            "sourceName": "right optic nerve"
+          },
+          {
+            "id": "HRA-VH_F_left_optic_nerve",
+            "sourceName": "left optic nerve"
+          },
+          {
+            "id": "HRA-VH_F_C1_segment_of_cervical_spinal_cord",
+            "sourceName": "c1 segment of cervical spinal cord"
+          }
+        ]
+      }
+    },
+    {
+      "id": "digestive",
+      "name": "Digestif",
+      "male": {
+        "count": 36,
+        "examples": [
+          {
+            "id": "FMA71889",
+            "sourceName": "caudate lobe tributary of left hepatic biliary tree"
+          },
+          {
+            "id": "FMA7198",
+            "sourceName": "pancreas"
+          },
+          {
+            "id": "FMA10419",
+            "sourceName": "pancreatic duct"
+          }
+        ]
+      },
+      "female": {
+        "count": 0,
+        "examples": []
+      },
+      "femaleDetailed": {
+        "count": 41,
+        "examples": [
+          {
+            "id": "HRA-VH_F_hepatic_flexure_of_colon",
+            "sourceName": "hepatic flexure of colon"
+          },
+          {
+            "id": "HRA-VH_F_transverse_colon",
+            "sourceName": "transverse colon"
+          },
+          {
+            "id": "HRA-VH_F_ascending_colon",
+            "sourceName": "ascending colon"
+          }
+        ]
+      }
+    },
+    {
+      "id": "respiratory",
+      "name": "Respiratoire",
+      "male": {
+        "count": 28,
+        "examples": [
+          {
+            "id": "FMA68227",
+            "sourceName": "inferior lingular bronchial tree"
+          },
+          {
+            "id": "FMA68230",
+            "sourceName": "left medial basal segmental bronchial tree"
+          },
+          {
+            "id": "FMA68222",
+            "sourceName": "left anterior segmental bronchial tree"
+          }
+        ]
+      },
+      "female": {
+        "count": 0,
+        "examples": []
+      },
+      "femaleDetailed": {
+        "count": 56,
+        "examples": [
+          {
+            "id": "HRA-VH_F_hilum_L",
+            "sourceName": "left lung hilus"
+          },
+          {
+            "id": "HRA-VH_F_hilum_upper_L",
+            "sourceName": "left lung hilus"
+          },
+          {
+            "id": "HRA-VH_F_lingula_superior_bronchopulmonary_segment",
+            "sourceName": "superior lingular bronchopulmonary segment"
+          }
+        ]
+      }
+    },
+    {
+      "id": "urinary",
+      "name": "Urinaire",
+      "male": {
+        "count": 6,
+        "examples": [
+          {
+            "id": "FMA15572",
+            "sourceName": "left ureter"
+          },
+          {
+            "id": "FMA7205",
+            "sourceName": "left kidney"
+          },
+          {
+            "id": "FMA15571",
+            "sourceName": "right ureter"
+          }
+        ]
+      },
+      "female": {
+        "count": 6,
+        "examples": [
+          {
+            "id": "HRA-VH_F_fundus_of_urinary_bladder_dome",
+            "sourceName": "fundus of urinary bladder"
+          },
+          {
+            "id": "HRA-VH_F_urinary_bladder_neck_smooth_muscle",
+            "sourceName": "urinary bladder neck smooth muscle"
+          },
+          {
+            "id": "HRA-VH_F_fundus_of_urinary_bladder_base",
+            "sourceName": "fundus of urinary bladder"
+          }
+        ]
+      },
+      "femaleDetailed": {
+        "count": 60,
+        "examples": [
+          {
+            "id": "HRA-VH_F_kidney_capsule_L",
+            "sourceName": "kidney capsule"
+          },
+          {
+            "id": "HRA-VH_F_hilum_of_kidney_L",
+            "sourceName": "hilum of kidney"
+          },
+          {
+            "id": "HRA-VH_F_renal_papilla_L_a",
+            "sourceName": "renal papilla"
+          }
+        ]
+      }
+    },
+    {
+      "id": "reproductive",
+      "name": "Reproducteur masculin",
+      "male": {
+        "count": 12,
+        "examples": [
+          {
+            "id": "FMA19618",
+            "sourceName": "corpus cavernosum of penis"
+          },
+          {
+            "id": "FMA19617",
+            "sourceName": "corpus spongiosum of penis"
+          },
+          {
+            "id": "FMA18247",
+            "sourceName": "glans penis"
+          }
+        ]
+      },
+      "female": {
+        "count": 0,
+        "examples": []
+      },
+      "femaleDetailed": {
+        "count": 0,
+        "examples": []
+      }
+    },
+    {
+      "id": "lymphatic",
+      "name": "Lymphatique · éléments disponibles",
+      "male": {
+        "count": 3,
+        "examples": [
+          {
+            "id": "FMA7196",
+            "sourceName": "spleen"
+          },
+          {
+            "id": "FMA71195",
+            "sourceName": "left lobe of thymus"
+          },
+          {
+            "id": "FMA71194",
+            "sourceName": "right lobe of thymus"
+          }
+        ]
+      },
+      "female": {
+        "count": 0,
+        "examples": []
+      },
+      "femaleDetailed": {
+        "count": 7,
+        "examples": [
+          {
+            "id": "HRA-VH_F_gastric_surface_of_spleen",
+            "sourceName": "gastric surface of spleen"
+          },
+          {
+            "id": "HRA-VH_F_diaphragmatic_surface_of_spleen",
+            "sourceName": "diaphragmatic surface of spleen"
+          },
+          {
+            "id": "HRA-VH_F_colic_surface_of_spleen",
+            "sourceName": "colic surface of spleen"
+          }
+        ]
+      }
+    }
+  ],
+  "pilots": {
+    "heart": {
+      "id": "FMA7088",
+      "meshComponents": [
+        "FMA7247",
+        "FMA7265",
+        "FMA7260",
+        "FMA7242",
+        "FMA7238",
+        "FMA9466",
+        "FMA9291",
+        "FMA11359",
+        "FMA9465",
+        "FMA7254",
+        "FMA7250",
+        "FMA7264",
+        "FMA7261",
+        "FMA7252",
+        "FMA7243",
+        "FMA7239",
+        "FMA7249",
+        "FMA7253",
+        "FMA7240",
+        "FMA7262",
+        "FMA9531",
+        "FMA9457",
+        "FMA74912",
+        "FMA3872",
+        "FMA3860",
+        "FMA3876",
+        "FMA3868",
+        "FMA3874",
+        "FMA3895",
+        "FMA4706",
+        "FMA4707",
+        "FMA3818",
+        "FMA3807",
+        "FMA3815",
+        "FMA3840",
+        "FMA3837",
+        "FMA3802",
+        "FMA4714",
+        "FMA4716",
+        "FMA3855"
+      ]
+    },
+    "stomach": {
+      "id": "FMA7148",
+      "meshComponents": [],
+      "limitation": "Single global mesh; no separately modelled pylorus, fundus or antrum."
+    },
+    "spine": {
+      "id": "FMA13478",
+      "meshComponents": [
+        "FMA10037",
+        "FMA10059",
+        "FMA10081",
+        "FMA13072",
+        "FMA9165",
+        "FMA13073",
+        "FMA9187",
+        "FMA12521",
+        "FMA13074",
+        "FMA9209",
+        "FMA12522",
+        "FMA13075",
+        "FMA9248",
+        "FMA12523",
+        "FMA13076",
+        "FMA9922",
+        "FMA12524",
+        "FMA9945",
+        "FMA12525",
+        "FMA9968",
+        "FMA9991",
+        "FMA10014",
+        "FMA12519",
+        "FMA12520",
+        "FMA25058",
+        "FMA13501",
+        "FMA13502",
+        "FMA13503",
+        "FMA13504",
+        "FMA13505",
+        "FMA13506",
+        "FMA13507",
+        "FMA13508",
+        "FMA10446",
+        "FMA16033",
+        "FMA13896",
+        "FMA16034",
+        "FMA16035",
+        "FMA16036",
+        "FMA16037",
+        "FMA13897",
+        "FMA13898",
+        "FMA13899",
+        "FMA13900",
+        "FMA10458",
+        "FMA13495",
+        "FMA13500"
+      ],
+      "numberedVertebrae": [
+        {
+          "id": "FMA10037",
+          "number": "T10"
+        },
+        {
+          "id": "FMA10059",
+          "number": "T11"
+        },
+        {
+          "id": "FMA10081",
+          "number": "T12"
+        },
+        {
+          "id": "FMA13072",
+          "number": "L1"
+        },
+        {
+          "id": "FMA9165",
+          "number": "T1"
+        },
+        {
+          "id": "FMA13073",
+          "number": "L2"
+        },
+        {
+          "id": "FMA9187",
+          "number": "T2"
+        },
+        {
+          "id": "FMA12521",
+          "number": "C3"
+        },
+        {
+          "id": "FMA13074",
+          "number": "L3"
+        },
+        {
+          "id": "FMA9209",
+          "number": "T3"
+        },
+        {
+          "id": "FMA12522",
+          "number": "C4"
+        },
+        {
+          "id": "FMA13075",
+          "number": "L4"
+        },
+        {
+          "id": "FMA9248",
+          "number": "T4"
+        },
+        {
+          "id": "FMA12523",
+          "number": "C5"
+        },
+        {
+          "id": "FMA13076",
+          "number": "L5"
+        },
+        {
+          "id": "FMA9922",
+          "number": "T5"
+        },
+        {
+          "id": "FMA12524",
+          "number": "C6"
+        },
+        {
+          "id": "FMA9945",
+          "number": "T6"
+        },
+        {
+          "id": "FMA12525",
+          "number": "C7"
+        },
+        {
+          "id": "FMA9968",
+          "number": "T7"
+        },
+        {
+          "id": "FMA9991",
+          "number": "T8"
+        },
+        {
+          "id": "FMA10014",
+          "number": "T9"
+        },
+        {
+          "id": "FMA12519",
+          "number": "C1"
+        },
+        {
+          "id": "FMA12520",
+          "number": "C2"
+        }
+      ]
+    }
+  }
+}

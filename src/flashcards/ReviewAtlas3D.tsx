@@ -79,7 +79,7 @@ export const ReviewAtlas3D: React.FC<ReviewAtlas3DProps> = ({ card, isFlipped, o
         let loadedManifest = manifestCache.get(modelKey)
         if (!loadedManifest) {
           const path =
-            modelKey === 'female_detail'
+            modelKey === 'female_extended' ? 'female-detailed/manifest.json' : modelKey === 'female_detail'
               ? 'female-regions/manifest.json'
               : modelKey === 'bp3d_detail'
                 ? 'manifest.json'
@@ -199,6 +199,7 @@ export const ReviewAtlas3D: React.FC<ReviewAtlas3DProps> = ({ card, isFlipped, o
         manifest={manifest}
         visibility={visibility}
         opacity={opacity}
+        structureOpacities={scene.structureOpacities}
         cut={scene.cut}
         selectedId={null}
         isolationStructureId={scene.isolationStructureId}

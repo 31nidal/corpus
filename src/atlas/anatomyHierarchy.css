@@ -1,0 +1,25 @@
+.anatomy-hierarchy{border-block:1px solid #819b9d40;padding:16px 0;margin:16px 0;color:var(--ink,inherit)}
+.anatomy-hierarchy h3{margin:0 0 12px}.anatomy-hierarchy h4,.anatomy-hierarchy summary{font-size:12px;font-weight:650;margin:12px 0 7px}.anatomy-hierarchy summary{cursor:pointer;min-height:32px;padding:6px 0}
+.anatomy-node-title{display:grid;gap:6px;font-size:13px}.anatomy-node-title code{font-size:11px;opacity:.7}.anatomy-hierarchy .anatomy-status{font-size:11px;line-height:1.6;opacity:.85;margin:9px 0}
+.anatomy-links button,.anatomy-return{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:44px;padding:9px 10px;border:1px solid #819b9d40;border-radius:8px;background:transparent;color:inherit;text-align:left;font:inherit;font-size:12px;margin:5px 0;cursor:pointer}
+.anatomy-links button:hover,.anatomy-return:hover{background:#719f9f18}.anatomy-links button small{white-space:nowrap;font-size:10px;opacity:.75}.anatomy-link-list{max-height:245px;overflow:auto;padding-right:3px;overscroll-behavior:contain}.anatomy-hierarchy button:focus-visible,.anatomy-hierarchy summary:focus-visible{outline:2px solid #20857c;outline-offset:2px}
+.anatomy-metadata{font-size:11px;line-height:1.6}.anatomy-metadata dt{font-weight:650}.anatomy-metadata dd{margin:2px 0 9px}.anatomy-metadata a{display:block;margin:10px 0;color:inherit;text-decoration:underline}.structure-opacity{display:grid;gap:6px;margin:14px 0;font-size:12px}.structure-opacity input{width:100%;min-height:32px;accent-color:#257e78}.scene-undo{width:100%;min-height:44px;border:1px solid #819b9d60;border-radius:9px;background:transparent;color:inherit;cursor:pointer}
+
+.anatomical-views{display:grid;grid-template-columns:1fr 1fr;gap:6px}.anatomy-training .detail-content input:not([type=checkbox]),.anatomy-training select{width:100%;padding:11px;border:1px solid #819b9d60;border-radius:8px;background:transparent;color:inherit;font:inherit}.anatomy-training .detail-content>p,.anatomy-training label{line-height:1.6}.anatomy-training .anatomy-links button:disabled{cursor:default;opacity:.6}.anatomy-error-list{padding-left:18px;font-size:12px;line-height:1.6}.anatomy-error-list li{margin:14px 0}.anatomy-training .icon-button{font-size:25px;min-width:44px;min-height:44px}
+
+.anatomy-tree{font-size:12px;padding:4px 2px}.anatomy-tree>p{line-height:1.6}.anatomy-tree input{width:100%;border:1px solid #819b9d50;background:transparent;color:inherit;border-radius:8px;padding:10px;font:inherit}.anatomy-tree details details{margin-left:10px;border-left:1px solid #819b9d40;padding-left:8px}.anatomy-tree summary{cursor:pointer;min-height:44px;align-content:center;line-height:1.5}.anatomy-tree button{display:grid;gap:4px;width:100%;min-height:44px;padding:8px;margin:3px 0;border:1px solid #819b9d30;border-radius:6px;color:inherit;background:transparent;text-align:left;font:inherit;cursor:pointer}.anatomy-tree button[aria-current=true]{border-color:#23857c;background:#23857c18}.anatomy-tree button small{font-size:9px;opacity:.6}.anatomy-tree button:focus-visible,.anatomy-tree summary:focus-visible{outline:2px solid #23857c;outline-offset:2px}
+
+.mobile-detail-toggle,.mobile-collapsed-name{display:none}.anatomy-panel-header-actions{display:flex;align-items:center;gap:4px}
+@media(max-width:700px){
+ .mobile-detail-toggle{display:inline-flex;min-width:44px;min-height:44px;padding:6px;font-size:11px;color:var(--mc-brand)}
+ .anatomy-panel-header-actions .icon-button{min-width:44px;min-height:44px}
+ .experience[data-workspace=atlas] .anatomy-detail-panel[data-collapsed=true]{top:auto;bottom:40px;height:auto;max-height:84px}
+ .anatomy-detail-panel[data-collapsed=true]>.detail-content,.anatomy-detail-panel[data-collapsed=true]>.detail-footer{display:none}
+ .anatomy-detail-panel[data-collapsed=true]>.detail-heading{padding:6px 10px;min-height:56px}
+ .anatomy-detail-panel[data-collapsed=true] .eyebrow{display:none}
+ .anatomy-detail-panel[data-collapsed=true] .mobile-collapsed-name{display:block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:650;color:var(--mc-text)}
+ .experience[data-workspace=atlas] .atlas-workspace:has(.anatomy-detail-panel[data-collapsed=true])>.stage{bottom:142px}
+ .experience[data-workspace=atlas] .atlas-workspace:has(.anatomy-detail-panel[data-collapsed=true])>.assistant-dock:not(.assistant-open){display:none}
+}
+
+.female-reference-controls{display:flex;align-items:center;gap:8px}.female-reference-controls .return-main-atlas{flex:1}.female-reference-controls select{min-width:0;max-width:110px;background:var(--mc-surface);color:var(--mc-text);border:1px solid var(--mc-border);border-radius:6px;padding:8px 3px;font:inherit;font-size:10px}@media(max-width:700px){.female-reference-controls{gap:4px}.female-reference-controls select{padding:7px 2px;font-size:9px;max-width:94px}}

@@ -1,4 +1,5 @@
 import { describeStructure } from '../data/anatomy'
+import { vertebraCode } from './anatomicalGraph'
 import type { Structure } from '../types'
 
 export const normalizeAtlasSearch = (text: string) => text.toLocaleLowerCase('fr')
@@ -13,7 +14,7 @@ function searchText(structure: Structure) {
     entry = {
       name: normalizeAtlasSearch(description.name),
       original: normalizeAtlasSearch(structure.name),
-      text: normalizeAtlasSearch([description.name, structure.name, description.system, ...description.keywords].join(' ')),
+      text: normalizeAtlasSearch([structure.id, ...structure.meshNames, vertebraCode(structure.name) ?? '', description.name, structure.name, description.system, ...description.keywords].join(' ')),
     }
     cache.set(structure, entry)
   }

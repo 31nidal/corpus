@@ -27,6 +27,13 @@ import type { CameraPose, LabelMode, SharedView, GroupId, LoadState, Manifest, V
 import { Atlas3DNoteModal } from './flashcards/Atlas3DNoteModal'
 import type { Atlas3DScene } from './flashcards/flashcardsTypes'
 import { normalizeAtlasSearch, searchAtlas } from './atlas/search'
+import AnatomyTrainingPanel from './atlas/AnatomyTrainingPanel'
+import { useAnatomyTraining } from './atlas/useAnatomyTraining'
+import { assemblyComponents, containingAssemblies } from './atlas/anatomicalGraph'
+import type { Structure } from './types'
+import AnatomyTree from './atlas/AnatomyTree'
+import AnatomyHierarchy from './atlas/AnatomyHierarchy'
+import type { AnatomySceneSnapshot, StructureOpacities } from './atlas/scene'
 const AtlasWorkspace = lazy(() => import('./atlas/AtlasWorkspace'))
 import type { AtlasId, AtlasMode } from './atlas/types'
 import './atlas/atlas.css'
@@ -57,9 +64,9 @@ const tourSteps = [
 ]
 function readRoute() {
   const params = new URLSearchParams(window.location.hash.slice(1))
-  const id=params.get('structure')??(params.get('body')==='female'?'HRA-region-pelvis':null)
+  const id=params.get('structure')??(params.get('body')==='female'&&params.get('femaleModel')!=='detail'?'HRA-region-pelvis':null)
   const mode=params.get('mode')
-  return { id, detail:mode==='detail'||Boolean(id)&&mode!=='overview', view:decodeView(params.get('view')) }
+  return { id, detail:params.get('body')==='female'||mode==='detail'||Boolean(id)&&mode!=='overview', view:decodeView(params.get('view')) }
 }
 
 export default function App() {
@@ -86,7 +93,7 @@ export default function App() {
   const [chatOpen,setChatOpen]=useState(false)
   const [profileOpen,setProfileOpen]=useState(profileRequested)
   const [completed,setCompleted]=useState<string[]>(()=>{try{const v=JSON.parse(accountStorage.getItem('corpus-completed')||'[]');return Array.isArray(v)?v.filter(x=>courses.some(l=>l.id===x)||isValidCourseOrHubId(x)):[]}catch{return []}})
-  const [layerTab,setLayerTab]=useState<'layers'|'systems'>('layers')
+  const [layerTab,setLayerTab]=useState<'layers'|'systems'|'tree'>('layers')
   const [activeSystems,setActiveSystems]=useState<string[]>([])
   const [animation,setAnimation]=useState<AnimationState>(null)
   const [opacity,setOpacity] = useState(defaultOpacity)
@@ -103,19 +110,53 @@ export default function App() {
   }, [dark])
   const [route, setRoute] = useState(readRoute)
   const [body,setBody]=useState<'male'|'female'>(()=>new URLSearchParams(location.hash.slice(1)).get('body')==='female'?'female':'male')
+  const [femaleDetailed,setFemaleDetailed]=useState(()=>new URLSearchParams(location.hash.slice(1)).get('femaleModel')==='detail')
   const [shareStatus, setShareStatus] = useState('')
   const [routeError, setRouteError] = useState('')
   const [detailMode, setDetailMode] = useState(() => readRoute().detail)
+  const activeModelKey=body==='female'?(femaleDetailed?'female_extended':'female_detail'):detailMode?'bp3d_detail':'bp3d_overview'
   const [isolated, setIsolated] = useState(false)
   const [hiddenIds, setHiddenIds] = useState<string[]>([])
+  const [structureOpacities, setStructureOpacities] = useState<StructureOpacities>({})
+  const [previousScene, setPreviousScene] = useState<AnatomySceneSnapshot | null>(null)
+  useEffect(() => { setStructureOpacities({}); setPreviousScene(null) }, [body, detailMode, femaleDetailed])
+  const rememberScene = () => setPreviousScene({ selectedId, visibility: {...visibility}, opacity: {...opacity}, structureOpacities: {...structureOpacities}, cut:{...cut}, labels, isolated, hiddenIds: [...hiddenIds], camera: apiRef.current?.capture() ?? null })
+  const restoreScene = () => {
+    if (!previousScene) return
+    setVisibility(previousScene.visibility); setOpacity(previousScene.opacity); setStructureOpacities(previousScene.structureOpacities)
+    setHiddenIds(previousScene.hiddenIds); setIsolated(previousScene.isolated); setSelectedId(previousScene.selectedId)
+    writeRoute(previousScene.selectedId, detailMode, body, {version:1, camera:previousScene.camera ?? {position:[0,0.04,6.1],target:[0,0,0]}, visibility:previousScene.visibility, opacity:previousScene.opacity, structureOpacities:previousScene.structureOpacities, cut:previousScene.cut, isolated:previousScene.isolated, hidden:previousScene.hiddenIds, labels:previousScene.labels, dark}); setPreviousScene(null)
+  }
+
   const [catalogOpen, setCatalogOpen] = useState(false)
   const [catalogGroup, setCatalogGroup] = useState('all')
   const [catalogLimit, setCatalogLimit] = useState(60)
   const [manifest, setManifest] = useState<Manifest | null>(null)
+  const training = useAnatomyTraining(manifest, accountStorage)
+  const [trainingOpen, setTrainingOpen] = useState(false)
+  const [trainingScope, setTrainingScope] = useState<Structure[]>([])
+  const [trainingContextId, setTrainingContextId] = useState<string|null>(null)
+  const [trainingScopeName, setTrainingScopeName] = useState('')
+  useEffect(() => { setTrainingOpen(false) }, [body, detailMode, femaleDetailed])
+  useEffect(() => {
+    if (dashboardOpen || atlasOpen || learningOpen || practiceOpen || myCoursesOpen || flashcardsOpen || profileOpen || quiz) {
+      training.stop();setTrainingOpen(false)
+    }
+  }, [dashboardOpen, atlasOpen, learningOpen, practiceOpen, myCoursesOpen, flashcardsOpen, profileOpen, Boolean(quiz)])
+  useEffect(() => {
+    if (!training.session || training.done || !training.question || !manifest) return
+    const question = manifest.structures.find(s => s.id === training.question!.id)
+    if (!question) return
+    setHiddenIds([]);setStructureOpacities({});setIsolated(false);setHover(null);setAnimation(null);setCut(defaultCut);setOpacity({...defaultOpacity,[question.group]:1})
+    setSelectedId(training.session.mode === 'click' ? null : question.id)
+    const activeGroups=new Set(trainingScope.flatMap(s=>s.groups ?? [s.group]));setVisibility(Object.fromEntries(Object.keys(initialVisibility).map(group=>[group,activeGroups.has(group as GroupId)])) as Visibility)
+  }, [training.question?.id, training.session?.id, training.done])
   const [manifestError, setManifestError] = useState(false)
   const [load, setLoad] = useState<LoadState>({ progress: 0, ready: [], error: null, complete: false })
   const [visibility, setVisibility] = useState(initialVisibility)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [detailCollapsed,setDetailCollapsed] = useState(false)
+  useEffect(()=>setDetailCollapsed(false),[selectedId,body])
   const [hover, setHover] = useState<{ id: string; x: number; y: number } | null>(null)
   const [query, setQuery] = useState('')
   const [searchManifest, setSearchManifest] = useState<Manifest | null>(null)
@@ -144,7 +185,7 @@ export default function App() {
     if (!manifest?.atlasRevision) return
     const cameraPose = apiRef.current?.capture() || { position: [0, 0.04, 6.1], target: [0, 0, 0] }
     const sceneToCapture: Atlas3DScene = {
-      modelKey: body === 'female' ? 'female_detail' : detailMode ? 'bp3d_detail' : 'bp3d_overview',
+      modelKey: activeModelKey,
       atlasRevision: manifest.atlasRevision,
       camera: {
         position: cameraPose.position,
@@ -152,6 +193,7 @@ export default function App() {
       },
       visibility: { ...visibility },
       opacity: { ...opacity },
+      structureOpacities: {...structureOpacities},
       cut: {
         enabled: Boolean(cut.enabled),
         axis: cut.axis,
@@ -166,19 +208,21 @@ export default function App() {
     setAtlas3DModalOpen(true)
   }
 
-  const writeRoute = (id: string | null, detail = detailMode, reference = body) => {
+  const writeRoute = (id: string | null, detail = detailMode, reference = body, view: SharedView | null = null, extended = femaleDetailed) => {
     setAtlasOpen(false);setDashboardOpen(false);setLearningOpen(false);setPracticeOpen(false);setMyCoursesOpen(false);setFlashcardsOpen(false)
     const url = new URL(window.location.href)
     const params = new URLSearchParams()
     if (id) params.set('structure', id)
-    if(reference==='female')params.set('body','female')
+    if(reference==='female'){params.set('body','female');if(extended)params.set('femaleModel','detail')}
     params.set('mode',detail?'detail':'overview')
+    if (view) params.set('view', encodeView(view))
     url.hash = params.toString()
     if (url.href !== window.location.href) window.history.pushState(null, '', url)
-    setCameraRestore(null); setRoute({id, detail, view:null}); setShareStatus('')
+    setCameraRestore(view?.camera ?? null); setRoute({id, detail, view}); setShareStatus('')
   }
-  const openFemaleRegion=(id:string)=>{setAtlasOpen(false);setBody('female');setDetailMode(true);setGuided(false);setQuiz(null);setAnimation(null);setCut(defaultCut);setOpacity(defaultOpacity);setVisibility(initialVisibility);setActiveSystems([]);setHiddenIds([]);setLabels('off');setCatalogOpen(false);setHover(null);pendingIsolation.current=id;writeRoute(id,true,'female')}
-  const changeBody=(next:'male'|'female')=>{setAtlasOpen(false);setBody(next);setDetailMode(true);setGuided(false);setQuiz(null);setAnimation(null);setCut(defaultCut);setOpacity(defaultOpacity);setVisibility(initialVisibility);setActiveSystems([]);setLabels('off');setCatalogOpen(false);setHover(null);writeRoute(null,true,next)}
+  const openFemaleRegion=(id:string)=>{setAtlasOpen(false);setFemaleDetailed(body==='female'&&femaleDetailed);setBody('female');setDetailMode(true);setGuided(false);setQuiz(null);setAnimation(null);setCut(defaultCut);setOpacity(defaultOpacity);setVisibility(initialVisibility);setActiveSystems([]);setHiddenIds([]);setLabels('off');setCatalogOpen(false);setHover(null);pendingIsolation.current=id;writeRoute(id,true,'female',null,body==='female'&&femaleDetailed)}
+  const changeBody=(next:'male'|'female')=>{setAtlasOpen(false);setBody(next);setFemaleDetailed(false);setDetailMode(true);setGuided(false);setQuiz(null);setAnimation(null);setCut(defaultCut);setOpacity(defaultOpacity);setVisibility(initialVisibility);setActiveSystems([]);setLabels('off');setCatalogOpen(false);setHover(null);writeRoute(null,true,next,null,false)}
+  const changeFemaleReference=(extended:boolean)=>{setGuided(false);setQuiz(null);setAnimation(null);setCameraRestore(null);pendingIsolation.current=null;training.stop();setTrainingOpen(false);setFemaleDetailed(extended);setDetailMode(true);setSelectedId(null);setIsolated(false);setHiddenIds([]);setStructureOpacities({});setPreviousScene(null);setCut(defaultCut);setOpacity(defaultOpacity);setVisibility(initialVisibility);setLabels('off');setActiveSystems([]);setCatalogOpen(false);setHover(null);writeRoute(extended?null:'HRA-region-pelvis',true,'female',null,extended)}
   const changeMode = (detail: boolean) => { setAtlasOpen(false); setGuided(false); setDetailMode(detail); writeRoute(null, detail) }
   useEffect(() => {
     const restore = () => {
@@ -192,7 +236,7 @@ export default function App() {
       setAtlasMode((params.get('mode') as AtlasMode) || 'explore')
       setAtlasView(params.get('view'))
       setAtlasStructure(params.get('structure'))
-      setBody(params.get('body')==='female'?'female':'male')
+      setBody(params.get('body')==='female'?'female':'male');setFemaleDetailed(params.get('femaleModel')==='detail')
       setDashboardOpen(tab==='aujourdhui')
       setLearningOpen(tab==='cours')
       setPracticeOpen(tab==='entrainement')
@@ -217,7 +261,7 @@ export default function App() {
     setRouteError(route.id && !structure ? 'Cette structure est introuvable dans cet atlas. Vous pouvez poursuivre avec la recherche.' : '')
     setSelectedId(structure?.id ?? null); setIsolated(route.view?.isolated ?? ((pendingIsolation.current !== null && pendingIsolation.current === structure?.id) || (body==='female' && Boolean(structure?.id.startsWith('HRA-region-'))))); pendingIsolation.current=null; setHover(null)
     if(route.view){
-      setOpacity(route.view.opacity);setCut(route.view.cut);setLabels(route.view.labels);setDark(route.view.dark)
+      setStructureOpacities(route.view.structureOpacities ?? {});setOpacity(route.view.opacity);setCut(route.view.cut);setLabels(route.view.labels);setDark(route.view.dark)
       setHiddenIds(route.view.hidden.filter(id=>manifest.structures.some(s=>s.id===id)))
       setVisibility(route.view.visibility);setCameraRestore(route.view.camera)
     }
@@ -229,7 +273,7 @@ export default function App() {
   }, [route, manifest, detailMode])
   const captureView = (): SharedView | null => {
     const camera=apiRef.current?.capture()
-    return camera ? {version:1,camera:roundedPose(camera),visibility,opacity,cut,isolated,hidden:hiddenIds,labels,dark} : null
+    return camera ? {version:1,camera:roundedPose(camera),visibility,opacity,structureOpacities,cut,isolated,hidden:hiddenIds,labels,dark} : null
   }
   const share = async () => {
     const view=captureView()
@@ -237,7 +281,7 @@ export default function App() {
     const url=new URL(window.location.href),params=new URLSearchParams()
     if(selectedId)params.set('structure',selectedId)
     params.set('mode',detailMode?'detail':'overview')
-    if(body==='female')params.set('body','female')
+    if(body==='female'){params.set('body','female');if(femaleDetailed)params.set('femaleModel','detail')}
     params.set('view',encodeView(view));url.hash=params.toString();window.history.replaceState(null,'',url)
     try { await navigator.clipboard.writeText(url.href); setShareStatus('Lien copié !') }
     catch { setShareStatus('Copiez le lien ci-dessous :') }
@@ -250,12 +294,12 @@ export default function App() {
     setLoad({progress:0,ready:[],error:null,complete:false})
     if (body==='male' && detailMode && searchManifest) { setManifest(searchManifest); return () => controller.abort() }
     setManifest(null)
-    fetch(`${import.meta.env.BASE_URL}models/${body==='female'?'female-regions/manifest.json':detailMode ? 'manifest.json' : 'overview.json'}`, { signal: controller.signal })
+    fetch(`${import.meta.env.BASE_URL}models/${body==='female'?(femaleDetailed?'female-detailed/manifest.json':'female-regions/manifest.json'):detailMode ? 'manifest.json' : 'overview.json'}`, { signal: controller.signal })
       .then(response => { if (!response.ok) throw new Error('manifest'); return response.json() })
       .then((data: Manifest) => { if (!data.groups?.length || !data.structures?.length) throw new Error('manifest'); if (!controller.signal.aborted) setManifest(data) })
       .catch(error => { if (error.name !== 'AbortError') setManifestError(true) })
     return () => controller.abort()
-  }, [detailMode,body,dashboardOpen])
+  }, [detailMode,body,femaleDetailed,dashboardOpen])
 
   useEffect(() => {
     function key(event: KeyboardEvent) {
@@ -307,6 +351,7 @@ export default function App() {
 
   const selectStructure = useCallback((id: string) => {
     setAnimation(null)
+    if (training.session && !training.done) return
     if(quiz?.answered || quiz?.done)return
     if(quiz){
       const question=quizQuestions[quiz.index],target=manifest?.structures.find(s=>s.id===question.id),picked=manifest?.structures.find(s=>s.id===id)
@@ -323,14 +368,14 @@ export default function App() {
     setHiddenIds(ids => ids.filter(hidden => !manifest?.structures.find(s=>s.id===hidden)?.meshNames.some(name=>structure.meshNames.includes(name))));
     setOpacity(o=>({...o,...Object.fromEntries((structure.groups??[structure.group]).filter(g=>o[g]===0).map(g=>[g,defaultOpacity[g]]))})); setCatalogOpen(false)
     writeRoute(id); setSelectedId(id); setSearchOpen(false); setQuery(''); setHover(null); setLayersOpen(false)
-  }, [manifest, detailMode, quiz,body])
+  }, [manifest, detailMode, quiz,body,training.session,training.done])
   const applyPreset = (groups: GroupId[]) => {
     setAnimation(null);setActiveSystems([]);setGuided(false);setOpacity(defaultOpacity);setCut(defaultCut)
     setVisibility(Object.fromEntries(Object.keys(initialVisibility).map(id => [id, groups.includes(id as GroupId)])) as Visibility)
     setHiddenIds([]); setIsolated(false); setSelectedId(null); setLayersOpen(false)
     setResetKey(k => k + 1); setOrientation('front'); writeRoute(null)
   }
-  const reset = () => { if(body==='female'){openFemaleRegion('HRA-region-pelvis');return}  setAnimation(null);setCameraRestore(null);setCut(defaultCut); setGuided(false); setSelectedId(null); setIsolated(false); setHover(null); setResetKey(k => k + 1); setOrientation('front'); writeRoute(null) }
+  const reset = () => { if(body==='female'&&!femaleDetailed){openFemaleRegion('HRA-region-pelvis');return}  setStructureOpacities({});setPreviousScene(null);setAnimation(null);setCameraRestore(null);setCut(defaultCut); setGuided(false); setSelectedId(null); setIsolated(false); setHover(null); setResetKey(k => k + 1); setOrientation('front'); writeRoute(null) }
   const toggleGroup = (id: GroupId) => {
     if(activeSystems.length){setActiveSystems([]);setHiddenIds([])}
     setVisibility(v => ({ ...v, [id]: !v[id] }))
@@ -357,8 +402,11 @@ export default function App() {
     if (load.ready.includes(target.group)) requestAnimationFrame(() => apiRef.current?.frame(id))
   }
   const hiddenMeshes = new Set(hiddenIds.flatMap(id => structures.find(s => s.id === id)?.meshNames ?? []))
-  const visibleCount = structures.filter(s => !s.aggregate && (!s.detailOnly || (selectedId===s.id&&!selected?.aggregate)) && visibility[s.group] && opacity[s.group]>0 && load.ready.includes(s.group) && s.meshNames.some(name => !hiddenMeshes.has(name) && (!isolated || !selected || selected.meshNames.includes(name)))).length
-  const catalog = structures.filter(s => catalogGroup === 'all' || s.group === catalogGroup)
+  for (const [id,value] of Object.entries(structureOpacities)) if (value === 0) for (const mesh of structures.find(s=>s.id===id)?.meshNames ?? []) hiddenMeshes.add(mesh)
+  const sceneIsolation = trainingOpen&&training.session ? structures.find(s=>s.id===trainingContextId) : isolated?selected:undefined
+  const visibleCount = structures.filter(s => !s.aggregate && (!s.detailOnly || (selectedId===s.id&&!selected?.aggregate)) && visibility[s.group] && opacity[s.group]>0 && load.ready.includes(s.group) && s.meshNames.some(name => !hiddenMeshes.has(name) && (!sceneIsolation || sceneIsolation.meshNames.includes(name)))).length
+  const catalogSystem = systems.find(system => 'system:'+system.id === catalogGroup)
+  const catalog = structures.filter(s => catalogGroup === 'all' || s.group === catalogGroup || Boolean(catalogSystem?.match(s)))
   const setAllLayers = (on: boolean) => {setActiveSystems([]);if(on)setOpacity(defaultOpacity);setGuided(false);setVisibility(Object.fromEntries(Object.keys(initialVisibility).map(id => [id,on])) as Visibility);setHiddenIds([]);setIsolated(false);setSelectedId(null);writeRoute(null)}
 
   const tourIndex = tourSteps.findIndex(step => step.id === selectedId)
@@ -407,7 +455,7 @@ export default function App() {
     const related=structureCourseCandidates(selected).find(id=>courses.some(course=>course.id===id))
     return related??lessonFor(selected)?.id??null
   }
-  const learningCourseId=body==='female'?femaleCourse:courseForSelectedStructure()
+  const learningCourseId=body==='female'&&!femaleDetailed?femaleCourse:courseForSelectedStructure()
   const openLearning=()=>openStudy('cours',learningCourseId)
   const openDashboard=()=>{setDashboardOpen(true);setAtlasOpen(false);setLearningOpen(false);setPracticeOpen(false);setMyCoursesOpen(false);setFlashcardsOpen(false);setProfileOpen(false);setChatOpen(false);setToolsOpen(false);setQuiz(null);location.hash='tab=aujourdhui'}
   const openPractice=()=>openStudy('entrainement',learningCourseId)
@@ -480,10 +528,10 @@ export default function App() {
     <div className="atlas-workspace" hidden={dashboardOpen||atlasOpen||learningOpen||practiceOpen||myCoursesOpen||flashcardsOpen}>
     <aside className="intro">
       <div className="edition"><span className="pulse-dot" /> ATLAS ANATOMIQUE <span className="edition-number">ÉDITION 03</span></div>
-      <h1>{body==='female'?'Anatomie féminine.':'Le corps humain.'}<br /><em>{body==='female'?'Explorer par région.':'Une autre dimension.'}</em></h1>
+      <h1>{body==='female'?'Anatomie féminine.':'Le corps humain.'}<br /><em>{body==='female'?(femaleDetailed?'Explorer les structures.':'Explorer par région.'):'Une autre dimension.'}</em></h1>
       <p className="intro-text">Votre laboratoire d’anatomie personnel.</p>
-      {body==='male'?<button className="female-specialty" onClick={()=>openFemaleRegion('HRA-region-pelvis')}>Anatomie féminine <ArrowUpRight size={14}/></button>:<button className="return-main-atlas" onClick={()=>changeBody('male')}><ArrowLeft size={14}/>Revenir au corps entier</button>}
-      {body==='male'&&<div className="atlas-mode" aria-label="Niveau de détail"><button title="Structures regroupées pour découvrir les principaux repères" aria-pressed={!detailMode} onClick={() => changeMode(false)}>Vue d’ensemble</button><button title="Structures anatomiques séparées et sélectionnables" aria-pressed={detailMode} onClick={() => changeMode(true)}>Atlas détaillé</button></div>}<p className="mode-explanation">{manifest?structures.filter(s=>!s.aggregate).length.toLocaleString('fr-FR')+(body==='female'?' structures · explorations régionales':' structures · référence masculine'):'Chargement de la référence…'}</p>{body==='female'&&<p className="female-coverage"><span className="coverage-full">Modèles féminins HRA : bassin, appareil reproducteur et sein. Une sélection régionale, sans ajout de maillages masculins.</span><span className="coverage-compact">HRA · explorations féminines régionales</span></p>}<button className="mobile-learn" onClick={()=>openStudy('cours')}>Cours</button><button className="mobile-learn" onClick={()=>openMyCourses()}>Mes cours</button><button className="mobile-start-quiz" onClick={openPractice}>Entraînement</button><button className="mobile-profile" onClick={()=>{setChatOpen(false);setProfileOpen(true);setToolsOpen(false);setQuiz(null)}}>Profil</button><button className="mobile-start-tour" onClick={()=>visitStep(0)}>Visite guidée <ArrowRight size={13}/></button>
+      {body==='male'?<button className="female-specialty" onClick={()=>openFemaleRegion('HRA-region-pelvis')}>Anatomie féminine <ArrowUpRight size={14}/></button>:<div className="female-reference-controls"><button className="return-main-atlas" onClick={()=>changeBody('male')}><ArrowLeft size={14}/>Revenir au corps entier</button><select aria-label="Référence anatomique féminine" value={femaleDetailed?'detail':'regions'} onChange={event=>changeFemaleReference(event.target.value==='detail')}><option value="regions">Régions</option><option value="detail">Atlas détaillé</option></select></div>}
+      {body==='male'&&<div className="atlas-mode" aria-label="Niveau de détail"><button title="Structures regroupées pour découvrir les principaux repères" aria-pressed={!detailMode} onClick={() => changeMode(false)}>Vue d’ensemble</button><button title="Structures anatomiques séparées et sélectionnables" aria-pressed={detailMode} onClick={() => changeMode(true)}>Atlas détaillé</button></div>}<p className="mode-explanation">{manifest?structures.filter(s=>!s.aggregate).length.toLocaleString('fr-FR')+(body==='female'?(femaleDetailed?' structures · référence féminine partielle':' structures · explorations régionales'):' structures · référence masculine'):'Chargement de la référence…'}</p>{body==='female'&&<p className="female-coverage"><span className="coverage-full">{femaleDetailed?'Référence féminine HRA : structures disponibles du corps, du cœur et des reins. Couverture partielle, issue des seuls maillages VH_F.':'Modèles féminins HRA : bassin, appareil reproducteur et sein. Une sélection régionale, sans ajout de maillages masculins.'}</span><span className="coverage-compact">{femaleDetailed?'HRA · référence féminine détaillée, partielle':'HRA · explorations féminines régionales'}</span></p>}<button className="mobile-learn" onClick={()=>openStudy('cours')}>Cours</button><button className="mobile-learn" onClick={()=>openMyCourses()}>Mes cours</button><button className="mobile-start-quiz" onClick={openPractice}>Entraînement</button><button className="mobile-profile" onClick={()=>{setChatOpen(false);setProfileOpen(true);setToolsOpen(false);setQuiz(null)}}>Profil</button><button className="mobile-start-tour" onClick={()=>visitStep(0)}>Visite guidée <ArrowRight size={13}/></button>
     </aside>
 
     {body==='female'?<div className="view-presets female-region-presets" aria-label="Régions féminines">{[{id:'pelvis',name:'Bassin'},{id:'reproductive',name:'Reproduction'},{id:'breast',name:'Sein'}].map(r=><button key={r.id} aria-pressed={selectedId==='HRA-region-'+r.id} onClick={()=>openFemaleRegion('HRA-region-'+r.id)}>{r.name}</button>)}</div>:<div className="view-presets" aria-label="Vues rapides"><span>Vues rapides</span>{([
@@ -491,43 +539,45 @@ export default function App() {
       {name:'Squelette',groups:['skin','skeleton']},
       ...(detailMode ? [{name:'Muscles',groups:['skin','skeleton','organs','muscles']}] : [])
     ] as {name:string;groups:GroupId[]}[]).map(preset=><button key={preset.name} aria-label={`Vue ${preset.name.toLowerCase()}`} aria-pressed={Object.entries(visibility).every(([id,on])=>on===preset.groups.includes(id as GroupId))} onClick={()=>applyPreset(preset.groups)}>{preset.name}</button>)}</div>}
-    {body==='female'&&<div className="female-study-links"><button onClick={()=>openStudy('cours',femaleCourse)}><BookOpen size={14}/>Cours de la région</button><button onClick={()=>openStudy('entrainement',femaleCourse)}><GraduationCap size={14}/>Quiz de la région</button></div>}
+    {body==='female'&&<div className="female-study-links"><button onClick={()=>openStudy('cours',learningCourseId)}><BookOpen size={14}/>Cours de la région</button><button onClick={()=>openStudy('entrainement',learningCourseId)}><GraduationCap size={14}/>Quiz de la région</button></div>}
     {routeError && <div className="route-notice" role="status">{routeError}<button onClick={()=>writeRoute(null)} aria-label="Fermer le message"><X size={16}/></button></div>}
     <section className={`stage ${selected ? 'has-selection' : ''}`} aria-label="Corps humain en trois dimensions">
       <div className="stage-zoom" aria-label="Zoom du modèle"><span>Zoom</span><button aria-label="Réduire le modèle" disabled={!load.ready.length} onClick={()=>apiRef.current?.zoom(-1)}><Minus size={18}/></button><button aria-label="Agrandir le modèle" disabled={!load.ready.length} onClick={()=>apiRef.current?.zoom(1)}><Plus size={18}/></button><button aria-label="Recadrer la structure" disabled={!load.ready.length} onClick={()=>selectedId?apiRef.current?.frame(selectedId):apiRef.current?.reset()}><RotateCcw size={16}/></button></div><div className="stage-orbit orbit-one" /><div className="stage-orbit orbit-two" />
       <div className="stage-axis" /><span className="axis-label axis-top">SUPÉRIEUR</span><span className="axis-label axis-bottom">INFÉRIEUR</span>
-      {manifest && atlasVisited && !dashboardOpen && !atlasOpen && <Suspense fallback={null}><AnatomyViewer manifest={manifest} visibility={visibility} selectedId={selectedId} resetKey={resetKey} onSelect={selectStructure} onHover={setHover} onLoad={onLoad} apiRef={apiRef} isolated={isolated} hiddenIds={hiddenIds} opacity={opacity} cut={cut} labelPriority={quiz&&!quiz.done?quizQuestions[quiz.index].id:null} labels={quiz ? 'revision' : labels} cameraRestore={cameraRestore} animation={animation} /></Suspense>}
+      {manifest && atlasVisited && !dashboardOpen && !atlasOpen && <Suspense fallback={null}><AnatomyViewer manifest={manifest} visibility={visibility} selectedId={selectedId} resetKey={resetKey} onSelect={id=>trainingOpen&&training.session?training.pick(id):selectStructure(id)} onHover={trainingOpen ? ()=>{} : setHover} onLoad={onLoad} apiRef={apiRef} isolationStructureId={trainingOpen&&training.session?trainingContextId:undefined} isolated={isolated} hiddenIds={hiddenIds} structureOpacities={structureOpacities} opacity={opacity} cut={cut} labelPriority={quiz&&!quiz.done?quizQuestions[quiz.index].id:null} labels={trainingOpen ? 'off' : quiz ? 'revision' : labels} cameraRestore={cameraRestore} animation={animation} /></Suspense>}
       {(!isLoaded && !load.error && !manifestError) && <div className={`loading-indicator ${load.ready.length ? 'loading-small' : ''}`} role="status"><span className="loading-symbol"><Brand /></span><span>{load.ready.length ? 'Les structures prennent forme' : 'Le vivant se révèle'}</span><div className="progress-track"><div style={{ width: `${load.progress}%` }} /></div><small>CHARGEMENT DES MAILLAGES <span>{Math.round(load.progress)} %</span></small></div>}
       {(load.error || manifestError) && <div className="error-panel" role="alert"><CircleHelp size={24} /><h2>Le modèle n’a pas pu se charger</h2><p>{manifestError ? 'Le catalogue anatomique est indisponible.' : load.error}</p><button onClick={() => window.location.reload()}>Réessayer <RotateCcw size={15} /></button></div>}
       {load.complete && visibleCount === 0 && <div className="empty-model"><Layers3 size={26} /><p>Le corps attend votre regard.</p><button onClick={() => setVisibility(initialVisibility)}>Afficher les structures <Eye size={15} /></button></div>}
       <div className="view-corner"><span className="corner-cross">+</span> {detailMode ? "ATLAS DÉTAILLÉ" : "VUE D’ENSEMBLE"}<br /><span className="coordinate">{orientation === 'front' ? 'VUE ANTÉRIEURE' : 'VUE POSTÉRIEURE'} · POSITION LIBRE</span></div>
-    <div className="viewer-bottom"><div className="interaction-hint"><Rotate3D size={15} /><span>Glisser pour tourner</span><span className="hint-dot">·</span><span className="desktop-hint">Pointer puis défiler pour zoomer</span><span className="mobile-hint">Deux doigts pour zoomer / déplacer</span></div><div className="viewer-controls" aria-label="Commandes de la vue"><button aria-label="Outils d’exploration" aria-pressed={toolsOpen} onClick={()=>{setChatOpen(false);setToolsOpen(v=>!v);setDashboardOpen(false);setLearningOpen(false);setProfileOpen(false)}} disabled={Boolean(quiz)}><SlidersHorizontal size={17}/></button><button aria-label="Zoom arrière" onClick={() => apiRef.current?.zoom(-1)} disabled={!load.ready.length}><Minus size={18} /></button><button aria-label="Zoom avant" onClick={() => apiRef.current?.zoom(1)} disabled={!load.ready.length}><Plus size={18} /></button><span className="control-separator" /><button className="orientation-button" onClick={() => { const next = orientation === 'front' ? 'back' : 'front'; setOrientation(next); apiRef.current?.orient(next) }} disabled={!load.ready.length} title="Changer de côté">{orientation === 'front' ? 'Face' : 'Dos'}<Rotate3D size={15} /></button><span className="control-separator" /><button aria-label="Réinitialiser la vue" title="Réinitialiser la vue" onClick={reset} disabled={!load.ready.length}><RotateCcw size={17} /></button></div></div>
+    <div className="viewer-bottom"><div className="interaction-hint"><Rotate3D size={15} /><span>Glisser pour tourner</span><span className="hint-dot">·</span><span className="desktop-hint">Pointer puis défiler pour zoomer</span><span className="mobile-hint">Deux doigts pour zoomer / déplacer</span></div><div className="viewer-controls" aria-label="Commandes de la vue"><button aria-label="Outils d’exploration" aria-pressed={toolsOpen} onClick={()=>{setChatOpen(false);setToolsOpen(v=>!v);setDashboardOpen(false);setLearningOpen(false);setProfileOpen(false)}} disabled={Boolean(quiz)||trainingOpen}><SlidersHorizontal size={17}/></button><button aria-label="Zoom arrière" onClick={() => apiRef.current?.zoom(-1)} disabled={!load.ready.length}><Minus size={18} /></button><button aria-label="Zoom avant" onClick={() => apiRef.current?.zoom(1)} disabled={!load.ready.length}><Plus size={18} /></button><span className="control-separator" /><button className="orientation-button" onClick={() => { const next = orientation === 'front' ? 'back' : 'front'; setOrientation(next); apiRef.current?.orient(next) }} disabled={!load.ready.length} title="Changer de côté">{orientation === 'front' ? 'Face' : 'Dos'}<Rotate3D size={15} /></button><span className="control-separator" /><button aria-label="Réinitialiser la vue" title="Réinitialiser la vue" onClick={reset} disabled={!load.ready.length}><RotateCcw size={17} /></button></div></div>
     </section>
 
     <aside className={`layers-panel ${layersOpen ? 'mobile-open' : ''}`} aria-label="Couches anatomiques">
       <button className="mobile-layers-toggle" onClick={() => setLayersOpen(v => !v)} aria-expanded={layersOpen}><Layers3 size={17} /> Couches anatomiques <span>{manifest?.groups.filter(g => visibility[g.id]).length ?? 0}</span><ChevronDown size={15} /></button>
-      <div className="layers-content"><div className="layer-tabs"><button aria-pressed={layerTab==='layers'} onClick={()=>setLayerTab('layers')}>Couches</button><button aria-pressed={layerTab==='systems'} onClick={()=>setLayerTab('systems')}>Systèmes</button></div><div className="layer-list" tabIndex={0} aria-label={layerTab==='systems'?'Liste des systèmes':'Liste des couches'}><div className="section-label"><span>COUCHES ANATOMIQUES</span><Layers3 size={14} /></div>
+      <div className="layers-content"><div className="layer-tabs"><button aria-pressed={layerTab==='layers'} onClick={()=>setLayerTab('layers')}>Couches</button><button aria-pressed={layerTab==='systems'} onClick={()=>setLayerTab('systems')}>Systèmes</button><button aria-pressed={layerTab==='tree'} disabled={trainingOpen} onClick={()=>setLayerTab('tree')}>Arbre</button></div><div className="layer-list" tabIndex={0} aria-label={layerTab==='systems'?'Liste des systèmes':'Liste des couches'}><div className="section-label"><span>{layerTab==='tree'?'ARBRE DES RESSOURCES':layerTab==='systems'?'SYSTÈMES ANATOMIQUES':'COUCHES ANATOMIQUES'}</span><Layers3 size={14} /></div>
+        {layerTab==='tree'&&manifest&&<AnatomyTree manifest={manifest} selectedId={selectedId} onSelect={selectStructure}/>}
         {layerTab==='systems'&&availableSystems.map(system=><button key={system.id} role="switch" aria-checked={activeSystems.includes(system.id)} aria-label={`Système ${system.name}`} className={`layer-row ${activeSystems.includes(system.id)?'layer-on':''}`} onClick={()=>applySystems(activeSystems.includes(system.id)?activeSystems.filter(id=>id!==system.id):[...activeSystems,system.id])}><span className="layer-text">{system.name}<small>{structures.filter(s=>!s.aggregate&&system.match(s)).length} éléments disponibles</small></span><span className="switch"><span/></span></button>)}{layerTab==='layers'&&manifest?.groups.map(group => { const meta = groupMeta[group.id]; const Icon = meta.icon; return <button className={`layer-row ${visibility[group.id] ? 'layer-on' : ''}`} key={group.id} role="switch" aria-checked={visibility[group.id]} aria-label={meta.name} onClick={() => toggleGroup(group.id)} title={load.ready.includes(group.id) ? "Afficher ou masquer" : "Charger cette couche"}><span className="layer-icon" style={{ color: meta.color }}><Icon size={20} strokeWidth={1.4} /></span><span className="layer-text">{meta.name}<small>{structures.filter(s => s.group === group.id && !s.aggregate).length} structures{visibility[group.id] && !load.ready.includes(group.id) ? " · chargement…" : ""}</small></span><span className="switch"><span /></span></button> })}
-        </div><div className="layer-footer"><div className="layer-actions"><button onClick={() => setAllLayers(true)}>Tout afficher</button><button onClick={() => setAllLayers(false)}>Tout masquer</button></div>{hiddenIds.length > 0 && <button className="restore-hidden" onClick={() => setHiddenIds([])}>Rétablir {hiddenIds.length} structure(s) masquée(s)</button>}<p className="layer-note"><span /> {body==='female' ? "Référence féminine HRA : seules les structures disponibles sont proposées." : visibility.muscles ? "Le visage conserve son enveloppe ; les muscles faciaux ne sont pas inclus." : "L’enveloppe est transparente pour révéler l’intérieur."}</p></div>
+        </div><div className="layer-footer">{previousScene && !selected && <button className="scene-undo" onClick={restoreScene}>Restaurer la scène précédente</button>}<div className="layer-actions"><button onClick={() => setAllLayers(true)}>Tout afficher</button><button onClick={() => setAllLayers(false)}>Tout masquer</button></div>{hiddenIds.length > 0 && <button className="restore-hidden" onClick={() => setHiddenIds([])}>Rétablir {hiddenIds.length} structure(s) masquée(s)</button>}<p className="layer-note"><span /> {body==='female' ? "Référence féminine HRA : seules les structures disponibles sont proposées." : visibility.muscles ? "Le visage conserve son enveloppe ; les muscles faciaux ne sont pas inclus." : "L’enveloppe est transparente pour révéler l’intérieur."}</p></div>
       </div>
     </aside>
 
-    {!selected && !catalogOpen && !toolsOpen && !quiz && !learningOpen && !profileOpen && <aside className="discovery" aria-label="Choisir une région anatomique"><span className="discovery-index">ATLAS 3D · EXPLORER PAR RÉGION</span><h2>Une région à la fois.</h2><p>Choisissez une zone pour la voir de près et ouvrir sa fiche anatomique.</p><div className="region-blocks">{[{id:'FMA7088',name:'Cœur',description:'Cavités et vaisseaux',icon:Heart,group:'organs' as GroupId},{id:'FMA50801',name:'Cerveau',description:'Encéphale et structures',icon:Brain,group:'organs' as GroupId},{id:'BP3D_SKULL',name:'Tête',description:'Crâne et face',icon:Bone,group:'skeleton' as GroupId}].map(region=>{const Icon=region.icon;return <button key={region.id} className={`region-block region-${region.id.toLowerCase()}`} onClick={()=>openAtlasRegion(region.id)} disabled={!manifest||Boolean(quiz)} aria-label={`Explorer ${region.name} en 3D`}><span className="region-block-icon"><Icon size={19} strokeWidth={1.6}/></span><span className="region-block-copy"><strong>{region.name}</strong><small>{region.description}</small></span><ArrowRight size={15} className="region-block-arrow"/></button>})}</div><div className="discovery-secondary"><button className="browse-atlas" onClick={() => setCatalogOpen(true)}>Parcourir toutes les structures <ArrowUpRight size={14} /></button><button className="start-tour" onClick={()=>visitStep(0)}>Visite guidée <span>5 étapes</span><ArrowRight size={14}/></button></div></aside>}
+    {!trainingOpen && !selected && !catalogOpen && !toolsOpen && !quiz && !learningOpen && !profileOpen && <aside className="discovery" aria-label="Choisir une région anatomique"><span className="discovery-index">ATLAS 3D · EXPLORER PAR RÉGION</span><h2>Une région à la fois.</h2><p>Choisissez une zone pour la voir de près et ouvrir sa fiche anatomique.</p><div className="region-blocks">{[{id:'FMA7088',name:'Cœur',description:'Cavités et vaisseaux',icon:Heart,group:'organs' as GroupId},{id:'FMA50801',name:'Cerveau',description:'Encéphale et structures',icon:Brain,group:'organs' as GroupId},{id:'BP3D_SKULL',name:'Tête',description:'Crâne et face',icon:Bone,group:'skeleton' as GroupId}].map(region=>{const Icon=region.icon;return <button key={region.id} className={`region-block region-${region.id.toLowerCase()}`} onClick={()=>openAtlasRegion(region.id)} disabled={!manifest||Boolean(quiz)} aria-label={`Explorer ${region.name} en 3D`}><span className="region-block-icon"><Icon size={19} strokeWidth={1.6}/></span><span className="region-block-copy"><strong>{region.name}</strong><small>{region.description}</small></span><ArrowRight size={15} className="region-block-arrow"/></button>})}</div><div className="discovery-secondary"><button className="browse-atlas" onClick={() => setCatalogOpen(true)}>Parcourir toutes les structures <ArrowUpRight size={14} /></button><button className="start-tour" onClick={()=>visitStep(0)}>Visite guidée <span>5 étapes</span><ArrowRight size={14}/></button></div></aside>}
 
-    {catalogOpen && !selected && !toolsOpen && !quiz && !learningOpen && !profileOpen && <aside className="detail-panel catalog-panel" aria-label="Index anatomique"><div className="detail-heading"><span className="eyebrow">INDEX ANATOMIQUE</span><button className="icon-button" aria-label="Fermer l’index" onClick={() => setCatalogOpen(false)}><X size={18}/></button></div><div className="catalog-filter"><select aria-label="Filtrer l’index par système" value={catalogGroup} onChange={e=>{setCatalogGroup(e.target.value);setCatalogLimit(60)}}><option value="all">Tous les systèmes</option>{manifest?.groups.map(g=><option key={g.id} value={g.id}>{groupMeta[g.id].name}</option>)}</select><small>{catalog.length} entrées · utilisez aussi la recherche</small></div><div className="catalog-list">{catalog.slice(0,catalogLimit).map(s=><button key={s.id} onClick={()=>selectStructure(s.id)}><span style={{background:groupMeta[s.group].color}}/><span>{describeStructure(s.name,s.group).name}<small>{s.id}{s.aggregate?' · ensemble':''}</small></span><ArrowUpRight size={12}/></button>)}{catalogLimit<catalog.length&&<button className="catalog-more" onClick={()=>setCatalogLimit(n=>n+60)}>Afficher la suite ({catalog.length-catalogLimit})</button>}</div></aside>}
-    {selected && description && !toolsOpen && !quiz && !learningOpen && !profileOpen && <aside className="detail-panel" aria-label={`Fiche : ${description.name}`} data-testid="structure-detail">
-      <div className="detail-heading"><span className="eyebrow">{activeTour ? `VISITE GUIDÉE · ${tourIndex+1} / ${tourSteps.length}` : "EXPLORER UNE STRUCTURE"}</span><button ref={detailCloseRef} className="icon-button" aria-label="Fermer la fiche" onClick={reset}><X size={18} /></button></div>
-      <div className="detail-content"><div className="detail-category"><span style={{ background: groupMeta[selected.group].color }} />{description.system}</div><h2>{description.name}</h2><p className="original-name">{selected.name}</p><h3 className="detail-section-label">Fonction</h3><p className="detail-role">{description.role}</p><div className="dissection-actions"><button aria-pressed={isolated} onClick={() => setIsolated(v=>!v)}>{isolated ? "Voir le contexte" : "Isoler"}<Eye size={14}/></button><button onClick={() => {setHiddenIds(ids=>[...ids,selected.id]);setSelectedId(null);setIsolated(false);writeRoute(null)}}>Masquer<X size={14}/></button></div><button className="share-structure" onClick={share}><Copy size={14}/> Copier le lien de cette structure</button>{shareStatus && <div className="share-feedback" role="status">{shareStatus}{shareStatus !== 'Lien copié !' && <input aria-label="Lien de la structure" readOnly value={window.location.href} onFocus={e=>e.target.select()}/>}</div>}<>{activeTour && <div className="tour-prompt"><strong>{tourSteps[tourIndex].title}</strong><p>{tourSteps[tourIndex].prompt}</p><progress aria-label="Progression de la visite" max={tourSteps.length} value={tourIndex+1}/></div>}</>{detailedProfile&&<details className="profile-facts"><summary>Détails de la structure</summary><h3>{detailedProfile.kind==='muscle'?'Action, attaches et innervation':'Territoire du réseau'}</h3><dl>{Object.entries(detailedProfile.fields).map(([k,v])=><div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl><p className="tool-note">{detailedProfile.kind==='muscle'?'Repères du muscle ou de la portion nommée ; les variantes ne sont pas détaillées.':'Le réseau parent est décrit ; le territoire exact de cette petite branche n’est pas inféré.'}</p><a className="source-link" href={detailedProfile.source} target="_blank" rel="noreferrer">Source anatomique</a></details>}<div className="detail-rule" /><h3>Détails anatomiques</h3><p className="detail-description">{description.description}</p>{description.fact && <div className="fact"><Sparkles size={16} /><div><span>À RETENIR</span><p>{description.fact}</p></div></div>}<div className="learning-actions"><h3>Actions d’apprentissage</h3><button className="primary-action" onClick={openLearning}>Voir le cours <ArrowRight size={14}/></button><button className="subtle-action" onClick={()=>openStudy('entrainement',learningCourseId)}>S’entraîner</button>{(selected.id === 'FMA7088' || selected.id === 'FMA50801') && <button className="subtle-action" onClick={() => openSpecializedAtlas(selected.id === 'FMA7088' ? 'heart' : 'brain')}>Explorer l’atlas {selected.id === 'FMA7088' ? 'du cœur' : 'du cerveau'} <ArrowRight size={14}/></button>}<button className="subtle-action" onClick={openAtlas3DModal} disabled={!manifest?.atlasRevision} title={!manifest?.atlasRevision ? "Version de l'atlas indisponible." : undefined}><Brain size={14}/> Créer une flashcard 3D</button>{!manifest?.atlasRevision&&<span className="tool-note" style={{color:'#f87171',fontSize:11}}>Version de l'atlas indisponible.</span>}{selectedAnimation&&<button className="subtle-action" onClick={()=>setAnimation(animation?null:{id:selectedAnimation.id,playing:true})}>{animation?'Arrêter l’animation':selectedAnimation.name}</button>}{animation&&<p className="tool-note">Déformation illustrative, pas une simulation physiologique.</p>}</div><a className="source-link" href={description.source.url} target="_blank" rel="noreferrer">Source : {description.source.label}<ArrowUpRight size={13} /></a><div className="anatomical-id">IDENTIFIANT ANATOMIQUE <code>{selected.id}</code></div></div>
+    {!trainingOpen && catalogOpen && !selected && !toolsOpen && !quiz && !learningOpen && !profileOpen && <aside className="detail-panel catalog-panel" aria-label="Index anatomique"><div className="detail-heading"><span className="eyebrow">INDEX ANATOMIQUE</span><button className="icon-button" aria-label="Fermer l’index" onClick={() => setCatalogOpen(false)}><X size={18}/></button></div><div className="catalog-filter"><select aria-label="Filtrer l’index par système" value={catalogGroup} onChange={e=>{setCatalogGroup(e.target.value);setCatalogLimit(60)}}><option value="all">Tous les systèmes</option><optgroup label="Systèmes anatomiques">{availableSystems.map(system=><option key={system.id} value={"system:"+system.id}>{system.name}</option>)}</optgroup>{manifest?.groups.map(g=><option key={g.id} value={g.id}>{groupMeta[g.id].name}</option>)}</select><small>{catalog.length} entrées · utilisez aussi la recherche</small></div><div className="catalog-list">{catalog.slice(0,catalogLimit).map(s=><button key={s.id} onClick={()=>selectStructure(s.id)}><span style={{background:groupMeta[s.group].color}}/><span>{describeStructure(s.name,s.group).name}<small>{s.id}{s.aggregate?' · ensemble':''}</small></span><ArrowUpRight size={12}/></button>)}{catalogLimit<catalog.length&&<button className="catalog-more" onClick={()=>setCatalogLimit(n=>n+60)}>Afficher la suite ({catalog.length-catalogLimit})</button>}</div></aside>}
+    {!trainingOpen && selected && description && !toolsOpen && !quiz && !learningOpen && !profileOpen && <aside className="detail-panel anatomy-detail-panel" data-collapsed={detailCollapsed} aria-label={`Fiche : ${description.name}`} data-testid="structure-detail">
+      <div className="detail-heading"><span className="eyebrow">{activeTour ? `VISITE GUIDÉE · ${tourIndex+1} / ${tourSteps.length}` : "EXPLORER UNE STRUCTURE"}</span><span className="mobile-collapsed-name">{description.name}</span><div className="anatomy-panel-header-actions"><button className="mobile-detail-toggle" aria-label={detailCollapsed?"Développer la fiche anatomique":"Réduire la fiche anatomique"} aria-controls="anatomy-structure-content" aria-expanded={!detailCollapsed} onClick={()=>setDetailCollapsed(value=>!value)}>{detailCollapsed?"Fiche":"Réduire"}<ChevronDown size={14}/></button><button ref={detailCloseRef} className="icon-button" aria-label="Fermer la fiche" onClick={reset}><X size={18} /></button></div></div>
+      <div className="detail-content" id="anatomy-structure-content"><div className="detail-category"><span style={{ background: groupMeta[selected.group].color }} />{description.system}</div><h2>{description.name}</h2><p className="original-name">{selected.name}</p><h3 className="detail-section-label">Fonction</h3><p className="detail-role">{description.role}</p><div className="dissection-actions"><button aria-pressed={isolated} onClick={() => {rememberScene();setIsolated(v=>!v)}}>{isolated ? "Voir le contexte" : "Isoler"}<Eye size={14}/></button><button onClick={() => {rememberScene();setHiddenIds(ids=>[...ids,selected.id]);setSelectedId(null);setIsolated(false);writeRoute(null)}}>Masquer<X size={14}/></button></div><label className="structure-opacity">Opacité de la structure · {Math.round((structureOpacities[selected.id] ?? 1) * 100)} %<input aria-label="Opacité de la structure" type="range" min="0" max="100" value={Math.round((structureOpacities[selected.id] ?? 1) * 100)} onChange={event => setStructureOpacities(values => ({...values, [selected.id]: Number(event.target.value) / 100}))}/></label>{previousScene && <button className="scene-undo" onClick={restoreScene}>Restaurer la scène précédente</button>}<AnatomyHierarchy manifest={manifest!} selectedId={selected.id} onSelect={selectSearchResult}/><button className="share-structure" onClick={share}><Copy size={14}/> Copier le lien de cette structure</button>{shareStatus && <div className="share-feedback" role="status">{shareStatus}{shareStatus !== 'Lien copié !' && <input aria-label="Lien de la structure" readOnly value={window.location.href} onFocus={e=>e.target.select()}/>}</div>}<>{activeTour && <div className="tour-prompt"><strong>{tourSteps[tourIndex].title}</strong><p>{tourSteps[tourIndex].prompt}</p><progress aria-label="Progression de la visite" max={tourSteps.length} value={tourIndex+1}/></div>}</>{detailedProfile&&<details className="profile-facts"><summary>Détails de la structure</summary><h3>{detailedProfile.kind==='muscle'?'Action, attaches et innervation':'Territoire du réseau'}</h3><dl>{Object.entries(detailedProfile.fields).map(([k,v])=><div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl><p className="tool-note">{detailedProfile.kind==='muscle'?'Repères du muscle ou de la portion nommée ; les variantes ne sont pas détaillées.':'Le réseau parent est décrit ; le territoire exact de cette petite branche n’est pas inféré.'}</p><a className="source-link" href={detailedProfile.source} target="_blank" rel="noreferrer">Source anatomique</a></details>}<div className="detail-rule" /><h3>Détails anatomiques</h3><p className="detail-description">{description.description}</p>{description.fact && <div className="fact"><Sparkles size={16} /><div><span>À RETENIR</span><p>{description.fact}</p></div></div>}<div className="learning-actions"><h3>Actions d’apprentissage</h3><button className="subtle-action" onClick={()=>{rememberScene();setLayerTab('layers');setSearchOpen(false);const container=selected.aggregate?selected:containingAssemblies(structures,selected.id).sort((a,b)=>a.meshNames.length-b.meshNames.length)[0];const components=container?assemblyComponents(structures,container.id):[];const system=systems.find(system=>system.match(selected));const scope=components.length?components:structures.filter(s=>!s.aggregate&&(system?system.match(s):s.group===selected.group));setTrainingScope(scope);setTrainingContextId(container?.id??null);setVisibility(values=>({...values,...Object.fromEntries(scope.flatMap(s=>s.groups??[s.group]).map(group=>[group,true]))}));setTrainingScopeName(components.length&&container?describeStructure(container.name,container.group).name:system?.name??groupMeta[selected.group].name);setTrainingOpen(true);setHover(null)}}>Réviser ces structures en 3D</button><button className="primary-action" onClick={openLearning}>Voir le cours <ArrowRight size={14}/></button><button className="subtle-action" onClick={()=>openStudy('entrainement',learningCourseId)}>S’entraîner</button>{body==='male' && (selected.id === 'FMA7088' || selected.id === 'FMA50801') && <button className="subtle-action" onClick={() => openSpecializedAtlas(selected.id === 'FMA7088' ? 'heart' : 'brain')}>Explorer l’atlas {selected.id === 'FMA7088' ? 'du cœur' : 'du cerveau'} <ArrowRight size={14}/></button>}<button className="subtle-action" onClick={openAtlas3DModal} disabled={!manifest?.atlasRevision} title={!manifest?.atlasRevision ? "Version de l'atlas indisponible." : undefined}><Brain size={14}/> Créer une flashcard 3D</button>{!manifest?.atlasRevision&&<span className="tool-note" style={{color:'#f87171',fontSize:11}}>Version de l'atlas indisponible.</span>}{selectedAnimation&&<button className="subtle-action" onClick={()=>setAnimation(animation?null:{id:selectedAnimation.id,playing:true})}>{animation?'Arrêter l’animation':selectedAnimation.name}</button>}{animation&&<p className="tool-note">Déformation illustrative, pas une simulation physiologique.</p>}</div><a className="source-link" href={description.source.url} target="_blank" rel="noreferrer">Source : {description.source.label}<ArrowUpRight size={13} /></a><div className="anatomical-id">IDENTIFIANT ANATOMIQUE <code>{selected.id}</code></div></div>
       <div className="detail-footer">{activeTour ? <><button disabled={tourIndex===0} onClick={()=>visitStep(tourIndex-1)}><ArrowLeft size={14}/> Précédent</button><button className="tour-next" onClick={()=>tourIndex===tourSteps.length-1 ? setGuided(false) : visitStep(tourIndex+1)}>{tourIndex===tourSteps.length-1 ? 'Terminer la visite' : 'Étape suivante'}<ArrowRight size={14}/></button></> : <><button onClick={reset}><ArrowLeft size={14} /> Vue d’ensemble</button><div><button aria-label="Structure précédente" onClick={() => nextStructure(-1)}><ArrowLeft size={16} /></button><button aria-label="Structure suivante" onClick={() => nextStructure(1)}><ArrowRight size={16} /></button></div></>}</div>
     </aside>}
 
 
-    {!quiz && <ChatAssistant body={body} open={chatOpen} selectedId={selectedId} name={description?.name??'Le corps humain'} system={description?.system??''} lesson={learningOpen?currentLesson:lessonFor(selected)?.id??''} level={level} onAction={executeAction} onOpen={setChatOpen}/>}
-    {toolsOpen && !quiz && <ExplorerTools cut={cut} setCut={setCut} opacity={opacity} setOpacity={setOpacity} labels={labels} setLabels={setLabels} groups={(manifest?.groups??[]).map(g=>({id:g.id,name:groupMeta[g.id].name}))} close={()=>setToolsOpen(false)} share={share} status={shareStatus}/>}
+    {!quiz && !trainingOpen && <ChatAssistant body={body} open={chatOpen} selectedId={selectedId} name={description?.name??'Le corps humain'} system={description?.system??''} lesson={learningOpen?currentLesson:lessonFor(selected)?.id??''} level={level} onAction={executeAction} onOpen={setChatOpen}/>}
+    {!trainingOpen && toolsOpen && !quiz && <ExplorerTools cut={cut} setCut={setCut} opacity={opacity} setOpacity={setOpacity} labels={labels} setLabels={setLabels} groups={(manifest?.groups??[]).map(g=>({id:g.id,name:groupMeta[g.id].name}))} close={()=>setToolsOpen(false)} share={share} status={shareStatus} orient={view=>apiRef.current?.orient(view)} resetStructureOpacities={()=>setStructureOpacities({})}/>}
     {quiz && <QuizPanel quiz={quiz} setQuiz={setQuiz} close={endQuiz} next={nextQuestion} reveal={()=>{setQuiz({...quiz,answered:true,helped:true,feedback:'Réponse dévoilée. Prenez le temps de repérer cette structure.'});setSelectedId(quizQuestions[quiz.index].id);setIsolated(true)}}/>}
     {hover && hovered && !searchOpen && !quiz && <div className="hover-label" role="tooltip" style={{ left: Math.min(hover.x + 16, window.innerWidth - 200), top: Math.max(80, hover.y - 42) }}><span />{describeStructure(hovered.name, hovered.group).name}<small>Cliquer pour explorer</small></div>}
 
 
+    {trainingOpen && <AnatomyTrainingPanel ready={trainingScope.every(s=>(s.groups??[s.group]).every(group=>load.ready.includes(group)))} hiddenIds={hiddenIds} toggleHidden={id=>setHiddenIds(ids=>ids.includes(id)?ids.filter(value=>value!==id):[...ids,id])} restoreHidden={()=>setHiddenIds([])} training={training} scope={trainingScope} scopeName={trainingScopeName} close={()=>{training.stop();setTrainingOpen(false);restoreScene()}} review={id=>{training.stop();setTrainingOpen(false);setPreviousScene(null);selectStructure(id)}}/>}
     <footer className="bottombar"><div className="model-status"><span className={`status-dot ${load.complete ? 'is-ready' : ''}`} /><span>{load.complete ? `${visibleCount} structures actives` : 'Préparation de l’exploration'}</span><span className="footer-divider">/</span><span>{body==='female'?'Human Reference Atlas':'BodyParts3D'}</span></div><button className="education-note" onClick={()=>{setSelectedId(null);setIsolated(false);setCatalogOpen(v=>!v)}}>Index des structures <ArrowUpRight size={12}/></button><div className="footer-actions"><a href="/confidentialite.html" target="_blank">Confidentialité</a><button onClick={() => setModal('about')}>Sources & crédits <ArrowUpRight size={12} /></button><button onClick={() => setModal('help')} aria-label="Aide à la navigation"><CircleHelp size={17} /></button></div></footer>
 
     </div>
@@ -576,7 +626,7 @@ export default function App() {
       <Atlas3DNoteModal
         isOpen={atlas3DModalOpen}
         onClose={() => setAtlas3DModalOpen(false)}
-        modelKey={body === 'female' ? 'female_detail' : detailMode ? 'bp3d_detail' : 'bp3d_overview'}
+        modelKey={activeModelKey}
         atlasRevision={manifest.atlasRevision}
         scene={capturedScene}
         initialStructure={{ id: selected.id, name: description?.name || selected.name }}

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
+import './flashcards.css'
 import type { Atlas3DScene, Atlas3DTarget, FlashcardDeck, FlashcardNote } from './flashcardsTypes'
 import type { GroupId, Manifest } from '../types'
 import { createNote, listDecks } from './flashcardsApi'
@@ -8,7 +9,7 @@ import { AlertCircle, Box, Check, Plus, Trash2, X } from 'lucide-react'
 interface Atlas3DNoteModalProps {
   isOpen: boolean
   onClose: () => void
-  modelKey: 'bp3d_overview' | 'bp3d_detail' | 'female_detail'
+  modelKey: 'bp3d_overview' | 'bp3d_detail' | 'female_detail' | 'female_extended'
   atlasRevision: string
   scene: Atlas3DScene
   initialStructure: { id: string; name: string }
@@ -76,6 +77,9 @@ export const Atlas3DNoteModal: React.FC<Atlas3DNoteModalProps> = ({
     const hiddenMeshes = new Set(
       (scene.hiddenStructureIds || []).flatMap((hid) => structuresMap.get(hid)?.meshNames || [])
     )
+    for (const [id, value] of Object.entries(scene.structureOpacities || {})) {
+      if (value === 0) for (const mesh of structuresMap.get(id)?.meshNames || []) hiddenMeshes.add(mesh)
+    }
     const isolationMeshes = scene.isolationStructureId
       ? new Set(structuresMap.get(scene.isolationStructureId)?.meshNames || [])
       : null

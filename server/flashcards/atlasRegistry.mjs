@@ -34,6 +34,13 @@ export const ATLAS_REGISTRY = {
     manifestPath: path.join(ROOT_DIR, 'public/models/manifest.json'),
     allowedGroups: new Set(['skin', 'skeleton', 'organs', 'muscles', 'arteries', 'veins', 'nerves', 'joints']),
   },
+  female_extended: {
+    modelKey: 'female_extended',
+    currentRevision: 'hra-vhf-detail-v1',
+    compatibleStoredRevisions: ['hra-vhf-detail-v1'],
+    manifestPath: path.join(ROOT_DIR, 'public/models/female-detailed/manifest.json'),
+    allowedGroups: new Set(['skin','skeleton','organs','muscles','arteries','veins','nerves','joints']),
+  },
   female_detail: {
     modelKey: 'female_detail',
     currentRevision: 'hra-female-v1',
@@ -106,9 +113,9 @@ export function getCanonicalStructureName(modelKey, structureId) {
   const structure = resolveAtlasStructure(modelKey, structureId)
   if (!structure) return structureId
   const rawName = structure.name || structureId
-  if (modelKey === 'female_detail') {
+  if ((modelKey === 'female_detail' || modelKey === 'female_extended')) {
     const labels = loadLabels('female')
-    return labels[rawName] || rawName
+    return labels[rawName] || loadLabels('french')[rawName] || rawName
   }
   const labels = loadLabels('french')
   return labels[rawName] || rawName
@@ -184,6 +191,10 @@ export function calculateEffectiveVisibleMeshes(modelKey, scene) {
     if (s && Array.isArray(s.meshNames)) {
       for (const m of s.meshNames) hiddenMeshNames.add(m)
     }
+  }
+
+  for (const [id, value] of Object.entries(scene.structureOpacities || {})) {
+    if (value === 0) for (const mesh of structuresMap.get(id)?.meshNames || []) hiddenMeshNames.add(mesh)
   }
 
   // 3. Déterminer le filtre d'isolation si actif
@@ -315,6 +326,10 @@ export function checkAtlasCardCompatibility(modelKey, savedRevision, scene, targ
         }
       }
     }
+  }
+
+  if (scene.structureOpacities !== undefined && (!scene.structureOpacities || typeof scene.structureOpacities !== 'object' || Array.isArray(scene.structureOpacities) || Object.keys(scene.structureOpacities).length > 2000 || !Object.entries(scene.structureOpacities).every(([id, value]) => structuresMap.has(id) && typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 1))) {
+    return {status: 'UNAVAILABLE', reviewable: false, code: 'ERR_ATLAS_CARD_NOT_REVIEWABLE', error: 'Opacités individuelles incompatibles avec le modèle.'}
   }
 
   // 4. Présence de l'isolation si configurée

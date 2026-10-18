@@ -4,6 +4,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import {animationRegistry,type AnimationState} from './animations'
+import { meshOpacityMultiplier, type StructureOpacities } from './atlas/scene'
 import { describeStructure } from './data/anatomy'
 import type { CameraPose, CutSettings, LabelMode, Opacities, GroupId, LoadState, Manifest, ViewerApi, Visibility } from './types'
 
@@ -16,6 +17,7 @@ type Props = {
   onHover: (hover: { id: string; x: number; y: number } | null) => void
   onLoad: (state: LoadState) => void
   animation: AnimationState
+  structureOpacities?: StructureOpacities
   opacity: Opacities
   cut: CutSettings
   labelPriority?: string|null
@@ -244,7 +246,7 @@ export default function AnatomyViewer(props: Props) {
         const showSurface = !structures.get(structureId)?.detailOnly || (isReview && isTarget && isRevealed) || (isSelected && !structures.get(selectedId!)?.aggregate)
         const isInIsolation = !isolationId || meshStructureIds.includes(isolationId)
         const isHidden = hiddenNames.has(mesh.name)
-        const baseOpacity = latest.current.opacity[anatomyGroup as GroupId] ?? 1
+        const baseOpacity = (latest.current.opacity[anatomyGroup as GroupId] ?? 1) * meshOpacityMultiplier(meshStructureIds, latest.current.structureOpacities)
         const hasGroupOpacity = baseOpacity > 0
 
         if (isReview) {
@@ -353,8 +355,11 @@ export default function AnatomyViewer(props: Props) {
         moveCamera(direction.setLength(distance).add(controls.target), controls.target, 450)
       },
       orient: (view) => {
+        controls.minPolarAngle = .0001; controls.maxPolarAngle = Math.PI - .0001
         const distance = camera.position.distanceTo(controls.target)
-        moveCamera(new THREE.Vector3(0, 0.01, view === 'front' ? distance : -distance).add(controls.target), controls.target, 800)
+        const directions = {front:[0,0,1],back:[0,0,-1],left:[1,0,0],right:[-1,0,0],superior:[0,1,.001],inferior:[0,-1,.001]} as const
+        const direction = new THREE.Vector3(...directions[view]).normalize().multiplyScalar(distance)
+        moveCamera(direction.add(controls.target), controls.target, 800)
       },
       project: (id) => {
         if (!boundsFor(id)) return null
@@ -490,7 +495,7 @@ export default function AnatomyViewer(props: Props) {
     if (import.meta.env.DEV) Object.assign(window, { __CORPUS_TEST__: {
       project: api.project,
       pick: (x:number,y:number)=>pick(x,y)??null,
-      state: () => ({ pickCount,pixelRatio:renderer.getPixelRatio(),interacting, animation:latest.current.animation, animatedScales:[...originalTransforms.keys()].map(m=>m.scale.toArray()), selectedId, hoveredId, camera: camera.position.toArray(), target: controls.target.toArray(), visibility: { ...visibility }, faceCover: faceCover.value, opacity:{...latest.current.opacity}, cut:{...latest.current.cut}, labels:latest.current.labels, meshes: allMeshes.length, visibleMeshes: allMeshes.filter(m => visibility[m.userData.anatomyGroup as GroupId] && m.visible).length, ready: [...ready], reviewTargetId: latest.current.reviewTargetId, reviewRevealed: latest.current.reviewRevealed, interactionMode: latest.current.interactionMode }),
+      state: () => ({ pickCount,pixelRatio:renderer.getPixelRatio(),interacting, animation:latest.current.animation, animatedScales:[...originalTransforms.keys()].map(m=>m.scale.toArray()), selectedId, hoveredId, selectedMeshOpacities:allMeshes.filter(m=>selectedId&&(m.userData.structureIds || [m.userData.structureId]).includes(selectedId)).map(m=>m.material.opacity), camera: camera.position.toArray(), target: controls.target.toArray(), visibility: { ...visibility }, faceCover: faceCover.value, opacity:{...latest.current.opacity}, structureOpacities:{...latest.current.structureOpacities}, cut:{...latest.current.cut}, labels:latest.current.labels, meshes: allMeshes.length, visibleMeshes: allMeshes.filter(m => visibility[m.userData.anatomyGroup as GroupId] && m.visible).length, ready: [...ready], reviewTargetId: latest.current.reviewTargetId, reviewRevealed: latest.current.reviewRevealed, interactionMode: latest.current.interactionMode }),
     } })
     const contextLost = (event: Event) => {
       event.preventDefault()
@@ -724,6 +729,7 @@ export default function AnatomyViewer(props: Props) {
     props.reviewRevealed,
     props.hiddenIds,
     props.opacity,
+    props.structureOpacities,
     props.cut,
     props.labels,
     props.cameraRestore,

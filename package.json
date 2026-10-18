@@ -19,7 +19,11 @@
     "audit:catalog": "node --experimental-strip-types --experimental-loader=./scripts/ts-loader.mjs scripts/audit-canonical-catalog.mjs",
     "test:flashcards": "node --test tests/flashcards.test.mjs tests/flashcard-fsrs.test.mjs tests/flashcard-migration.test.mjs tests/flashcard-scheduler.test.mjs tests/flashcard-generation.test.mjs tests/flashcard-cloze.test.mjs tests/flashcard-derivation.test.mjs tests/flashcard-notes.test.mjs tests/flashcard-burying.test.mjs tests/flashcard-generation-notes.test.mjs tests/flashcard-image-occlusion.test.mjs tests/flashcard-atlas-3d.test.mjs tests/flashcard-draft-api.test.mjs",
     "dashboard:index": "node --experimental-strip-types --experimental-loader=./scripts/ts-loader.mjs scripts/build-dashboard-index.mjs",
-    "test:student-progress": "node --test tests/student-progress.test.mjs"
+    "test:student-progress": "node --test tests/student-progress.test.mjs",
+    "test:anatomy": "node --experimental-strip-types --experimental-loader=./scripts/ts-loader.mjs --test tests/anatomy-foundations.test.mjs tests/female-detailed.test.mjs",
+    "audit:anatomy": "node scripts/audit-anatomy-assets.mjs",
+    "import:anatomy-relations": "python3 scripts/build-anatomical-graph.py",
+    "import:female-detailed": "node scripts/build-female-detailed.mjs"
   },
   "dependencies": {
     "@fontsource-variable/dm-sans": "^5.3.0",
