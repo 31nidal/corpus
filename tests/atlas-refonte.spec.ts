@@ -80,6 +80,7 @@ test('mobile : composants accessibles et référence féminine indépendante',as
   await expect(page.getByRole('button',{name:/C1 · Atlas/})).toBeVisible()
   expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(390)
   await page.goto('/#body=female&mode=detail&structure=HRA-region-reproductive')
+  await expect(page.locator('main')).toHaveAttribute('data-loaded','true',{timeout:90000})
   await expect(page.getByTestId('structure-detail')).toBeVisible()
   await expect(page.getByRole('region',{name:'Navigation anatomique'})).toContainText('Composants de l’ensemble 3D')
   await expect(page.getByRole('region',{name:'Navigation anatomique'}).getByRole('button',{name:'Coeur 3D',exact:true})).toHaveCount(0)

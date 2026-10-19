@@ -45,18 +45,11 @@ test('mobile : référence féminine détaillée et fiche repliée restent acces
  await expect(page.getByRole('slider',{name:'Opacité de la structure',exact:true})).toBeVisible()
 })
 
-test('cœur féminin : composants réels et capture de sa référence dans une flashcard',async({page})=>{
- await page.route('**/api/flashcards/decks',route=>route.fulfill({json:{decks:[{id:'deck-test',name:'Anatomie'}]}}))
- let saved:any
- await page.route('**/api/flashcards/notes',async route=>{saved=route.request().postDataJSON();await route.fulfill({json:{note:{id:'note-test',...saved}}})})
+test('cœur féminin : les composants et la révision restent accessibles sans flashcards 3D',async({page})=>{
  await page.goto('/#body=female&femaleModel=detail&mode=detail&structure=FMA7088')
  await expect(page.locator('main')).toHaveAttribute('data-loaded','true',{timeout:90000})
- await expect(page.getByRole('button',{name:'Explorer l’atlas du cœur'})).toHaveCount(0)
  await expect(page.getByText('Composants de l’ensemble 3D (14)',{exact:true})).toBeVisible()
- await page.getByRole('button',{name:'Créer une flashcard 3D',exact:true}).click()
- await page.getByRole('button',{name:'Créer la flashcard 3D',exact:true}).click()
- await expect.poll(()=>saved?.fields?.scene?.modelKey).toBe('female_extended')
- expect(saved.fields.atlasRevision).toBe('hra-vhf-detail-v1')
- expect(saved.fields.scene.atlasRevision).toBe('hra-vhf-detail-v1')
- expect(saved.fields.targets[0].structureId).toBe('FMA7088')
+ await expect(page.getByRole('button',{name:'Créer une flashcard 3D',exact:true})).toHaveCount(0)
+ await page.getByRole('button',{name:'Réviser ces structures en 3D'}).click()
+ await expect(page.getByLabel('Type d’exercice anatomique')).toBeVisible()
 })

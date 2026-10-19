@@ -24,11 +24,11 @@ Plateforme d’apprentissage pour les étudiants en santé : explorer l’anatom
 ### Flashcards
 
 - Création manuelle, génération depuis du texte et organisation en decks personnels.
-- Menu expliquant les **sept formats** : question/réponse, inversée, dans les deux sens, texte à trous, réponse saisie, image à masquer et repérage en 3D.
+- Menu expliquant les **six formats** : question/réponse, inversée, dans les deux sens, texte à trous, réponse saisie et image à masquer.
 - Exemples de recto/verso et aide au choix du format dans l’éditeur.
-- [Accès direct au menu des sept formats](https://mycorpus3d.com/#tab=flashcards&flashView=create), conservé après rechargement.
+- [Accès direct au menu des six formats](https://mycorpus3d.com/#tab=flashcards&flashView=create), conservé après rechargement.
 - Révision avec l’ordonnanceur FSRS existant, statistiques et synchronisation entre appareils pour les comptes connectés.
-- Les cartes 3D conservent le modèle, sa révision et les réglages de la scène.
+- Les exercices anatomiques 3D restent dans l’atlas ; les flashcards Atlas 3D ont été retirées. Les anciennes cartes conservent leur texte et leur historique sous forme de cartes classiques.
 
 ### Comptes
 

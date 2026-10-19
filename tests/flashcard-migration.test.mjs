@@ -399,7 +399,7 @@ test('TEST DE RETRY APRÈS ÉCHEC D’INIT : getDb ne cache pas une instance dé
   }
 })
 
-test('TEST DB NEUVE : initialisation complète, migrations 1..5 et API fonctionnelle', async () => {
+test('TEST DB NEUVE : initialisation complète, migrations 1..6 et API fonctionnelle', async () => {
   const {createHash} = await import('node:crypto')
   const {mkdtempSync, rmSync} = await import('node:fs')
   const os = await import('node:os')
@@ -487,10 +487,10 @@ test('TEST DB NEUVE : initialisation complète, migrations 1..5 et API fonctionn
     })
     assert.equal(createCardRes.status, 201)
 
-    // Vérifier que les migrations 1..5 sont bien enregistrées
+    // Vérifier que les migrations 1..6 sont bien enregistrées
     const checkDb = new DatabaseSync(dbPath)
     const versions = checkDb.prepare('SELECT version FROM flashcard_migrations ORDER BY version ASC').all().map(r => r.version)
-    assert.deepEqual(versions, [1, 2, 3, 4, 5], 'Les 5 migrations doivent être enregistrées sur une DB neuve')
+    assert.deepEqual(versions, [1, 2, 3, 4, 5, 6], 'Les 5 migrations doivent être enregistrées sur une DB neuve')
     checkDb.close()
   } finally {
     rmSync(tempDir, {recursive: true, force: true})
@@ -535,7 +535,7 @@ test('migration brouillons : versions explicites, idempotence et cascade documen
     insertDraft(db,'draft')
     const before = {...db.prepare('SELECT * FROM flashcard_drafts').get()}
     migrateFlashcards(db)
-    assert.deepEqual(db.prepare('SELECT version FROM flashcard_migrations ORDER BY version').all().map(r=>r.version),[1,2,3,4,5])
+    assert.deepEqual(db.prepare('SELECT version FROM flashcard_migrations ORDER BY version').all().map(r=>r.version),[1,2,3,4,5,6])
     assert.deepEqual({...db.prepare('SELECT * FROM flashcard_drafts').get()},before)
     assert.equal(db.prepare("SELECT count(*) n FROM pragma_table_info('flashcard_drafts') WHERE name='high_confidence'").get().n,0)
     db.exec("DELETE FROM study_sections WHERE id='section'")

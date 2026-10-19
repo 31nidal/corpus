@@ -63,11 +63,11 @@ La validation fonctionnelle couvre au minimum les domaines suivants :
 
 ### Flashcards
 
-- choix des sept formats et explications dans le menu ;
+- choix des six formats et explications dans le menu ;
 - création, modification et révision ;
 - FSRS, sources et brouillons ;
-- images à masquer et scènes 3D versionnées ;
-- persistance et validation des opacités individuelles.
+- images à masquer et refus du format Atlas 3D retiré ;
+- migration des anciennes cartes 3D en texte, sans perte des identifiants et de l’historique FSRS.
 
 ### Comptes et backend
 

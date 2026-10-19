@@ -8,7 +8,7 @@
 - Les outils proposent six orientations. Le plan de coupe est explicitement géométrique : aucune fermeture de surface ni reconstitution de tissus n’est revendiquée.
 - « Réviser ces structures en 3D » lance une session de dix cibles maximum dans les composants de l’ensemble, le plus petit ensemble contenant la structure, ou son système disponible. Modes : réponse libre, QCM, clic, association d’un nom au repère surligné et examen. Le chronomètre d’examen est facultatif. Les réponses acceptent noms français et source, identifiants et numéros vertébraux. Le nom de la sélection n’est pas exposé par l’assistant pendant l’exercice. Le mode clic conserve l’ensemble étudié et permet de masquer temporairement les maillages qui cachent une structure profonde ; les surfaces seulement révélées à la sélection sont exclues de ses cibles. Aucune tolérance clinique ou synonymie non documentée n’est inventée.
 - Les résultats présentent les erreurs, leur reprise et un historique des cent dernières sessions. Le stockage invité est local ; les comptes utilisent leur stockage existant et sa synchronisation SQLite. Les tentatives sont fusionnées par identifiant pour préserver celles d’un autre appareil.
-- Les flashcards 3D et les liens partagés conservent les opacités individuelles. Le serveur vérifie les structures contre le bon manifeste et respecte les anciennes scènes qui n’ont pas ce champ. Le système FSRS existant n’est pas modifié.
+- Les liens partagés conservent les opacités individuelles. Les flashcards Atlas 3D ont été retirées ; la révision anatomique indépendante et les flashcards classiques restent disponibles. Une migration conserve le texte et les historiques des cartes déjà créées.
 
 ## Organisation des données
 
@@ -16,7 +16,7 @@
 
 `public/models/anatomical-relations.json` contient 1 238 relations publiées et 384 concepts ancêtres supplémentaires, uniquement parce qu’ils relient des structures livrées. Il ne contient aucune subdivision inventée. Le fichier porte l’empreinte du TSV d’origine et la révision du manifeste utilisé ; une révision différente n’hérite pas silencieusement de ces relations.
 
-Les correspondances continuent de provenir des manifestes versionnés existants. Les trois références historiques conservent leurs identifiants et révisions. Une quatrième référence féminine optionnelle possède sa propre révision et son propre modèle de flashcard. Les données anatomiques de référence restent des fichiers contrôlables dans Git ; les tentatives personnelles utilisent les comptes existants plutôt qu’un deuxième stockage de répétition espacée.
+Les correspondances continuent de provenir des manifestes versionnés existants. Les trois références historiques conservent leurs identifiants et révisions. Une quatrième référence féminine optionnelle possède sa propre révision et ses propres ressources. Les données anatomiques de référence restent des fichiers contrôlables dans Git ; les tentatives personnelles utilisent les comptes existants plutôt qu’un deuxième stockage de répétition espacée.
 
 ## Pipeline et contrôles
 
@@ -53,7 +53,11 @@ L’import utilise exclusivement les relations exactes du TSV local. Les tests d
 
 La segmentation de l’estomac, les comparaisons morphologiques de vertèbres, les attaches musculaires géométriques, la dissection par déplacement, les relations vasculaires/nerveuses transversales, les vues internes supplémentaires et le crosswalk TA2 sont des travaux suivants. Ils nécessitent des ressources ou métadonnées contrôlées, parfois une validation humaine. Ce lot ne doit pas être présenté comme la refonte scientifique complète de tous les systèmes.
 
-## Vérifications du premier lot
+## Historique de validation avant le retrait des flashcards Atlas 3D
+
+Les résultats ci-dessous documentent les étapes précédentes ; les composants de flashcards 3D cités ont depuis été retirés.
+
+### Vérifications du premier lot
 
 - `npm run build` : réussi ; avertissement de taille des bundles déjà présent.
 - `npm run audit:anatomy` : trois manifestes et leurs GLB cohérents.
@@ -71,7 +75,7 @@ pour éviter de valider une session réinitialisée par le rechargement de Vite.
 
 ## Référence féminine détaillée optionnelle
 
-Le sélecteur « Référence anatomique féminine » conserve par défaut les régions historiques (74 maillages, `female_detail`, `hra-female-v1`). Le choix « Atlas détaillé » utilise `female_extended`, `hra-vhf-detail-v1`, dans `public/models/female-detailed/` : 605 entrées dont 591 maillages réels, répartis en huit fichiers GLB totalisant 25 655 684 octets. Les fichiers régionaux existants restent inchangés. Les liens portent `body=female&femaleModel=detail` ; les flashcards enregistrent le modèle et sa révision séparément.
+Le sélecteur « Référence anatomique féminine » conserve par défaut les régions historiques (74 maillages, `female_detail`, `hra-female-v1`). Le choix « Atlas détaillé » utilise `female_extended`, `hra-vhf-detail-v1`, dans `public/models/female-detailed/` : 605 entrées dont 591 maillages réels, répartis en huit fichiers GLB totalisant 25 655 684 octets. Les fichiers régionaux existants restent inchangés. Les liens portent `body=female&femaleModel=detail` ; les liens conservent ainsi le choix de la référence anatomique.
 
 L’extracteur `scripts/build-female-detailed.mjs` utilise le cache local HRA United Female v1.5, dont les empreintes et la provenance CC BY 4.0 sont vérifiées. Seuls les nœuds explicitement nommés `VH_F_` sont retenus. Les composants Allen et Yao sont exclus. Les attributs, indices et transformations des ressources extraites sont copiés sans modification. Les tests vérifient aussi les coordonnées et la topologie des 74 maillages régionaux conservés ; leurs normales avaient été recalculées par l’ancien exporteur et ne sont pas déclarées identiques à celles du cache.
 
@@ -102,3 +106,21 @@ Dernière campagne après correction de la fenêtre de flashcards : **7 tests na
 ### Accès à la colonne depuis l’accueil
 
 L’accueil du corps masculin propose un quatrième accès « Colonne », à côté du cœur, du cerveau et de la tête. Il ouvre directement la référence détaillée (`FMA13478`) pour exposer les 47 composants disponibles et les codes C1–C7, T1–T12 et L1–L5. Ces raccourcis concernent la référence masculine et ne sont pas proposés comme des structures équivalentes des références féminines. Les tests vérifient le parcours vers C1, le démarrage de la révision, le passage d’un composant du cœur de la vue d’ensemble au modèle détaillé et l’accès mobile. Aucun maillage n’est ajouté par ce changement.
+
+
+## Interface et retrait des flashcards Atlas 3D
+
+Le panneau utilise désormais une grille d’actions sur une colonne : boutons à largeur contenue, texte multiligne, icônes non compressées et pied de fiche flexible. Les dimensions vérifiées sont 320, 375, 768 et 1 440 px. Les raccourcis Cœur, Cerveau, Tête et Colonne utilisent quatre dessins SVG originaux en trait bleu-vert : cœur avec gros vaisseaux, hémisphères cérébraux, crâne de profil et vertèbres/disques. Ces icônes sont des silhouettes simplifiées, pas des planches diagnostiques.
+
+La création, la lecture, les types et la validation de nouvelles flashcards Atlas 3D ont été retirés du client et du serveur. Le menu conserve six formats classiques. Le moteur ne contient plus le mode de masquage de cible propre à ces cartes. L’isolation utilisée par les exercices anatomiques et le rendu normal restent distincts.
+
+La migration SQLite 6 archive les scènes et données sources des anciennes cartes dans `flashcard_retired_content`, réservée au stockage serveur et rattachée à leur propriétaire. Les cartes deviennent textuelles, conservent leurs identifiants, rectos, versos, decks et lignes FSRS ; le premier élément conserve sa note et les autres cibles deviennent des cartes indépendantes. Le tag `ancienne-carte-3d` permet de les retrouver et de reformuler les questions qui dépendaient de la scène. Les aperçus FSRS associés aux anciennes scènes sont invalidés, sans effacement de l’historique. La migration est transactionnelle et idempotente ; aucune carte classique n’est modifiée.
+
+
+### Validation du retrait et de l’interface
+
+- 226 tests Node réussis : 100 flashcards et 126 autres tests (comptes, anatomie, étude, progression, taxonomie, catalogue, qualité des cours, retours et sécurité).
+- Audit anatomique réussi ; aucune modification des modèles ou de leurs identifiants.
+- 33 cas navigateur distincts validés : 27 parcours atlas/menu, dont les quatre largeurs 320/375/768/1440 px, et six parcours de cartes classiques (création, révision persistante, FSRS, Cloze, réponse saisie, bidirectionnel, images à masques).
+- Le passage mobile vers la référence féminine a dépassé l’attente initiale de cinq secondes dans une campagne. Il a réussi isolément, puis avec une attente explicite du chargement du modèle avant l’assertion de la fiche.
+- `npm run build` et `git diff --check` réussis. Le build conserve l’avertissement de taille de certains bundles. Aucun script ni configuration de lint n’est disponible dans ce dépôt ; TypeScript est vérifié par le build.

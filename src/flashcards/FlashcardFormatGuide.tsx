@@ -7,7 +7,6 @@ export const flashcardFormats = [
  {id:'cloze',name:'Texte à trous',use:'Pour mémoriser un mot précis dans son contexte.',description:'Vous masquez un ou plusieurs passages d’une phrase. Chaque numéro de trou crée une carte.',front:'Le […] est le terme à retrouver.',back:'La phrase complète avec le mot révélé.'},
  {id:'typed',name:'Réponse à saisir',use:'Pour vérifier que vous retrouvez un terme sans indice.',description:'Vous tapez votre réponse avant de la comparer à la réponse attendue. Vous pouvez définir des variantes acceptées.',front:'Quel est le nom de cette structure ?',back:'Votre saisie comparée au terme attendu'},
  {id:'image_occlusion',name:'Image à masquer',use:'Pour apprendre un schéma ou une illustration.',description:'Importez une image et placez des masques sur les éléments à identifier. La correction révèle la zone cachée.',front:'Une légende masquée sur un schéma',back:'La légende révélée sur la même image'},
- {id:'atlas_3d',name:'Repérage en 3D',use:'Pour reconnaître une structure dans son contexte anatomique.',description:'Dans l’atlas, sélectionnez une structure puis choisissez « Créer une flashcard 3D ». La carte conserve votre scène.',front:'Une structure à identifier dans la scène 3D',back:'Son nom et sa position dans le modèle'},
 ] as const
 export type FlashcardFormatId = typeof flashcardFormats[number]['id']
 export function FlashcardFormatExplanation({type}:{type:NoteType}) {
@@ -21,7 +20,7 @@ export default function FlashcardFormatGuide({choose,needsDeck=false,guest=false
   <div className="flash-format-grid">{flashcardFormats.map((format,index)=><article key={format.id}>
    <span className="flash-format-number">0{index+1}{index===0?' · POUR COMMENCER':''}</span><h3>{format.name}</h3><p className="flash-format-use">{format.use}</p><p>{format.description}</p>
    <div className="flash-format-example"><small>EXEMPLE DE RECTO</small><p>{format.front}</p><small>APRÈS CORRECTION</small><p>{format.back}</p></div>
-   <button className="study-secondary" onClick={()=>choose(format.id)}>{guest?'Se connecter pour créer':format.id==='atlas_3d'?'Choisir dans l’atlas':needsDeck?'Créer mon premier deck':format.id==='image_occlusion'?'Importer une image':'Créer ce type de carte'}</button>
+   <button className="study-secondary" onClick={()=>choose(format.id)}>{guest?'Se connecter pour créer':needsDeck?'Créer mon premier deck':format.id==='image_occlusion'?'Importer une image':'Créer ce type de carte'}</button>
   </article>)}</div>
  </section>
 }

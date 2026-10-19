@@ -23,3 +23,50 @@
 }
 
 .female-reference-controls{display:flex;align-items:center;gap:8px}.female-reference-controls .return-main-atlas{flex:1}.female-reference-controls select{min-width:0;max-width:110px;background:var(--mc-surface);color:var(--mc-text);border:1px solid var(--mc-border);border-radius:6px;padding:8px 3px;font:inherit;font-size:10px}@media(max-width:700px){.female-reference-controls{gap:4px}.female-reference-controls select{padding:7px 2px;font-size:9px;max-width:94px}}
+
+/* Structure sheet: every action owns its row, including long French labels. */
+.experience .anatomy-detail-panel{min-width:0;max-width:calc(100% - 20px);overflow:hidden}
+.anatomy-detail-panel .detail-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-shrink:0}
+.anatomy-detail-panel .detail-heading>.eyebrow{min-width:0;line-height:1.6;overflow-wrap:anywhere}
+.anatomy-detail-panel .anatomy-panel-header-actions{flex-shrink:0}
+.anatomy-detail-panel .detail-content{min-width:0;overflow-x:hidden;overflow-y:auto;scrollbar-gutter:stable;overscroll-behavior:contain}
+.anatomy-detail-panel :is(h2,h3,p,code,dd){overflow-wrap:anywhere}
+.experience .anatomy-detail-panel .learning-actions{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin-top:24px;width:100%;min-width:0}
+.anatomy-detail-panel .learning-actions h3{margin:0 0 4px;font-size:14px;line-height:1.5;font-weight:650}
+.experience .anatomy-detail-panel .learning-actions>button{display:flex;align-items:center;justify-content:flex-start;gap:10px;min-width:0;max-width:100%;width:100%;min-height:48px;height:auto;padding:13px 14px;border-radius:12px;white-space:normal;text-align:left;line-height:1.5;font-size:13px;overflow-wrap:anywhere}
+.anatomy-detail-panel .learning-actions>button>span{min-width:0;flex:1}
+.anatomy-detail-panel .learning-actions>button>svg{flex-shrink:0}
+.experience .anatomy-detail-panel .learning-actions>.subtle-action{background:var(--mc-brand-soft);color:var(--mc-brand);border:1px solid transparent}
+.experience .anatomy-detail-panel .learning-actions>.primary-action{background:var(--mc-brand);color:var(--mc-surface);font-weight:650;justify-content:space-between}
+.anatomy-detail-panel .learning-actions .tool-note{margin:0;font-size:11px;line-height:1.6}
+.anatomy-detail-panel .source-link{display:flex;align-items:flex-start;gap:8px;min-width:0;max-width:100%;margin:24px 0 16px;line-height:1.7;font-size:12px;overflow-wrap:anywhere}
+.anatomy-detail-panel .source-link svg{flex-shrink:0;margin-top:3px}
+.anatomy-detail-panel .anatomical-id{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px;line-height:1.7;font-size:9px}
+.anatomy-detail-panel .anatomical-id code{min-width:0;max-width:100%;text-align:right;overflow-wrap:anywhere}
+.anatomy-detail-panel .detail-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-shrink:0;flex-wrap:wrap;padding:12px 16px;min-height:56px}
+.anatomy-detail-panel .detail-footer>div{display:flex;flex-shrink:0;gap:4px}
+.anatomy-detail-panel .detail-footer button{min-height:44px;min-width:44px;max-width:100%;white-space:normal;line-height:1.4;font-size:11px}
+.anatomy-detail-panel .dissection-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.anatomy-detail-panel .dissection-actions button{min-width:0;min-height:44px;white-space:normal;line-height:1.5;padding:10px 8px}
+.experience .region-block .region-block-icon{color:var(--mc-brand);background:var(--mc-brand-soft)}
+.region-block .region-block-icon svg{display:block;flex-shrink:0;width:28px;height:28px}
+.region-block .region-block-copy{min-width:0}
+.region-block .region-block-copy small{white-space:normal;overflow-wrap:anywhere;line-height:1.5}
+@media(max-width:1100px){.region-block .region-block-icon{width:30px;height:30px}.region-block .region-block-icon svg{width:25px;height:25px}.region-block{min-height:64px}}
+@media(max-width:700px){
+ .experience .anatomy-detail-panel .detail-content{padding:10px 16px 20px}
+ .experience .anatomy-detail-panel .detail-heading{padding:10px 12px;gap:4px}
+ .anatomy-detail-panel .detail-heading>.eyebrow{font-size:8px;letter-spacing:1px}
+ .experience .anatomy-detail-panel .learning-actions>button{font-size:13px;padding:12px;min-height:48px}
+ .anatomy-detail-panel .detail-footer{padding:8px 10px;gap:4px}
+ .anatomy-detail-panel .detail-footer button{font-size:10px;gap:5px}
+ .anatomy-detail-panel .source-link{font-size:11px}
+ .anatomy-detail-panel .detail-content h2{font-size:24px;line-height:1.25}
+}
+@media(prefers-reduced-motion:reduce){.region-block{transition:none;transform:none}}
+
+@media(max-width:375px){
+ .experience .mobile-study-nav{gap:2px;padding-inline:4px}
+ .experience .mobile-study-nav button{min-width:0;font-size:8px;padding-inline:1px}
+ .experience .mobile-study-nav button>span{display:block;max-width:100%;white-space:normal;overflow-wrap:anywhere;line-height:1.25}
+}

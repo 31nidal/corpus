@@ -64,7 +64,7 @@ L’import HRA initial contenait davantage de maillages. Les données intermédi
 
 Le sélecteur de référence féminine permet aussi d’ouvrir **591 maillages réels**, dans huit couches, pour **605 entrées** en comptant les ensembles. Les fichiers GLB totalisent 25 655 684 octets. Cette référence conserve uniquement les nœuds explicitement féminins `VH_F_` du cache HRA United Female v1.5 ; les composants Allen et Yao sont exclus.
 
-Les fichiers sont distribués dans `public/models/female-detailed/`, avec la révision `hra-vhf-detail-v1` et le modèle de flashcard `female_extended`. La sélection régionale conserve `hra-female-v1` et `female_detail` : les anciennes cartes restent associées à leurs ressources d’origine.
+Les fichiers sont distribués dans `public/models/female-detailed/`, avec la révision `hra-vhf-detail-v1`. La sélection régionale conserve `hra-female-v1`. Les flashcards Atlas 3D ont été retirées ; leurs anciennes données sont conservées par la migration décrite dans le guide d’implémentation.
 
 La licence est CC BY 4.0. Les attributions, empreintes des entrées et adaptations figurent dans `public/licenses/female-detailed-provenance.json` et `public/models/female-detailed/LICENSE.txt`. L’extraction conserve la géométrie du cache préparé ; elle ne prétend pas annuler la simplification réalisée lors de l’import initial.
 

@@ -1,3 +1,4 @@
+import {retireAtlasCards} from './retireAtlasCards.mjs'
 import {initDraftReviewSchema} from './review/schema.mjs'
 import {defaultFsrsScheduler} from './fsrsScheduler.mjs'
 
@@ -217,10 +218,14 @@ export function migrateFlashcards(db, scheduler = defaultFsrsScheduler) {
       db.prepare('INSERT INTO flashcard_migrations VALUES(5, ?)').run(Date.now())
     }
 
+    if (!db.prepare('SELECT 1 FROM flashcard_migrations WHERE version=6').get()) {
+      retireAtlasCards(db)
+      db.prepare('INSERT INTO flashcard_migrations VALUES(6, ?)').run(Date.now())
+    }
+
     db.exec('COMMIT')
   } catch (error) {
     db.exec('ROLLBACK')
     throw error
   }
 }
-
