@@ -1,3 +1,4 @@
+import {TERMS_VERSION} from '../shared/legal.mjs'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {DatabaseSync} from 'node:sqlite'
@@ -402,7 +403,7 @@ test('API HTTP flashcards/assets : upload binaire, vérifications sécurité, he
 
   try {
     // Inscrire utilisateur
-    const user = await call('/api/account/register', 'POST', {
+    const user = await call('/api/account/register', 'POST', {acceptTerms:true,termsVersion:TERMS_VERSION,
       email: 'io@example.test',
       name: 'IO Tester',
       password: 'valid-password-2026',
@@ -445,7 +446,7 @@ test('API HTTP flashcards/assets : upload binaire, vérifications sécurité, he
     const unauthRes = await call(`/api/flashcards/assets/${assetId}`, 'GET', undefined, '')
     assert.equal(unauthRes.status, 401)
 
-    const otherUser = await call('/api/account/register', 'POST', {
+    const otherUser = await call('/api/account/register', 'POST', {acceptTerms:true,termsVersion:TERMS_VERSION,
       email: 'other_io@example.test',
       name: 'Other',
       password: 'valid-password-2026',
@@ -540,7 +541,7 @@ test('Study asset provenance et validation stricte (page 0, page > max, crop inv
   }
 
   try {
-    const userRes = await call('/api/account/register', 'POST', {
+    const userRes = await call('/api/account/register', 'POST', {acceptTerms:true,termsVersion:TERMS_VERSION,
       email: 'prov@example.test',
       name: 'Prov Tester',
       password: 'valid-password-2026',
@@ -664,7 +665,7 @@ test('Atomicité upload fichier / DB : échec INSERT DB simulé => suppression d
   }
 
   try {
-    const userRes = await call('/api/account/register', 'POST', {
+    const userRes = await call('/api/account/register', 'POST', {acceptTerms:true,termsVersion:TERMS_VERSION,
       email: 'atomic@example.test',
       name: 'Atomic Tester',
       password: 'valid-password-2026',

@@ -1,3 +1,4 @@
+import {TERMS_VERSION} from '../shared/legal.mjs'
 import {test} from 'node:test'
 import assert from 'node:assert/strict'
 import {mkdtempSync, rmSync} from 'node:fs'
@@ -174,7 +175,7 @@ test('Générateur local : sélection intelligente des 4 types (Basic, Bidirecti
 test('API POST /generate/text et POST /notes/bulk avec génération receipt et revalidation au save', async () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'mycorpus-gen-notes-')), call = api(dir)
   try {
-    const user = await call('/api/account/register', 'POST', {email: 'bulk-notes@example.test', name: 'BulkNotes', password})
+    const user = await call('/api/account/register', 'POST', {acceptTerms:true,termsVersion:TERMS_VERSION,email: 'bulk-notes@example.test', name: 'BulkNotes', password})
     const deck = (await call('/api/flashcards/decks', 'POST', {name: 'DeckPrincipal'}, user.cookie)).data.deck
 
     const text = 'Le débit cardiaque est le produit de la fréquence cardiaque par le volume d’éjection systolique. Le nœud sinusal assure le rythme normal du cœur.'
@@ -243,7 +244,7 @@ test('API POST /generate/text et POST /notes/bulk avec génération receipt et r
 test('POST /notes/bulk : atomicité totale (une note invalide annule tout) et pas de transactions imbriquées', async () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'mycorpus-bulk-atomic-')), call = api(dir)
   try {
-    const user = await call('/api/account/register', 'POST', {email: 'atomic@example.test', name: 'Atomic', password})
+    const user = await call('/api/account/register', 'POST', {acceptTerms:true,termsVersion:TERMS_VERSION,email: 'atomic@example.test', name: 'Atomic', password})
     const deck = (await call('/api/flashcards/decks', 'POST', {name: 'DeckA'}, user.cookie)).data.deck
 
     // Lot avec 1 note valide et 1 note invalide (deck inexistant)
@@ -278,7 +279,7 @@ test('POST /notes/bulk : atomicité totale (une note invalide annule tout) et pa
 test('POST /notes/bulk : idempotence concurrente et rejet si payload altéré', async () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'mycorpus-bulk-idemp-')), call = api(dir)
   try {
-    const user = await call('/api/account/register', 'POST', {email: 'idemp@example.test', name: 'Idemp', password})
+    const user = await call('/api/account/register', 'POST', {acceptTerms:true,termsVersion:TERMS_VERSION,email: 'idemp@example.test', name: 'Idemp', password})
     const deck = (await call('/api/flashcards/decks', 'POST', {name: 'DeckIdemp'}, user.cookie)).data.deck
 
     const payload = {
@@ -354,7 +355,7 @@ test('POST /notes/bulk : idempotence concurrente et rejet si payload altéré', 
 test('Génération depuis erreur QCM : création d’une Note structurée et validation du grounding', async () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'mycorpus-qcm-note-')), call = api(dir)
   try {
-    const user = await call('/api/account/register', 'POST', {email: 'qcm-note@example.test', name: 'QCMNote', password})
+    const user = await call('/api/account/register', 'POST', {acceptTerms:true,termsVersion:TERMS_VERSION,email: 'qcm-note@example.test', name: 'QCMNote', password})
     const deck = (await call('/api/flashcards/decks', 'POST', {name: 'DeckQCM'}, user.cookie)).data.deck
 
     // QCM avec seuil chiffré -> doit générer Typed
@@ -398,7 +399,7 @@ test('Génération depuis erreur QCM : création d’une Note structurée et val
 test('Binding strict reçu ↔ source : refus si générationId fourni mais source.type rétrogradé vers manual', async () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'mycorpus-tamper-manual-')), call = api(dir)
   try {
-    const user = await call('/api/account/register', 'POST', {email: 'tamper-manual@example.test', name: 'Tamper', password})
+    const user = await call('/api/account/register', 'POST', {acceptTerms:true,termsVersion:TERMS_VERSION,email: 'tamper-manual@example.test', name: 'Tamper', password})
     const deck = (await call('/api/flashcards/decks', 'POST', {name: 'DeckTamper'}, user.cookie)).data.deck
 
     const genRes = await call('/api/flashcards/generate/catalog', 'POST', {
@@ -429,7 +430,7 @@ test('Binding strict reçu ↔ source : refus si générationId fourni mais sour
 test('Provenance stricte : refus si source générée sans generationId', async () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'mycorpus-missing-gen-')), call = api(dir)
   try {
-    const user = await call('/api/account/register', 'POST', {email: 'missing-gen@example.test', name: 'NoGen', password})
+    const user = await call('/api/account/register', 'POST', {acceptTerms:true,termsVersion:TERMS_VERSION,email: 'missing-gen@example.test', name: 'NoGen', password})
     const deck = (await call('/api/flashcards/decks', 'POST', {name: 'DeckNoGen'}, user.cookie)).data.deck
 
     const res = await call('/api/flashcards/notes/bulk', 'POST', {
@@ -451,7 +452,7 @@ test('Provenance stricte : refus si source générée sans generationId', async 
 test('Binding strict reçu ↔ source : refus en cas d’altération de courseId ou documentId', async () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'mycorpus-tamper-id-')), call = api(dir)
   try {
-    const user = await call('/api/account/register', 'POST', {email: 'tamper-id@example.test', name: 'TamperId', password})
+    const user = await call('/api/account/register', 'POST', {acceptTerms:true,termsVersion:TERMS_VERSION,email: 'tamper-id@example.test', name: 'TamperId', password})
     const deck = (await call('/api/flashcards/decks', 'POST', {name: 'DeckTamperId'}, user.cookie)).data.deck
 
     const text = 'Le nœud sinusal est le pacemaker physiologique du cœur humain.'
@@ -493,7 +494,7 @@ test('Binding strict reçu ↔ source : refus en cas d’altération de courseId
 test('Validation stricte sourceExcerpt : rejet si citation inventée ou non attestée', async () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'mycorpus-excerpt-valid-')), call = api(dir)
   try {
-    const user = await call('/api/account/register', 'POST', {email: 'excerpt-val@example.test', name: 'ExcerptVal', password})
+    const user = await call('/api/account/register', 'POST', {acceptTerms:true,termsVersion:TERMS_VERSION,email: 'excerpt-val@example.test', name: 'ExcerptVal', password})
     const deck = (await call('/api/flashcards/decks', 'POST', {name: 'DeckExcerpt'}, user.cookie)).data.deck
 
     const text = 'L’artère méningée moyenne pénètre dans le crâne par le foramen épineux.'
@@ -535,7 +536,7 @@ test('Validation stricte sourceExcerpt : rejet si citation inventée ou non atte
 test('Source free_text : excerpt forcé à null en base même si envoyé dans le payload', async () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'mycorpus-freetext-null-')), call = api(dir)
   try {
-    const user = await call('/api/account/register', 'POST', {email: 'freetext-null@example.test', name: 'FreeTextNull', password})
+    const user = await call('/api/account/register', 'POST', {acceptTerms:true,termsVersion:TERMS_VERSION,email: 'freetext-null@example.test', name: 'FreeTextNull', password})
     const deck = (await call('/api/flashcards/decks', 'POST', {name: 'DeckFreeText'}, user.cookie)).data.deck
 
     const text = 'La rate est située dans l’hypochondre gauche sous la coupole diaphragmatique.'

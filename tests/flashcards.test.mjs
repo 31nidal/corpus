@@ -1,3 +1,4 @@
+import {TERMS_VERSION} from '../shared/legal.mjs'
 import {test} from 'node:test'
 import assert from 'node:assert/strict'
 import {mkdtempSync, rmSync} from 'node:fs'
@@ -26,8 +27,8 @@ const password = 'flashcards-solides-2026'
 test('decks et cartes : CRUD, recherche, déplacement, duplication et isolation', async () => {
   const directory = mkdtempSync(path.join(tmpdir(), 'mycorpus-flashcards-')), call = api(directory)
   try {
-    const alice = await call('/api/account/register', 'POST', {email: 'alice-flash@example.test', name: 'Alice', password})
-    const bob = await call('/api/account/register', 'POST', {email: 'bob-flash@example.test', name: 'Bob', password})
+    const alice = await call('/api/account/register', 'POST', {acceptTerms:true,termsVersion:TERMS_VERSION,email: 'alice-flash@example.test', name: 'Alice', password})
+    const bob = await call('/api/account/register', 'POST', {acceptTerms:true,termsVersion:TERMS_VERSION,email: 'bob-flash@example.test', name: 'Bob', password})
     const deckA = (await call('/api/flashcards/decks', 'POST', {name: 'Cardiologie', subject: 'Physiologie'}, alice.cookie)).data.deck
     const deckB = (await call('/api/flashcards/decks', 'POST', {name: 'À revoir'}, alice.cookie)).data.deck
     assert.equal((await call('/api/flashcards/decks', 'POST', {name: ' cardiologie '}, alice.cookie)).status, 409)
@@ -56,7 +57,7 @@ test('decks et cartes : CRUD, recherche, déplacement, duplication et isolation'
 test('révision, statistiques et export Anki restent isolés par compte', async () => {
   const directory = mkdtempSync(path.join(tmpdir(), 'mycorpus-flash-review-')), call = api(directory)
   try {
-    const user = await call('/api/account/register', 'POST', {email: 'review-flash@example.test', name: 'Révision', password})
+    const user = await call('/api/account/register', 'POST', {acceptTerms:true,termsVersion:TERMS_VERSION,email: 'review-flash@example.test', name: 'Révision', password})
     const deck = (await call('/api/flashcards/decks', 'POST', {name: 'UE 3'}, user.cookie)).data.deck
     const card = (await call('/api/flashcards/cards', 'POST', {deckId: deck.id, front: 'Recto', back: 'Verso', tags: []}, user.cookie)).data.card
     const prevRes = await call(`/api/flashcards/cards/${card.id}/preview`, 'POST', {}, user.cookie)
@@ -80,7 +81,7 @@ test('révision, statistiques et export Anki restent isolés par compte', async 
 test('toute génération produit des brouillons non persistés, y compris le texte libre', async () => {
   const directory = mkdtempSync(path.join(tmpdir(), 'mycorpus-flash-generation-')), call = api(directory)
   try {
-    const user = await call('/api/account/register', 'POST', {email: 'generate-flash@example.test', name: 'Génération', password})
+    const user = await call('/api/account/register', 'POST', {acceptTerms:true,termsVersion:TERMS_VERSION,email: 'generate-flash@example.test', name: 'Génération', password})
     const text = 'Le débit cardiaque est le produit de la fréquence cardiaque par le volume d’éjection systolique. La pression artérielle dépend du débit cardiaque et des résistances périphériques. Le nœud sinusal assure normalement le rythme du cœur.'
     const generated = await call('/api/flashcards/generate/text', 'POST', {text, level: 'standard', count: 8, subject: 'Physiologie'}, user.cookie)
     assert.equal(generated.status, 200); assert.ok(generated.data.drafts.length >= 1); assert.equal(generated.data.generation.persisted, false)
@@ -102,7 +103,7 @@ test('la génération fournisseur respecte le quota et libère la réservation a
   const directory = mkdtempSync(path.join(tmpdir(), 'mycorpus-flash-provider-'))
   try {
     const connected = api(directory, {async generateFlashcards() { return [{front: 'Quel est le rôle du rein ?', back: 'Le rein filtre le plasma et participe à l’homéostasie du milieu intérieur.', sourceExcerpt: 'Le rein filtre le plasma et participe à l’homéostasie du milieu intérieur.'}] }})
-    const user = await connected('/api/account/register', 'POST', {email: 'provider-flash@example.test', name: 'Provider', password})
+    const user = await connected('/api/account/register', 'POST', {acceptTerms:true,termsVersion:TERMS_VERSION,email: 'provider-flash@example.test', name: 'Provider', password})
     const text = 'Le rein filtre le plasma et participe à l’homéostasie du milieu intérieur. Il ajuste les quantités d’eau et de solutés éliminées dans les urines.'
     const generated = await connected('/api/flashcards/generate/text', 'POST', {text, level: 'essential', count: 5}, user.cookie)
     assert.equal(generated.data.generation.mode, 'provider')
@@ -128,8 +129,8 @@ test('la génération fournisseur respecte le quota et libère la réservation a
 test('la génération Study reste limitée au document, aux sections et aux pages du propriétaire', async () => {
   const directory = mkdtempSync(path.join(tmpdir(), 'mycorpus-flash-study-')), call = api(directory)
   try {
-    const alice = await call('/api/account/register', 'POST', {email: 'study-flash@example.test', name: 'Study', password})
-    const bob = await call('/api/account/register', 'POST', {email: 'study-bob@example.test', name: 'Bob', password})
+    const alice = await call('/api/account/register', 'POST', {acceptTerms:true,termsVersion:TERMS_VERSION,email: 'study-flash@example.test', name: 'Study', password})
+    const bob = await call('/api/account/register', 'POST', {acceptTerms:true,termsVersion:TERMS_VERSION,email: 'study-bob@example.test', name: 'Bob', password})
     await call('/api/flashcards/stats', 'GET', undefined, alice.cookie)
     const database = new DatabaseSync(path.join(directory, 'mycorpus.sqlite')), now = new Date().toISOString(), documentId = 'document-study-flash'
     database.prepare("INSERT INTO study_documents(id,user_id,title,filename,file_size,page_count,status,created_at,updated_at) VALUES(?,?,?,?,?,?,'ready',?,?)").run(documentId, alice.data.user.id, 'Cours rénal', 'renal.pdf', 1000, 8, now, now)
@@ -147,7 +148,7 @@ test('la génération Study reste limitée au document, aux sections et aux page
 test('enregistrement par lot : validation de chaque carte et aucun enregistrement partiel', async () => {
   const directory = mkdtempSync(path.join(tmpdir(), 'mycorpus-flash-bulk-')), call = api(directory)
   try {
-    const user = await call('/api/account/register', 'POST', {email: 'bulk@example.test', name: 'Lot', password})
+    const user = await call('/api/account/register', 'POST', {acceptTerms:true,termsVersion:TERMS_VERSION,email: 'bulk@example.test', name: 'Lot', password})
     const deck = (await call('/api/flashcards/decks', 'POST', {name: 'Anatomie'}, user.cookie)).data.deck
     const card = {deckId: deck.id, front: 'Question complète', back: 'Réponse complète'}
     for (const invalid of [{deckId: deck.id}, {...card, deckId: 'inconnu'}, {...card, source: {type: 'study_document', documentId: 'inconnu'}}]) {
@@ -172,7 +173,7 @@ test('enregistrement par lot : validation de chaque carte et aucun enregistremen
 test('FSRS preview snapshot : exactitude des candidats, concurrence optimiste 409, persistance et restart', async () => {
   const directory = mkdtempSync(path.join(tmpdir(), 'mycorpus-fsrs-preview-')), call = api(directory)
   try {
-    const user = await call('/api/account/register', 'POST', {email: 'fsrs-test@example.test', name: 'FsrsTester', password})
+    const user = await call('/api/account/register', 'POST', {acceptTerms:true,termsVersion:TERMS_VERSION,email: 'fsrs-test@example.test', name: 'FsrsTester', password})
     const deck = (await call('/api/flashcards/decks', 'POST', {name: 'Neurologie'}, user.cookie)).data.deck
     const card = (await call('/api/flashcards/cards', 'POST', {deckId: deck.id, front: 'Aire de Broca', back: 'Production du langage'}, user.cookie)).data.card
 
@@ -238,7 +239,7 @@ test('Streak civil : décrémentation sécurisée IANA et transition DST', async
   // Test de calcul du streak en base avec logs franchissant une transition DST
   const directory = mkdtempSync(path.join(tmpdir(), 'mycorpus-dst-streak-')), call = api(directory)
   try {
-    const user = await call('/api/account/register', 'POST', {email: 'dst-tester@example.test', name: 'DstTester', password})
+    const user = await call('/api/account/register', 'POST', {acceptTerms:true,termsVersion:TERMS_VERSION,email: 'dst-tester@example.test', name: 'DstTester', password})
     const deckRes = await call('/api/flashcards/decks', 'POST', {name: 'Deck 1'}, user.cookie)
     const cardRes = await call('/api/flashcards/cards', 'POST', {deckId: deckRes.data.deck.id, front: 'Q', back: 'A'}, user.cookie)
     const cardId = cardRes.data.card.id
@@ -282,8 +283,8 @@ test('Streak civil : décrémentation sécurisée IANA et transition DST', async
 test('Validation stricte FSRS review : previewId obligatoire, rejet expiration, réutilisation, mismatch et carte non due', async () => {
   const directory = mkdtempSync(path.join(tmpdir(), 'mycorpus-fsrs-validation-')), call = api(directory)
   try {
-    const alice = await call('/api/account/register', 'POST', {email: 'alice-val@example.test', name: 'AliceVal', password})
-    const bob = await call('/api/account/register', 'POST', {email: 'bob-val@example.test', name: 'BobVal', password})
+    const alice = await call('/api/account/register', 'POST', {acceptTerms:true,termsVersion:TERMS_VERSION,email: 'alice-val@example.test', name: 'AliceVal', password})
+    const bob = await call('/api/account/register', 'POST', {acceptTerms:true,termsVersion:TERMS_VERSION,email: 'bob-val@example.test', name: 'BobVal', password})
     const deckAlice = (await call('/api/flashcards/decks', 'POST', {name: 'Deck Alice'}, alice.cookie)).data.deck
     const deckBob = (await call('/api/flashcards/decks', 'POST', {name: 'Deck Bob'}, bob.cookie)).data.deck
     const cardAlice = (await call('/api/flashcards/cards', 'POST', {deckId: deckAlice.id, front: 'QA', back: 'AA'}, alice.cookie)).data.card
@@ -361,8 +362,8 @@ test('Validation stricte FSRS review : previewId obligatoire, rejet expiration, 
 test('dashboard FSRS : échéances disponibles, statistiques par cours, réponses du jour et isolation',async()=>{
  const directory=mkdtempSync(path.join(tmpdir(),'corpus-dashboard-flash-')),call=api(directory)
  try {
-  const alice=await call('/api/account/register','POST',{email:'stats-a@example.test',name:'Alice',password})
-  const bob=await call('/api/account/register','POST',{email:'stats-b@example.test',name:'Bob',password})
+  const alice=await call('/api/account/register','POST',{acceptTerms:true,termsVersion:TERMS_VERSION,email:'stats-a@example.test',name:'Alice',password})
+  const bob=await call('/api/account/register','POST',{acceptTerms:true,termsVersion:TERMS_VERSION,email:'stats-b@example.test',name:'Bob',password})
   const deck=(await call('/api/flashcards/decks','POST',{name:'Révision'},alice.cookie)).data.deck
   const card=(await call('/api/flashcards/cards','POST',{deckId:deck.id,front:'Question existante',back:'Réponse existante',subject:'Anatomie',chapter:'Orientation',source:{type:'catalog_course',courseId:'orientation'}},alice.cookie)).data.card
   const before=(await call('/api/flashcards/stats','GET',undefined,alice.cookie)).data.stats

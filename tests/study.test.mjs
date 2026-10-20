@@ -1,3 +1,4 @@
+import {TERMS_VERSION} from '../shared/legal.mjs'
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync, readFileSync } from 'node:fs'
@@ -169,7 +170,7 @@ test('Study API : inscription, upload PDF, extraction, structuration et quotas',
 
   try {
     // 1. Create User
-    const reg = await api.call('/api/account/register', {
+    const reg = await api.call('/api/account/register', {acceptTerms:true,termsVersion:TERMS_VERSION,
       email: 'etudiant@fac.fr',
       name: 'Thomas',
       password: pw
@@ -314,7 +315,7 @@ test('Study API : inscription, upload PDF, extraction, structuration et quotas',
     assert.ok(ankiRes.data.includes('mes_cours'))
 
     // 11. Test Security & Isolation between users
-    const bobReg = await api.call('/api/account/register', {
+    const bobReg = await api.call('/api/account/register', {acceptTerms:true,termsVersion:TERMS_VERSION,
       email: 'bob@fac.fr',
       name: 'Bob',
       password: pw
@@ -407,7 +408,7 @@ test('Système de quota IA : non atteint, atteint, reset mensuel, isolation et a
 
   try {
     // 1. Inscription Utilisateur A (Alice)
-    const regAlice = await api.call('/api/account/register', {
+    const regAlice = await api.call('/api/account/register', {acceptTerms:true,termsVersion:TERMS_VERSION,
       email: 'alice.quota@fac.fr',
       name: 'Alice',
       password: pw
@@ -477,7 +478,7 @@ test('Système de quota IA : non atteint, atteint, reset mensuel, isolation et a
     assert.equal(blockedQcm.data.code, 'ERR_GENERATION_QUOTA_EXCEEDED')
 
     // 7. Isolation entre utilisateurs : Bob a son propre quota et n'est pas bloqué
-    const regBob = await api.call('/api/account/register', {
+    const regBob = await api.call('/api/account/register', {acceptTerms:true,termsVersion:TERMS_VERSION,
       email: 'bob.quota@fac.fr',
       name: 'Bob',
       password: pw
@@ -534,7 +535,7 @@ test('Le fallback local sans provider externe ne consomme pas le quota et n\'est
   const pw = 'mot-de-passe-securise-2026'
 
   try {
-    const reg = await api.call('/api/account/register', {
+    const reg = await api.call('/api/account/register', {acceptTerms:true,termsVersion:TERMS_VERSION,
       email: 'claire@fac.fr',
       name: 'Claire',
       password: pw
@@ -592,7 +593,7 @@ test('Aucune génération n’est débitée en cas d’échec réel du provider 
   const pw = 'mot-de-passe-securise-2026'
 
   try {
-    const reg = await api.call('/api/account/register', {
+    const reg = await api.call('/api/account/register', {acceptTerms:true,termsVersion:TERMS_VERSION,
       email: 'david@fac.fr',
       name: 'David',
       password: pw
@@ -678,7 +679,7 @@ test('Ollama Study utilise uniquement des faits du PDF, ne consomme pas le quota
   })
   const api = setupTestApi(dir, { provider: ollama })
   try {
-    const registration = await api.call('/api/account/register', {
+    const registration = await api.call('/api/account/register', {acceptTerms:true,termsVersion:TERMS_VERSION,
       email: 'ollama-study@fac.fr', name: 'Noémie', password: 'mot-de-passe-securise-2026'
     })
     const cookie = registration.cookie
@@ -740,7 +741,7 @@ test('une sortie QCM Ollama invalide est rejetée et remplacée par le fallback 
   })
   const api = setupTestApi(dir, { provider: ollama })
   try {
-    const registration = await api.call('/api/account/register', {
+    const registration = await api.call('/api/account/register', {acceptTerms:true,termsVersion:TERMS_VERSION,
       email: 'ollama-invalid@fac.fr', name: 'Samir', password: 'mot-de-passe-securise-2026'
     })
     const pdf = makePdf([
@@ -770,7 +771,7 @@ test('une panne Ollama retombe sur la synthèse et les QCM locaux sans quota pay
   const ollama = new OllamaProvider({}, { fetchImpl: async () => { throw new Error('connection refused') } })
   const api = setupTestApi(dir, { provider: ollama })
   try {
-    const registration = await api.call('/api/account/register', {
+    const registration = await api.call('/api/account/register', {acceptTerms:true,termsVersion:TERMS_VERSION,
       email: 'ollama-offline@fac.fr', name: 'Lina', password: 'mot-de-passe-securise-2026'
     })
     const pdf = makePdf([
@@ -809,7 +810,7 @@ test('Concurrence et réservation atomique : deux requêtes simultanées avec 1 
   const pw = 'mot-de-passe-securise-2026'
 
   try {
-    const reg = await api.call('/api/account/register', {
+    const reg = await api.call('/api/account/register', {acceptTerms:true,termsVersion:TERMS_VERSION,
       email: 'eva@fac.fr',
       name: 'Eva',
       password: pw
@@ -895,7 +896,7 @@ test('Study API : upload des trois compressions et erreurs de filtre sans fausse
   const dir=mkdtempSync(path.join(tmpdir(),'mycorpus-study-ascii85-'))
   const api=setupTestApi(dir)
   try {
-    const reg=await api.call('/api/account/register',{email:'compression@fac.fr',name:'Compression',password:'mot-de-passe-securise-2026'})
+    const reg=await api.call('/api/account/register',{acceptTerms:true,termsVersion:TERMS_VERSION,email:'compression@fac.fr',name:'Compression',password:'mot-de-passe-securise-2026'})
     assert.equal(reg.status,201)
     const lines=['Chapitre 1 : Anatomie et physiologie du rein.', 'Le rein filtre le plasma sanguin et regule les electrolytes.', 'Le coeur est situe dans le mediastin thoracique.']
     for(const encoding of ['ascii85-flate','flate','raw']) {

@@ -2,7 +2,7 @@ import {test,expect} from '@playwright/test'
 const password='Mon-long-mot-de-passe-2026'
 const email=()=>`browser-${crypto.randomUUID()}@example.test`
 async function openAccount(page:any){if(!await page.getByRole('complementary',{name:'Mon compte',exact:true}).isVisible())await page.getByRole('button',{name:'Mon compte',exact:true}).click()}
-async function register(page:any,address:string){await openAccount(page);await page.getByRole('button',{name:'Créer un compte',exact:true}).click();await page.getByLabel('Prénom ou pseudonyme').fill('Camille');await page.getByLabel('Adresse e-mail').fill(address);await page.getByLabel('Mot de passe',{exact:true}).fill(password);await page.getByRole('button',{name:'Créer mon compte',exact:true}).click();await expect(page.getByRole('heading',{name:'Bonjour, Camille.'})).toBeVisible();await expect(page.locator('.recovery-code code')).toHaveText(/[a-f0-9]{40}/);await page.getByRole('button',{name:'J’ai conservé mon code'}).click()}
+async function register(page:any,address:string){await openAccount(page);await page.getByRole('button',{name:'Créer un compte',exact:true}).click();await page.getByLabel('Prénom ou pseudonyme').fill('Camille');await page.getByLabel('Adresse e-mail').fill(address);await page.getByLabel('Mot de passe',{exact:true}).fill(password);await page.getByRole('checkbox',{name:/J’accepte les/}).check();await page.getByRole('button',{name:'Créer mon compte',exact:true}).click();await expect(page.getByRole('heading',{name:'Bonjour, Camille.'})).toBeVisible();await expect(page.locator('.recovery-code code')).toHaveText(/[a-f0-9]{40}/);await page.getByRole('button',{name:'J’ai conservé mon code'}).click()}
 async function login(page:any,address:string){await openAccount(page);await page.getByLabel('Adresse e-mail').fill(address);await page.getByLabel('Mot de passe',{exact:true}).fill(password);await page.getByRole('button',{name:'Me connecter',exact:true}).click();await expect(page.getByRole('heading',{name:'Bonjour, Camille.'})).toBeVisible()}
 async function remove(page:any){await openAccount(page);await page.getByRole('button',{name:'Supprimer mon compte',exact:true}).click();await page.getByLabel('Mot de passe actuel').fill(password);await page.getByRole('checkbox').check();await page.getByRole('button',{name:'Supprimer définitivement',exact:true}).click();await expect(page.getByRole('button',{name:'Me connecter',exact:true})).toBeVisible()}
 test('comptes : inscription, notes et cours synchronisés, export, isolation et mobile',async({page,browser})=>{
@@ -42,7 +42,7 @@ test('Google : bouton français et politique de confidentialité accessibles',as
  await page.setViewportSize({width:393,height:852})
  await expect(google).toBeVisible()
  await page.goto('/confidentialite.html')
- await expect(page.getByRole('heading',{name:'Politique de confidentialité.'})).toBeVisible()
- await expect(page.getByRole('heading',{name:'Connexion avec Google'})).toBeVisible()
+ await expect(page.getByRole('heading',{name:'Politique de confidentialité',exact:true})).toBeVisible()
+ await expect(page.locator('#donnees')).toContainText('En choisissant Google')
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(393)
 })

@@ -1,3 +1,4 @@
+import {TERMS_VERSION} from '../shared/legal.mjs'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {mkdtempSync, rmSync} from 'node:fs'
@@ -61,7 +62,7 @@ function setup(provider, config = {}) {
   return {dir, call, close: () => rmSync(dir, {recursive: true, force: true})}
 }
 async function register(api) {
-  const r = await api.call('/api/account/register', {email: `e${Math.random()}@fac.fr`, name: 'Test', password: 'mot-de-passe-securise-2026'})
+  const r = await api.call('/api/account/register', {acceptTerms:true,termsVersion:TERMS_VERSION,email: `e${Math.random()}@fac.fr`, name: 'Test', password: 'mot-de-passe-securise-2026'})
   assert.equal(r.status, 201)
   return r.cookie
 }

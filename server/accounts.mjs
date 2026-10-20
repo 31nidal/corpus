@@ -1,9 +1,11 @@
+import {TERMS_VERSION} from '../shared/legal.mjs'
+import {exportAccountData,removeAccountFiles} from './account-data.mjs'
 import {validAnatomyProgress, mergeAnatomyProgress} from '../shared/anatomyProgress.mjs'
 import {validReading,mergeReading} from '../shared/studentProgress.mjs'
 import {DatabaseSync} from 'node:sqlite'
 import {createHash, randomBytes, randomUUID, scrypt, timingSafeEqual} from 'node:crypto'
 import {promisify} from 'node:util'
-import {mkdirSync, rmSync} from 'node:fs'
+import {mkdirSync} from 'node:fs'
 import path from 'node:path'
 import {OAuth2Client} from 'google-auth-library'
 
@@ -107,12 +109,16 @@ export function createAccountHandler(config = process.env, dependencies = {}) {
       CREATE TABLE IF NOT EXISTS limits(key TEXT PRIMARY KEY,count INTEGER,until INTEGER);
       CREATE TABLE IF NOT EXISTS identities(provider TEXT,subject TEXT,user_id TEXT REFERENCES users(id) ON DELETE CASCADE,email TEXT NOT NULL,created TEXT NOT NULL,PRIMARY KEY(provider,subject),UNIQUE(provider,user_id));
       CREATE TABLE IF NOT EXISTS oauth_states(state TEXT PRIMARY KEY,verifier TEXT NOT NULL,nonce TEXT NOT NULL,link_user_id TEXT REFERENCES users(id) ON DELETE CASCADE,expires INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS account_terms_acceptances(user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,version TEXT NOT NULL,accepted_at TEXT NOT NULL,method TEXT NOT NULL,PRIMARY KEY(user_id,version));
       CREATE INDEX IF NOT EXISTS history_by_account ON history(user_id,seq);
       CREATE INDEX IF NOT EXISTS sessions_by_account ON sessions(user_id);
       CREATE INDEX IF NOT EXISTS identities_by_account ON identities(user_id);
     `)
     const columns = db.prepare('PRAGMA table_info(users)').all().map(column => column.name)
     if (!columns.includes('password_enabled')) db.exec('ALTER TABLE users ADD COLUMN password_enabled INTEGER NOT NULL DEFAULT 1')
+    const oauthColumns = db.prepare('PRAGMA table_info(oauth_states)').all().map(column=>column.name)
+    if(!oauthColumns.includes('terms_version')) db.exec('ALTER TABLE oauth_states ADD COLUMN terms_version TEXT')
+    if(!oauthColumns.includes('terms_accepted_at')) db.exec('ALTER TABLE oauth_states ADD COLUMN terms_accepted_at TEXT')
     return db
   }
 
@@ -177,13 +183,17 @@ export function createAccountHandler(config = process.env, dependencies = {}) {
           if (!googleAvailable) return send(503, {error: 'La connexion Google n’est pas encore configurée.'})
           const linking = url.searchParams.get('mode') === 'link'
           if (linking && !user) return send(401, {error: 'Connectez-vous d’abord avec votre mot de passe pour lier Google.'})
+          if(!linking && (url.searchParams.get('acceptTerms')!=='1'||url.searchParams.get('termsVersion')!==TERMS_VERSION)){
+            res.writeHead(200,{'Content-Type':'text/html; charset=utf-8','Cache-Control':'no-store'})
+            return res.end(`<!doctype html><html lang="fr"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Connexion Google · MyCorpus3D</title><link rel="stylesheet" href="/legal.css"><main><h1>Continuer avec Google</h1><p>Google transmettra votre identité, votre nom et votre adresse e-mail. Si aucun compte n’existe, un compte MyCorpus3D sera créé. Aucun accès à vos fichiers Google n’est demandé.</p><form action="/api/account/google/start" method="get"><input type="hidden" name="termsVersion" value="${TERMS_VERSION}"><label><input type="checkbox" name="acceptTerms" value="1" required> J’accepte les <a href="/cgu.html" target="_blank" rel="noopener">CGU</a> (version ${TERMS_VERSION}).</label><p>Consultez la <a href="/confidentialite.html">politique de confidentialité</a>. Cette acceptation contractuelle n’est pas un consentement publicitaire.</p><button type="submit">Continuer avec Google</button></form><p><a href="/">Annuler et revenir à MyCorpus3D</a></p></main></html>`)
+          }
           const ipKey = digest(`google:${req.socket.remoteAddress || 'unknown'}`)
           if (!limitAttempt(ipKey, 30)) return send(429, {error: 'Trop de tentatives. Réessayez dans quinze minutes.'})
           d.prepare('DELETE FROM oauth_states WHERE expires<?').run(Date.now())
           const oauthState = randomBytes(32).toString('base64url')
           const verifier = randomBytes(48).toString('base64url')
           const nonce = randomBytes(32).toString('base64url')
-          d.prepare('INSERT INTO oauth_states VALUES(?,?,?,?,?)').run(digest(oauthState), verifier, nonce, linking ? user.id : null, Date.now() + 600000)
+          d.prepare('INSERT INTO oauth_states(state,verifier,nonce,link_user_id,expires,terms_version,terms_accepted_at) VALUES(?,?,?,?,?,?,?)').run(digest(oauthState), verifier, nonce, linking ? user.id : null, Date.now() + 600000,linking?null:TERMS_VERSION,linking?null:new Date().toISOString())
           addCookie('mycorpus_oauth_state', oauthState, 600)
           const client = makeGoogleClient(config.GOOGLE_CLIENT_ID, config.GOOGLE_CLIENT_SECRET, redirectUri)
           return redirect(client.generateAuthUrl({
@@ -242,7 +252,9 @@ export function createAccountHandler(config = process.env, dependencies = {}) {
 
           if (identity) {
             account = d.prepare('SELECT id,email,name,password_enabled AS passwordEnabled FROM users WHERE id=?').get(identity.user_id)
+            if(account&&saved.terms_version===TERMS_VERSION&&saved.terms_accepted_at)d.prepare('INSERT OR IGNORE INTO account_terms_acceptances VALUES(?,?,?,?)').run(account.id,saved.terms_version,saved.terms_accepted_at,'google')
           } else {
+            if(saved.terms_version!==TERMS_VERSION||!saved.terms_accepted_at)return redirect(oauthResult('erreur','conditions'))
             const conflictingAccount = d.prepare('SELECT id FROM users WHERE email=?').get(email)
             if (conflictingAccount) return redirect(oauthResult('erreur', 'conflit'))
             account = {id: randomUUID(), email, name: String(profile.name || email.split('@')[0]).trim().slice(0, 60), passwordEnabled: 0}
@@ -252,6 +264,7 @@ export function createAccountHandler(config = process.env, dependencies = {}) {
             try {
               d.prepare('INSERT INTO users(id,email,name,password,recovery,password_enabled) VALUES(?,?,?,?,?,0)').run(account.id, account.email, account.name, disabled, digest(randomBytes(32).toString('hex')))
               d.prepare("INSERT INTO identities(provider,subject,user_id,email,created) VALUES('google',?,?,?,?)").run(profile.sub, account.id, email, new Date().toISOString())
+              d.prepare('INSERT INTO account_terms_acceptances VALUES(?,?,?,?)').run(account.id,saved.terms_version,saved.terms_accepted_at,'google')
               d.exec('COMMIT')
             } catch (error) {
               d.exec('ROLLBACK')
@@ -265,7 +278,7 @@ export function createAccountHandler(config = process.env, dependencies = {}) {
         if (!user) return send(401, {error: 'Connectez-vous pour accéder à votre compte.'})
         if (route === 'exams') return send(200, {items: d.prepare("SELECT seq,kind,payload,created FROM history WHERE user_id=? AND kind='quiz' AND json_extract(payload,'$.title')='Examen blanc' ORDER BY seq DESC LIMIT 10").all(user.id).map(row=>({...row,payload:JSON.parse(row.payload)}))})
         if (route === 'history') return send(200, {items: d.prepare('SELECT seq,kind,payload,created FROM history WHERE user_id=? AND seq<? ORDER BY seq DESC LIMIT 40').all(user.id, Number(url.searchParams.get('before')) || Number.MAX_SAFE_INTEGER).map(row => ({...row, payload: JSON.parse(row.payload)}))})
-        if (route === 'export') return send(200, {user: publicUser(user), state: state(user.id), history: d.prepare('SELECT kind,payload,created FROM history WHERE user_id=? ORDER BY seq').all(user.id).map(row => ({...row, payload: JSON.parse(row.payload)}))})
+        if (route === 'export') return send(200, {...exportAccountData(d,user.id),user: publicUser(user), state: state(user.id), history: d.prepare('SELECT kind,payload,created FROM history WHERE user_id=? ORDER BY seq').all(user.id).map(row => ({...row, payload: JSON.parse(row.payload)}))})
         return send(404, {error: 'Route inconnue.'})
       }
 
@@ -297,12 +310,19 @@ export function createAccountHandler(config = process.env, dependencies = {}) {
         try {
           const account = ['password', 'delete'].includes(route) && user ? d.prepare('SELECT * FROM users WHERE id=?').get(user.id) : d.prepare('SELECT * FROM users WHERE email=?').get(email)
           if (route === 'register') {
+            if(body.acceptTerms!==true||body.termsVersion!==TERMS_VERSION)return send(400,{error:'Acceptez explicitement la version actuelle des CGU.',code:'TERMS_REQUIRED'})
             if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254 || typeof body.name !== 'string' || body.name.trim().length < 2 || body.name.length > 60) return send(400, {error: 'Vérifiez votre nom et votre adresse e-mail.'})
             if (account) return send(409, {error: 'Inscription impossible avec cette adresse. Essayez de vous connecter.'})
             const recovery = randomBytes(20).toString('hex')
             const created = {id: randomUUID(), email, name: body.name.trim(), passwordEnabled: 1}
             const password = await hash(body.password)
-            d.prepare('INSERT INTO users(id,email,name,password,recovery,password_enabled) VALUES(?,?,?,?,?,1)').run(created.id, email, created.name, password, digest(recovery))
+            d.exec('BEGIN IMMEDIATE')
+            try {
+              d.prepare('INSERT INTO users(id,email,name,password,recovery,password_enabled) VALUES(?,?,?,?,?,1)').run(created.id, email, created.name, password, digest(recovery))
+              d.prepare('INSERT INTO account_terms_acceptances VALUES(?,?,?,?)').run(created.id,TERMS_VERSION,new Date().toISOString(),'email')
+              d.exec('COMMIT')
+            } catch(error){d.exec('ROLLBACK');throw error}
+
             return send(201, {...session(created), recovery})
           }
           if (route === 'recover') {
@@ -326,7 +346,7 @@ export function createAccountHandler(config = process.env, dependencies = {}) {
           if (!user || !account || user.id !== account.id) return send(401, {error: 'Connexion requise.'})
           if (route === 'delete') {
             if (account.password_enabled && (!passwordIsValid(body.password) || !await verify(body.password, account.password))) return send(401, {error: 'Mot de passe incorrect.'})
-            rmSync(path.join(dataDirectory, 'uploads', user.id), {recursive: true, force: true})
+            removeAccountFiles(d,dataDirectory,user.id)
             d.prepare('DELETE FROM users WHERE id=?').run(user.id)
             addCookie('mycorpus_session', '', 0)
             return send(200, {ok: true})

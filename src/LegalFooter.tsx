@@ -1,0 +1,2 @@
+import './legalFooter.css'
+export default function LegalFooter(){return <footer className="legal-footer" aria-label="Informations juridiques"><a href="/mentions-legales.html">Mentions légales</a><a href="/confidentialite.html">Confidentialité</a><a href="/cgu.html">CGU</a><a href="/cookies.html#preferences">Cookies et préférences</a><a href="/propriete-intellectuelle.html">Propriété intellectuelle</a></footer>}

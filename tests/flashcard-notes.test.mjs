@@ -1,3 +1,4 @@
+import {TERMS_VERSION} from '../shared/legal.mjs'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {mkdtempSync, rmSync} from 'node:fs'
@@ -27,7 +28,7 @@ const password = 'notes-solid-test-2026'
 test('notes CRUD : création, dérivations automatiques, transition Basic -> Bidirectional', async () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'mycorpus-notes-')), call = api(dir)
   try {
-    const user = await call('/api/account/register', 'POST', {email: 'notes@example.test', name: 'Notes', password})
+    const user = await call('/api/account/register', 'POST', {acceptTerms:true,termsVersion:TERMS_VERSION,email: 'notes@example.test', name: 'Notes', password})
     const deckRes = await call('/api/flashcards/decks', 'POST', {name: 'Anatomie'}, user.cookie)
     const deckId = deckRes.data.deck.id
 
@@ -85,7 +86,7 @@ test('notes CRUD : création, dérivations automatiques, transition Basic -> Bid
 test('optimistic locking sur les mutations de Note (PATCH, DELETE, restore, suppression de carte)', async () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'mycorpus-lock-')), call = api(dir)
   try {
-    const user = await call('/api/account/register', 'POST', {email: 'lock@example.test', name: 'Lock', password})
+    const user = await call('/api/account/register', 'POST', {acceptTerms:true,termsVersion:TERMS_VERSION,email: 'lock@example.test', name: 'Lock', password})
     const deck = (await call('/api/flashcards/decks', 'POST', {name: 'LockDeck'}, user.cookie)).data.deck
 
     const noteRes = await call('/api/flashcards/notes', 'POST', {
@@ -144,7 +145,7 @@ test('optimistic locking sur les mutations de Note (PATCH, DELETE, restore, supp
 test('destination des nouvelles dérivations : rejet propre si default_deck_id manquant', async () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'mycorpus-deck-')), call = api(dir)
   try {
-    const user = await call('/api/account/register', 'POST', {email: 'deck@example.test', name: 'Deck', password})
+    const user = await call('/api/account/register', 'POST', {acceptTerms:true,termsVersion:TERMS_VERSION,email: 'deck@example.test', name: 'Deck', password})
     const deck1 = (await call('/api/flashcards/decks', 'POST', {name: 'Deck 1'}, user.cookie)).data.deck
     const deck2 = (await call('/api/flashcards/decks', 'POST', {name: 'Deck 2'}, user.cookie)).data.deck
 
@@ -199,7 +200,7 @@ test('destination des nouvelles dérivations : rejet propre si default_deck_id m
 test('mutations Note sans expectedVersion => 422', async () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'mycorpus-422-')), call = api(dir)
   try {
-    const user = await call('/api/account/register', 'POST', {email: 'v422@example.test', name: 'V422', password})
+    const user = await call('/api/account/register', 'POST', {acceptTerms:true,termsVersion:TERMS_VERSION,email: 'v422@example.test', name: 'V422', password})
     const deck = (await call('/api/flashcards/decks', 'POST', {name: 'Deck422'}, user.cookie)).data.deck
 
     const noteRes = await call('/api/flashcards/notes', 'POST', {
@@ -244,7 +245,7 @@ test('mutations Note sans expectedVersion => 422', async () => {
 test('derived card PATCH rejeté mais moveCard autorisé', async () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'mycorpus-derived-patch-')), call = api(dir)
   try {
-    const user = await call('/api/account/register', 'POST', {email: 'derived@example.test', name: 'Derived', password})
+    const user = await call('/api/account/register', 'POST', {acceptTerms:true,termsVersion:TERMS_VERSION,email: 'derived@example.test', name: 'Derived', password})
     const deck1 = (await call('/api/flashcards/decks', 'POST', {name: 'DeckA'}, user.cookie)).data.deck
     const deck2 = (await call('/api/flashcards/decks', 'POST', {name: 'DeckB'}, user.cookie)).data.deck
 
@@ -278,7 +279,7 @@ test('derived card PATCH rejeté mais moveCard autorisé', async () => {
 test('duplication de Note : nouveaux note/card IDs, FSRS new, originaux inchangés', async () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'mycorpus-dup-')), call = api(dir)
   try {
-    const user = await call('/api/account/register', 'POST', {email: 'dup@example.test', name: 'Dup', password})
+    const user = await call('/api/account/register', 'POST', {acceptTerms:true,termsVersion:TERMS_VERSION,email: 'dup@example.test', name: 'Dup', password})
     const deck = (await call('/api/flashcards/decks', 'POST', {name: 'DeckDup'}, user.cookie)).data.deck
 
     const note = (await call('/api/flashcards/notes', 'POST', {
@@ -336,7 +337,7 @@ test('duplication de Note : nouveaux note/card IDs, FSRS new, originaux inchang�
 test('validation stricte des changements de note_type : rejet atomique et intégrité DB', async () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'mycorpus-switch-')), call = api(dir)
   try {
-    const user = await call('/api/account/register', 'POST', {email: 'switch@example.test', name: 'Switch', password})
+    const user = await call('/api/account/register', 'POST', {acceptTerms:true,termsVersion:TERMS_VERSION,email: 'switch@example.test', name: 'Switch', password})
     const deck = (await call('/api/flashcards/decks', 'POST', {name: 'DeckSwitch'}, user.cookie)).data.deck
 
     // Note Cloze initiale
@@ -406,7 +407,7 @@ test('validation stricte des changements de note_type : rejet atomique et intég
 test('export filtré vs export complet : sibling-safe et format canonique', async () => {
   const dir = mkdtempSync(path.join(tmpdir(), 'mycorpus-export-safe-')), call = api(dir)
   try {
-    const user = await call('/api/account/register', 'POST', {email: 'exp@example.test', name: 'Exp', password})
+    const user = await call('/api/account/register', 'POST', {acceptTerms:true,termsVersion:TERMS_VERSION,email: 'exp@example.test', name: 'Exp', password})
     const deckA = (await call('/api/flashcards/decks', 'POST', {name: 'Deck A'}, user.cookie)).data.deck
     const deckB = (await call('/api/flashcards/decks', 'POST', {name: 'Deck B'}, user.cookie)).data.deck
 

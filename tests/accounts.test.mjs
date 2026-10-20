@@ -1,3 +1,4 @@
+import {TERMS_VERSION} from '../shared/legal.mjs'
 import {test} from 'node:test'
 import assert from 'node:assert/strict'
 import {existsSync,mkdtempSync,mkdirSync,rmSync,writeFileSync} from 'node:fs'
@@ -27,7 +28,7 @@ function harness(config,dependencies){
    await handler(req,res)
    const rawCookies=Array.isArray(responseHeaders['set-cookie'])?responseHeaders['set-cookie']:(responseHeaders['set-cookie']?[responseHeaders['set-cookie']]:[])
    const cookies=rawCookies.map(value=>value.split(';')[0])
-   return {status,data:output?JSON.parse(output):null,cookies,cookie:cookies.find(value=>value.startsWith('mycorpus_session=')),location:responseHeaders.location}
+   return {status,data:output?(responseHeaders['content-type']?.includes('application/json')?JSON.parse(output):output):null,cookies,cookie:cookies.find(value=>value.startsWith('mycorpus_session=')),location:responseHeaders.location}
   },
  }
 }
@@ -37,9 +38,9 @@ test('comptes : isolation, sécurité, persistance, fusion, récupération et su
  const pw='un-long-mot-de-passe-2026'
  try{
   assert.equal((await api.call('session')).data.user,null)
-  const alice=await api.call('register',{email:'alice@example.test',name:'Alice',password:pw})
+  const alice=await api.call('register',{acceptTerms:true,termsVersion:TERMS_VERSION,email:'alice@example.test',name:'Alice',password:pw})
   assert.equal(alice.status,201);assert.match(alice.cookie,/mycorpus_session=/);assert.ok(alice.data.recovery)
-  const bob=await api.call('register',{email:'bob@example.test',name:'Bob',password:pw})
+  const bob=await api.call('register',{acceptTerms:true,termsVersion:TERMS_VERSION,email:'bob@example.test',name:'Bob',password:pw})
   assert.equal(bob.status,201)
   const operations=[
    {id:'note1',kind:'value',payload:{key:'corpus-note-FMA7088',value:'Note privée Alice',before:null}},
@@ -80,7 +81,7 @@ test('comptes : isolation, sécurité, persistance, fusion, récupération et su
 test('révisions : persistance, synchronisation tardive et rejet de dates invalides',async()=>{
  const dir=mkdtempSync(path.join(tmpdir(),'mycorpus-reviews-')),api=harness({ACCOUNT_DATA_DIR:dir})
  try{
-  const account=await api.call('register',{email:'review@example.test',name:'Révision',password:'test-revisions-solide-2026'})
+  const account=await api.call('register',{acceptTerms:true,termsVersion:TERMS_VERSION,email:'review@example.test',name:'Révision',password:'test-revisions-solide-2026'})
   const key='corpus-practice-v1',question='revision2-phys-renal-7'
   const first={seen:1,correct:1,wrong:false,streak:1,interval:1,due:100000000,lastReviewed:13600000}
   const sync=async(id,value,before=null)=>api.call('sync',{userId:account.data.user.id,operations:[{id,kind:'value',payload:{key,value:JSON.stringify({[question]:value}),before:before?JSON.stringify({[question]:before}):null}}]},account.cookie)
@@ -121,7 +122,7 @@ test('Google : création, validation OAuth, mot de passe optionnel et suppressio
  try{
   const sessionBefore=await api.call('session')
   assert.equal(sessionBefore.data.google.available,true)
-  const start=await api.call('google/start')
+  const start=await api.call(`google/start?acceptTerms=1&termsVersion=${TERMS_VERSION}`)
   assert.equal(start.status,302)
   assert.match(start.location,/^https:\/\/accounts\.google\.test\//)
   assert.deepEqual(fakeGoogle.options.scope,['openid','email','profile'])
@@ -161,8 +162,8 @@ test('Google : une adresse locale exige une liaison depuis le compte connecté',
  const api=harness({ACCOUNT_DATA_DIR:dir,APP_ORIGIN:'https://mycorpus3d.com',GOOGLE_CLIENT_ID:'client-id',GOOGLE_CLIENT_SECRET:'client-secret'},{makeGoogleClient:()=>fakeGoogle})
  const password='un-long-mot-de-passe-2026'
  try{
-  const alice=await api.call('register',{email:'alice@example.test',name:'Alice',password})
-  const unsafeStart=await api.call('google/start')
+  const alice=await api.call('register',{acceptTerms:true,termsVersion:TERMS_VERSION,email:'alice@example.test',name:'Alice',password})
+  const unsafeStart=await api.call(`google/start?acceptTerms=1&termsVersion=${TERMS_VERSION}`)
   const unsafeOauth=unsafeStart.cookies.find(value=>value.startsWith('mycorpus_oauth_state='))
   const conflict=await api.call(`google/callback?code=code&state=${encodeURIComponent(fakeGoogle.options.state)}`,undefined,unsafeOauth)
   assert.equal(new URL(conflict.location).searchParams.get('detail'),'conflit')
@@ -197,8 +198,8 @@ test('migration : une base de comptes existante reçoit les colonnes OAuth sans 
 test('pilotage étudiant : lecture synchronisée, fusion multi-appareils, isolation et validation',async()=>{
  const dir=mkdtempSync(path.join(tmpdir(),'corpus-reading-')),api=harness({ACCOUNT_DATA_DIR:dir})
  try {
-  const alice=await api.call('register',{email:'reading-a@example.test',name:'Alice',password:'lecture-solide-2026'})
-  const bob=await api.call('register',{email:'reading-b@example.test',name:'Bob',password:'lecture-solide-2026'})
+  const alice=await api.call('register',{acceptTerms:true,termsVersion:TERMS_VERSION,email:'reading-a@example.test',name:'Alice',password:'lecture-solide-2026'})
+  const bob=await api.call('register',{acceptTerms:true,termsVersion:TERMS_VERSION,email:'reading-b@example.test',name:'Bob',password:'lecture-solide-2026'})
   const put=async(id,value,before=null)=>api.call('sync',{userId:alice.data.user.id,operations:[{id,kind:'value',payload:{key:'corpus-reading-v1',value:JSON.stringify(value),before}}]},alice.cookie)
   assert.equal((await put('reading-1',{orientation:{percent:62,updatedAt:100,section:'a'}})).status,200)
   assert.equal((await put('reading-2',{orientation:{percent:20,updatedAt:200,section:'b'}})).status,200)
@@ -219,8 +220,8 @@ test('pilotage étudiant : lecture synchronisée, fusion multi-appareils, isolat
 test('atlas : historique par compte, persistance et fusion des appareils',async()=>{
  const dir=mkdtempSync(path.join(tmpdir(),'mycorpus-anatomy-')),api=harness({ACCOUNT_DATA_DIR:dir})
  try{
-  const alice=await api.call('register',{email:'anatomy-a@example.test',name:'Anatomie',password:'test-anatomie-solide-2026'})
-  const bob=await api.call('register',{email:'anatomy-b@example.test',name:'Autre compte',password:'test-anatomie-solide-2026'})
+  const alice=await api.call('register',{acceptTerms:true,termsVersion:TERMS_VERSION,email:'anatomy-a@example.test',name:'Anatomie',password:'test-anatomie-solide-2026'})
+  const bob=await api.call('register',{acceptTerms:true,termsVersion:TERMS_VERSION,email:'anatomy-b@example.test',name:'Autre compte',password:'test-anatomie-solide-2026'})
   const key='corpus-anatomy-progress-v1'
   const attempt=id=>({id,revision:'bp3d-detail-v1',mode:'free',startedAt:'2026-10-17T10:00:00Z',completedAt:'2026-10-17T10:00:30Z',durationSeconds:30,answers:[{structureId:'FMA7148',given:'estomac',correct:true}]})
   const sync=(id,attempts)=>api.call('sync',{userId:alice.data.user.id,operations:[{id,kind:'value',payload:{key,value:JSON.stringify({version:1,attempts}),before:null}}]},alice.cookie)
@@ -231,5 +232,88 @@ test('atlas : historique par compte, persistance et fusion des appareils',async(
   assert.equal((await api.call('session',undefined,bob.cookie)).data.state[key],undefined)
   assert.equal((await sync('atlas-bad',[{...attempt('bad'),answers:[{structureId:'x',given:'x',correct:'yes'}]}])).status,400)
   assert.equal((await sync('atlas-bad-ref',[{...attempt('badref'),revision:'invented'}])).status,400)
+ }finally{rmSync(dir,{recursive:true,force:true})}
+})
+
+test('CGU : refus sans action explicite ou mauvaise version, preuve persistante et aucune acceptation rétroactive',async()=>{
+ const dir=mkdtempSync(path.join(tmpdir(),'corpus-terms-')),api=harness({ACCOUNT_DATA_DIR:dir})
+ const body={email:'terms@example.test',name:'Terms',password:'terms-password-solide-2026'}
+ try{
+  for(const fields of [{},{acceptTerms:false,termsVersion:TERMS_VERSION},{acceptTerms:'true',termsVersion:TERMS_VERSION},{acceptTerms:true,termsVersion:'ancienne'}])assert.equal((await api.call('register',{...body,...fields})).data.code,'TERMS_REQUIRED')
+  const account=await api.call('register',{...body,acceptTerms:true,termsVersion:TERMS_VERSION})
+  assert.equal(account.status,201)
+  api.restart()
+  const data=(await api.call('export',undefined,account.cookie)).data
+  assert.equal(data.data.account_terms_acceptances.length,1)
+  assert.equal(data.data.account_terms_acceptances[0].version,TERMS_VERSION)
+  assert.equal(data.data.account_terms_acceptances[0].method,'email')
+  assert.ok(Date.parse(data.data.account_terms_acceptances[0].accepted_at))
+  assert.equal('sessions' in data.data,false);assert.equal('password' in data.user,false)
+  const db=new DatabaseSync(path.join(dir,'mycorpus.sqlite'))
+  db.prepare('DELETE FROM account_terms_acceptances').run()
+  api.restart()
+  await api.call('login',{email:body.email,password:body.password})
+  assert.equal(db.prepare('SELECT count(*) n FROM account_terms_acceptances').get().n,0)
+  db.close()
+ }finally{rmSync(dir,{recursive:true,force:true})}
+})
+
+test('Google : confirmation lisible sans acceptation implicite et preuve rattachée à la création',async()=>{
+ const dir=mkdtempSync(path.join(tmpdir(),'corpus-google-terms-'))
+ let options
+ const fake={generateAuthUrl(value){options=value;return 'https://accounts.google.test/'},async getToken(){return {tokens:{id_token:'id'}}},async verifyIdToken(){return {getPayload:()=>({sub:'terms-google',email:'google-terms@example.test',email_verified:true,name:'Terms Google',nonce:options.nonce})}}}
+ const api=harness({ACCOUNT_DATA_DIR:dir,GOOGLE_CLIENT_ID:'id',GOOGLE_CLIENT_SECRET:'secret'},{makeGoogleClient:()=>fake})
+ try{
+  const confirmation=await api.call('google/start')
+  assert.equal(confirmation.status,200);assert.match(confirmation.data,/type="checkbox"/);assert.doesNotMatch(confirmation.data,/\schecked/)
+  assert.equal(options,undefined)
+  const start=await api.call(`google/start?acceptTerms=1&termsVersion=${TERMS_VERSION}`)
+  const cookie=start.cookies.find(value=>value.startsWith('mycorpus_oauth_state='))
+  const result=await api.call(`google/callback?code=x&state=${options.state}`,undefined,cookie)
+  const exported=(await api.call('export',undefined,result.cookie)).data
+  assert.equal(exported.data.account_terms_acceptances[0].method,'google')
+  assert.equal(exported.data.account_terms_acceptances[0].version,TERMS_VERSION)
+  // A legacy Google identity gains evidence only after this new explicit action.
+  const db=new DatabaseSync(path.join(dir,'mycorpus.sqlite'));db.prepare('DELETE FROM account_terms_acceptances').run();db.close()
+  api.restart()
+  await api.call('google/start')
+  assert.equal((await api.call('export',undefined,result.cookie)).data.data.account_terms_acceptances.length,0)
+  const again=await api.call(`google/start?acceptTerms=1&termsVersion=${TERMS_VERSION}`)
+  const connected=await api.call(`google/callback?code=again&state=${options.state}`,undefined,again.cookies.find(value=>value.startsWith('mycorpus_oauth_state=')))
+  assert.equal((await api.call('export',undefined,connected.cookie)).data.data.account_terms_acceptances.length,1)
+ }finally{rmSync(dir,{recursive:true,force:true})}
+})
+
+test('données : export complet isolé et effacement immédiat des images/PDF du seul propriétaire',async()=>{
+ const {initStudySchema}=await import('../server/study.mjs')
+ const {initFlashcardSchema}=await import('../server/flashcards/schema.mjs')
+ const dir=mkdtempSync(path.join(tmpdir(),'corpus-rights-')),api=harness({ACCOUNT_DATA_DIR:dir})
+ try{
+  const password='droits-password-solide-2026'
+  const alice=await api.call('register',{name:'Alice',email:'rights-a@example.test',password,acceptTerms:true,termsVersion:TERMS_VERSION})
+  const bob=await api.call('register',{name:'Bob',email:'rights-b@example.test',password,acceptTerms:true,termsVersion:TERMS_VERSION})
+  const db=new DatabaseSync(path.join(dir,'mycorpus.sqlite'));db.exec('PRAGMA foreign_keys=ON');initStudySchema(db);initFlashcardSchema(db)
+  mkdirSync(path.join(dir,'flashcard_assets'),{recursive:true})
+  for(const [label,user] of [['alice',alice],['bob',bob]]){
+   const id=user.data.user.id,now=new Date().toISOString()
+   db.prepare('INSERT INTO study_documents(id,user_id,title,filename,file_size,page_count,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)').run(label,id,'Cours privé '+label,'cours.pdf',3,1,now,now)
+   db.prepare('INSERT INTO study_pdf_pages VALUES(?,?,?,?)').run(label,id,1,'Contenu privé '+label)
+   db.prepare("INSERT INTO flashcard_assets(id,user_id,mime_type,width,height,byte_size,sha256,storage_key,source_kind,created_at) VALUES(?,?,'image/png',1,1,3,'hash',?,'upload',?)").run(label,id,label+'.png',Date.now())
+   mkdirSync(path.join(dir,'uploads',id),{recursive:true});writeFileSync(path.join(dir,'uploads',id,label+'.pdf'),'pdf')
+   writeFileSync(path.join(dir,'flashcard_assets',label+'.png'),'png')
+  }
+  const exported=(await api.call('export',undefined,alice.cookie)).data
+  assert.equal(exported.data.study_pdf_pages.length,1);assert.equal(exported.data.study_pdf_pages[0].user_id,alice.data.user.id)
+  assert.equal(exported.data.flashcard_assets.length,1);assert.equal(exported.files.length,2)
+  assert.ok(exported.files.every(file=>file.url.includes('/alice')))
+  assert.equal((await api.call('export')).status,401)
+  assert.equal((await api.call('delete',{password},alice.cookie)).status,200)
+  assert.equal(existsSync(path.join(dir,'flashcard_assets','alice.png')),false)
+  assert.equal(existsSync(path.join(dir,'uploads',alice.data.user.id)),false)
+  assert.equal(existsSync(path.join(dir,'flashcard_assets','bob.png')),true)
+  assert.equal(db.prepare('SELECT count(*) n FROM study_pdf_pages WHERE user_id=?').get(alice.data.user.id).n,0)
+  assert.equal(db.prepare('SELECT count(*) n FROM account_terms_acceptances WHERE user_id=?').get(alice.data.user.id).n,0)
+  assert.equal((await api.call('export',undefined,bob.cookie)).data.data.study_pdf_pages.length,1)
+  db.close()
  }finally{rmSync(dir,{recursive:true,force:true})}
 })

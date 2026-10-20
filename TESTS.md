@@ -126,3 +126,9 @@ Voir également [docs/architecture.md](docs/architecture.md).
 ## Limites
 
 Les tests techniques ne constituent pas une validation médicale ou clinique du contenu. Les modèles 3D sont optimisés pour le Web et les animations restent illustratives.
+
+## Préparation juridique
+
+`npm run legal:check` vérifie les pages statiques par rapport au générateur et à la version des CGU. Le build lance aussi ce contrôle. `tests/legal.spec.ts` couvre les pages publiques à 320/375/768/1440 px, les liens, l’absence de consentement fictif et l’inscription explicite. `tests/accounts.test.mjs` vérifie la preuve e-mail/Google, les versions refusées, la non-rétroactivité, l’export isolé et la suppression des fichiers.
+
+Pour éviter de réutiliser un serveur de développement connecté à une IA distante : `PLAYWRIGHT_PORT=5175 npx playwright test tests/legal.spec.ts tests/accounts.spec.ts tests/my-courses.spec.ts tests/flashcard-menu.spec.ts`. Le nouveau serveur utilise les générateurs locaux déterministes. Ne pas pointer ces tests de création/suppression de comptes vers la production.

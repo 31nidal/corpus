@@ -1,3 +1,4 @@
+import {TERMS_VERSION} from '../shared/legal.mjs'
 import {test,expect} from '@playwright/test'
 import type {Page} from '@playwright/test'
 import {deflateSync} from 'node:zlib'
@@ -8,7 +9,7 @@ function pdf() {
   return Buffer.concat([Buffer.from('%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>\nendobj\n4 0 obj\n<< /Length '+stream.length+' /Filter /FlateDecode >>\nstream\n'),stream,Buffer.from('\nendstream\nendobj\n5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\ntrailer\n<< /Root 1 0 R >>\n%%EOF')])
 }
 async function prepare(page:Page) {
-  const registered=await page.request.post('/api/account/register',{headers,data:{name:'Révision',email:`draft-${crypto.randomUUID()}@example.test`,password:'Revision-test-solide-2026'}})
+  const registered=await page.request.post('/api/account/register',{headers,data:{acceptTerms:true,termsVersion:TERMS_VERSION,name:'Révision',email:`draft-${crypto.randomUUID()}@example.test`,password:'Revision-test-solide-2026'}})
   expect(registered.ok()).toBeTruthy()
   await page.request.post('/api/flashcards/decks',{headers,data:{name:'Anatomie révisée'}})
   await page.goto('/#tab=mes-cours')

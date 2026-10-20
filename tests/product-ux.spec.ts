@@ -1,3 +1,4 @@
+import {TERMS_VERSION} from '../shared/legal.mjs'
 import { test, expect } from '@playwright/test'
 import { deflateSync } from 'node:zlib'
 
@@ -88,7 +89,7 @@ test('cours lié : accès immédiat à la structure Atlas existante', async ({ p
 const password = 'Mon-long-mot-de-passe-2026'
 const headers = { 'x-mycorpus-request': '1' }
 async function register(page: import('@playwright/test').Page) {
-  const response = await page.request.post('/api/account/register', { headers, data: { name: 'Parcours', email: `ux-${crypto.randomUUID()}@example.test`, password } })
+  const response = await page.request.post('/api/account/register', { headers, data: {acceptTerms:true,termsVersion:TERMS_VERSION, name: 'Parcours', email: `ux-${crypto.randomUUID()}@example.test`, password } })
   expect(response.status()).toBe(201)
 }
 

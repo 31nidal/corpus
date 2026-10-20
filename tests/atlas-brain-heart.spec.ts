@@ -1,3 +1,4 @@
+import {TERMS_VERSION} from '../shared/legal.mjs'
 import { test, expect } from '@playwright/test'
 
 test.describe('Atlas anatomique - Cerveau & Cœur', () => {
@@ -245,7 +246,7 @@ test('Atlas : création réelle d’une flashcard depuis la fiche médicale', as
   const password = 'Atlas-flashcards-test-2026'
   const account = await page.request.post('/api/account/register', {
     headers,
-    data: { name: 'Atlas Test', email: `atlas-${crypto.randomUUID()}@example.test`, password },
+    data: {acceptTerms:true,termsVersion:TERMS_VERSION, name: 'Atlas Test', email: `atlas-${crypto.randomUUID()}@example.test`, password },
   })
   expect(account.status()).toBe(201)
   try {

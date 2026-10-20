@@ -286,7 +286,7 @@ export default function MyCoursesWorkspace(props: {
 
   if (!account.user) {
     return (
-      <section className="study-workspace mycourses-workspace" aria-label="Mes cours MyCorpus Study">
+      <section className="study-workspace mycourses-workspace" aria-label="Mes cours MyCorpus Study"><p className="account-privacy">Importez uniquement des supports autorisés, sans données de patient. L’OCR, les synthèses et questions peuvent utiliser une IA et comporter des erreurs. Vérifiez le document original. <a href="/confidentialite.html#ia">Traitement des documents et fournisseurs</a>.</p>
         <header className="mycourses-header">
           <div>
             <span className="study-eyebrow">MYCORPUS STUDY · ESPACE PERSONNEL</span>
@@ -805,7 +805,7 @@ export default function MyCoursesWorkspace(props: {
 
   // --- Dashboard View (List of courses + Upload) ---
   return (
-    <section className="study-workspace mycourses-workspace" aria-label="Mes cours MyCorpus Study">
+    <section className="study-workspace mycourses-workspace" aria-label="Mes cours MyCorpus Study"><p className="account-privacy">Importez uniquement des supports autorisés, sans données de patient. L’OCR, les synthèses et questions peuvent utiliser une IA et comporter des erreurs. Vérifiez le document original. <a href="/confidentialite.html#ia">Traitement des documents et fournisseurs</a>.</p>
       <header className="mycourses-header">
         <div>
           <span className="study-eyebrow">MYCORPUS STUDY · VOS DOCUMENTS PERSONNELS</span>

@@ -115,3 +115,7 @@ L’application est pédagogique et ne constitue pas un outil de diagnostic. Les
 La validation automatisée principale utilise Chromium. Safari, Firefox et les appareils physiques nécessitent des vérifications complémentaires. Les limites de performances dépendent du réseau et du matériel WebGL.
 
 Les bases locales, secrets, caches, builds et captures générées ne sont pas versionnés. Les contributions doivent préserver les identifiants anatomiques, les liens, les données des comptes et les licences des ressources.
+
+## Préparation juridique (branche dédiée)
+
+Les documents préparatoires et mécanismes de compte sont décrits dans [l’audit initial](docs/legal/audit-initial.md) et le [dossier de finalisation](docs/legal/finalisation.md). Les champs `[À COMPLÉTER]` et la validation humaine sont bloquants pour la publication commerciale. Aucun paiement ni CGV de vente fictive n’est ajouté.

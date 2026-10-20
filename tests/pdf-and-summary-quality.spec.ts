@@ -1,3 +1,4 @@
+import {TERMS_VERSION} from '../shared/legal.mjs'
 import {readFileSync} from 'node:fs'
 import {test,expect} from '@playwright/test'
 import {extractStudyPdf} from '../server/study/pdf-layout.mjs'
@@ -10,7 +11,7 @@ test('Connexion depuis Mes cours : le moteur Gemini est rechargé après authent
   await page.getByLabel('Prénom ou pseudonyme').fill('Qualité après connexion')
   await page.getByLabel('Adresse e-mail').fill(`login-quality-${crypto.randomUUID()}@example.test`)
   await page.getByLabel('Mot de passe',{exact:true}).fill('Quality-test-solide-2026')
-  await page.getByRole('button',{name:'Créer mon compte',exact:true}).click()
+  await page.getByRole('checkbox',{name:/J’accepte les/}).check();await page.getByRole('button',{name:'Créer mon compte',exact:true}).click()
   await expect(page.getByRole('heading',{name:/Bonjour/})).toBeVisible()
   await page.getByRole('button',{name:'J’ai conservé mon code'}).click()
   await page.getByRole('button',{name:'Fermer le profil'}).click()
@@ -60,7 +61,7 @@ test('Téléchargement PDF direct : A4, texte sélectionnable, accents, formules
 })
 
 test('Cours importé : section complète et synthèse Gemini prévisualisée avec preuve avant sauvegarde',async({page})=>{
-  const registered=await page.request.post('/api/account/register',{headers:{'x-mycorpus-request':'1'},data:{name:'Qualité',email:`quality-${crypto.randomUUID()}@example.test`,password:'Quality-test-solide-2026'}})
+  const registered=await page.request.post('/api/account/register',{headers:{'x-mycorpus-request':'1'},data:{acceptTerms:true,termsVersion:TERMS_VERSION,name:'Qualité',email:`quality-${crypto.randomUUID()}@example.test`,password:'Quality-test-solide-2026'}})
   expect(registered.ok()).toBeTruthy()
   const text='La glycolyse se déroule dans le cytoplasme. '.repeat(20)+'La dernière notion du cours est entièrement accessible.'
   const document={id:'quality-document',title:'Cours de biochimie',filename:'cours.pdf',pageCount:2,fileSize:500,status:'ready',createdAt:'now',updatedAt:'now',sectionCount:1,questionCount:0,hasSummary:false,sections:[{id:'section',title:'Métabolisme',sectionOrder:1,startPage:1,endPage:2,content:text,tokenCount:200}],summary:null}

@@ -1,3 +1,4 @@
+import {TERMS_VERSION} from '../shared/legal.mjs'
 import {test} from 'node:test'
 import assert from 'node:assert/strict'
 import {mkdtempSync,rmSync} from 'node:fs'
@@ -33,8 +34,8 @@ async function fixture() {
     return {status,data:output?JSON.parse(output):null,cookie:(Array.isArray(cookies)?cookies:[cookies]).map(c=>c.split(';')[0]).find(c=>c.startsWith('mycorpus_session='))}
   }
   const call=async(route,...args)=>callWith(route.startsWith('/api/account/')?account:route.startsWith('/api/study/')?study:flash)(route,...args)
-  const alice=await call('/api/account/register','POST',{email:'alice@example.test',name:'Alice',password})
-  const bob=await call('/api/account/register','POST',{email:'bob@example.test',name:'Bob',password})
+  const alice=await call('/api/account/register','POST',{acceptTerms:true,termsVersion:TERMS_VERSION,email:'alice@example.test',name:'Alice',password})
+  const bob=await call('/api/account/register','POST',{acceptTerms:true,termsVersion:TERMS_VERSION,email:'bob@example.test',name:'Bob',password})
   const deck=(await call(`${root}/decks`,'POST',{name:'Cours'},alice.cookie)).data.deck
   const db=new DatabaseSync(path.join(directory,'mycorpus.sqlite'));db.exec('PRAGMA foreign_keys=ON;')
   const addDoc=(id,userId,text=source)=>{

@@ -38,7 +38,7 @@ test('parcours complet Mes cours : connexion → upload PDF → extraction → s
   await page.getByLabel('Prénom ou pseudonyme').fill('Alex')
   await page.getByLabel('Adresse e-mail').fill(email)
   await page.getByLabel('Mot de passe', { exact: true }).fill(password)
-  await page.getByRole('button', { name: 'Créer mon compte', exact: true }).click()
+  await page.getByRole('checkbox',{name:/J’accepte les/}).check();await page.getByRole('button', { name: 'Créer mon compte', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Bonjour, Alex.' })).toBeVisible({ timeout: 15000 })
   await page.getByRole('button', { name: 'J’ai conservé mon code' }).click()
   await page.getByRole('button', { name: 'Fermer le profil' }).click()

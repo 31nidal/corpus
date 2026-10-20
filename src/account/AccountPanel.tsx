@@ -1,3 +1,4 @@
+import {TERMS_VERSION} from '../../shared/legal.mjs'
 import {useEffect,useState} from 'react'
 import {CheckCircle2,Download,History,LogOut,ShieldCheck,UserRound,X} from 'lucide-react'
 import courses from '../study/courseIndex.json'
@@ -64,8 +65,8 @@ export default function AccountPanel({close}:{close:()=>void}){
  const submit=(form:HTMLFormElement)=>action(async()=>{
   const data=Object.fromEntries(new FormData(form))
   if(account.user)await flush()
-  const result=await request(mode,data)
-  if(mode==='delete'){activate({user:null});setMode('login');return}
+  const result=await request(mode,mode==='register'?{...data,acceptTerms:data.acceptTerms==='on',termsVersion:TERMS_VERSION}:data)
+  if(mode==='delete'){try{if(account.user)sessionStorage.removeItem('mycorpus-outbox-'+account.user.id)}catch{/* Server deletion succeeded even if browser storage is blocked. */}activate({user:null});setMode('login');return}
   if(mode==='password'){activate(result);setMode('login');setError('Mot de passe modifié.');return}
   activate(result)
  })
@@ -89,7 +90,7 @@ export default function AccountPanel({close}:{close:()=>void}){
 
    {!account.available?<p role="status">Les comptes attendent l’activation du stockage persistant sur le serveur. Vous pouvez continuer en mode invité.</p>:(!account.user||mode==='password'||mode==='delete')?<>
     {!account.user&&<div className="account-tabs"><button aria-pressed={mode==='login'} onClick={()=>setMode('login')}>Connexion</button><button aria-pressed={mode==='register'} onClick={()=>setMode('register')}>Créer un compte</button></div>}
-    {!account.user&&account.googleAvailable&&(mode==='login'||mode==='register')&&<><a className="google-action" href="/api/account/google/start"><GoogleMark/>Continuer avec Google</a><p className="account-google-privacy">En continuant, vous acceptez l’utilisation de votre nom et de votre adresse Google pour votre compte. <a href="/confidentialite.html" target="_blank">Confidentialité</a></p><div className="account-divider"><span/>ou avec votre adresse e-mail<span/></div></>}
+    {!account.user&&account.googleAvailable&&(mode==='login'||mode==='register')&&<><a className="google-action" href="/api/account/google/start"><GoogleMark/>Continuer avec Google</a><p className="account-google-privacy">Google transmet votre nom et votre adresse pour votre compte. Une étape vous permet de lire et accepter les CGU avant de continuer. <a href="/confidentialite.html" target="_blank">Confidentialité</a></p><div className="account-divider"><span/>ou avec votre adresse e-mail<span/></div></>}
     <form onSubmit={event=>{event.preventDefault();void submit(event.currentTarget)}}>
      {mode==='register'&&<label>Prénom ou pseudonyme<input name="name" autoComplete="nickname" minLength={2} maxLength={60} required/></label>}
      {!account.user&&<label>Adresse e-mail<input name="email" type="email" autoComplete="email" maxLength={254} required/></label>}
@@ -99,6 +100,7 @@ export default function AccountPanel({close}:{close:()=>void}){
      {mode==='password'&&!account.user?.hasPassword&&<p className="account-privacy">Vous pourrez ensuite vous connecter avec Google ou avec ce mot de passe. Un code de récupération vous sera remis une seule fois.</p>}
      {mode==='delete'&&!account.user?.hasPassword&&<p className="account-privacy">Votre session Google active permet de confirmer cette suppression.</p>}
      {mode==='delete'&&<label className="account-check"><input type="checkbox" required/>Je confirme la suppression définitive de mon compte et de tout son historique.</label>}
+     {mode==='register'&&<label className="account-check"><input name="acceptTerms" type="checkbox" required/><span>J’accepte les <a href="/cgu.html" target="_blank" rel="noopener">CGU</a> (version {TERMS_VERSION}).</span></label>}
      {mode==='register'&&<p className="account-privacy">Vos données d’apprentissage sont conservées jusqu’à la suppression de votre compte. Vous pourrez les exporter ou les supprimer. N’inscrivez pas de données médicales personnelles dans vos notes. L’adresse saisie dans ce formulaire n’est pas vérifiée. <a href="/confidentialite.html" target="_blank">Lire la politique de confidentialité.</a></p>}
      <button className="primary-action" disabled={busy}>{busy?'Veuillez patienter…':mode==='register'?'Créer mon compte':mode==='recover'?'Récupérer mon compte':mode==='password'?(account.user?.hasPassword?'Modifier mon mot de passe':'Créer mon mot de passe'):mode==='delete'?'Supprimer définitivement':'Me connecter'}</button>
     </form>
@@ -113,7 +115,7 @@ export default function AccountPanel({close}:{close:()=>void}){
      <button disabled={busy} onClick={()=>void action(async()=>{importGuest();await flush()})}>Importer mes données invitées</button>
      <button disabled={busy} onClick={()=>void exportData()}><Download size={15}/>Exporter mes données</button>
     </div>
-    <small>L’import ajoute les rubriques absentes du compte. Les données invitées restent sur cet appareil.</small>
+    <p className="account-privacy">L’export JSON contient vos données de compte, cours, cartes et révisions. Les originaux PDF et images se téléchargent séparément via les liens de cet export, en restant connecté. Pour les signalements envoyés sans compte, consultez les <a href="/confidentialite.html#droits">modalités d’exercice des droits</a>.</p><small>L’import ajoute les rubriques absentes du compte. Les données invitées restent sur cet appareil.</small>
     <h3><History size={18}/>Mon historique</h3><p>Explorations, cours consultés, quiz, notes et progression.</p>
     <ol className="account-history">{items.map(entry=><HistoryEntry key={entry.seq} entry={entry} close={close}/>)}</ol>
     {!items.length&&<p>Votre prochaine activité apparaîtra ici.</p>}

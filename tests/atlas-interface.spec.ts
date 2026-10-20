@@ -54,7 +54,7 @@ test('API : le format supprimé est refusé, la carte manuelle classique reste d
  await page.getByLabel('Prénom ou pseudonyme').fill('Atlas interface')
  await page.getByLabel('Adresse e-mail').fill(`atlas-ui-${crypto.randomUUID()}@example.test`)
  await page.getByLabel('Mot de passe',{exact:true}).fill('Atlas-ui-test-solide-2026')
- await page.getByRole('button',{name:'Créer mon compte',exact:true}).click()
+ await page.getByRole('checkbox',{name:/J’accepte les/}).check();await page.getByRole('button',{name:'Créer mon compte',exact:true}).click()
  await page.getByRole('button',{name:'J’ai conservé mon code'}).click()
  await page.getByRole('button',{name:'Fermer le profil'}).click()
  const headers={'x-mycorpus-request':'1'}
