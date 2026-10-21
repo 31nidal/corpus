@@ -1,5 +1,7 @@
 # Intégration juridique isolée depuis main
 
+Actualisation : voir [anonymat de l’éditeur et vérifications de production](anonymat-et-production.md). La demande d’anonymat remplace la demande de coordonnées personnelles publiques ; les conditions LCEN et l’information RGPD restent à résoudre.
+
 Branche : `chore/legal-publication`, créée depuis `origin/main` (`cf63e29`).
 
 ## Périmètre
