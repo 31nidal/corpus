@@ -1,5 +1,7 @@
 # Anonymat de l’éditeur et vérifications de production
 
+Cible actuelle à étudier : [Gemini payant et produit réservé aux majeurs](gemini-paid-adults-v1.md). Les constats précédents sur l’ouverture aux mineurs décrivent l’état existant, pas la nouvelle cible ; aucune restriction n’est réputée déployée.
+
 Vérification du 21 octobre 2026. Document de préparation, aucune publication autorisée par ce bilan. Aucune identité personnelle, clé, donnée utilisateur ou pièce justificative privée ne doit être ajoutée au dépôt.
 
 ## LCEN : possibilité conditionnelle

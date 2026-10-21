@@ -5,11 +5,11 @@
   },
   "production_providers_and_billing": {
     "status": "pending",
-    "evidence": ""
+    "evidence": "Gemini conservé comme moteur principal sur décision de l’éditeur. Projet/modèle effectifs, association de clé et statut payant/Cloud Billing non confirmés ; contrôles à établir."
   },
   "minors_and_gemini_contract": {
     "status": "blocked",
-    "evidence": "Conditions Gemini API consultées le 21 octobre 2026 : interdiction des API Clients susceptibles d’être utilisés par des moins de 18 ans. https://ai.google.dev/gemini-api/terms"
+    "evidence": "Cible proposée : produit réservé aux 18 ans et plus avec contrôle effectif. Dispositif, preuve de majorité et transition non implémentés ni validés. Voir gemini-paid-adults-v1.md. Les conditions ne sont pas considérées satisfaites par une simple clause."
   },
   "hosting_transfers_and_backups": {
     "status": "pending",

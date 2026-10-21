@@ -1,5 +1,7 @@
 # Intégration juridique isolée depuis main
 
+Cible actuelle à étudier : [Gemini payant et produit réservé aux majeurs](gemini-paid-adults-v1.md). Les constats précédents sur l’ouverture aux mineurs décrivent l’état existant, pas la nouvelle cible ; aucune restriction n’est réputée déployée.
+
 Actualisation : voir [anonymat de l’éditeur et vérifications de production](anonymat-et-production.md). La demande d’anonymat remplace la demande de coordonnées personnelles publiques ; les conditions LCEN et l’information RGPD restent à résoudre.
 
 Branche : `chore/legal-publication`, créée depuis `origin/main` (`cf63e29`).
