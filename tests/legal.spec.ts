@@ -8,7 +8,7 @@ for(const width of [320,375,768,1440])test(`documents juridiques publics et lisi
   expect(response?.status()).toBe(200)
   await expect(page.getByRole('heading',{name:title,exact:true})).toBeVisible()
   await expect(page.getByRole('navigation',{name:'Sommaire'})).toBeVisible()
-  await expect(page.locator('time')).toHaveAttribute('datetime','2026-10-20')
+  await expect(page.locator('time')).toHaveAttribute('datetime','2026-10-21')
   expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
   for(const link of await page.getByRole('navigation',{name:'Sommaire'}).getByRole('link').all()){
    const href=await link.getAttribute('href');expect(await page.locator(href!).count()).toBe(1)

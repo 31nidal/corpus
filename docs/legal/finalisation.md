@@ -1,6 +1,6 @@
 # Préparation juridique — intégration et finalisation
 
-Branche : `chore/legal-readiness`. Ni fusion dans main ni déploiement. L’éditeur a confirmé que les informations professionnelles demandées n’existent pas encore : aucun nom, statut ou numéro n’a été inventé.
+Branche : `chore/legal-readiness`. Ni fusion dans main ni déploiement. Le 21 octobre 2026, l’éditeur confirme que mycorpus3d.com est déjà public, indépendant, gratuit et en développement, sans paiement ni abonnement. Les textes sont adaptés à cette version actuelle, sans supposer l’existence ou la nécessité d’une société. Les renseignements réels manquants restent à compléter. Voir la [liste actuelle des blocages de publication](blocages-publication.md).
 
 ## Livré techniquement
 
@@ -16,11 +16,11 @@ Branche : `chore/legal-readiness`. Ni fusion dans main ni déploiement. L’édi
 
 ## Obligations restant ouvertes
 
-Les pages ne permettent pas de déclarer le service conforme tant que les champs et l’exploitation ne sont pas validés. La liste détaillée des renseignements attendus figure dans [l’audit initial](audit-initial.md#décisions-et-informations-requises).
+Les pages préparatoires ne doivent pas être publiées tant que les champs et l’exploitation ne sont pas validés. Ces points concernent aussi le service gratuit déjà accessible ; ils ne sont pas reportés à une future commercialisation. La liste détaillée des renseignements attendus figure dans [l’audit initial](audit-initial.md#décisions-et-informations-requises).
 
 | À décider/vérifier | Pourquoi ce n’est pas finalisé dans le code |
 |---|---|
-| Éditeur, contact, directeur, hébergeur | Renseignements inexistants ou non vérifiés, à fournir avant publication. Même un projet non constitué doit faire déterminer les mentions correspondant à sa situation réelle. |
+| Responsable, contact, publication et hébergeur | Identité et coordonnées réelles à vérifier avant publication. Le régime professionnel/non professionnel doit être déterminé ; SIREN, TVA et capital ne sont pas automatiquement requis pour ce projet. |
 | Prestataires IA/Google/Railway et transferts | La configuration et les contrats réels ne se déduisent pas du dépôt. Pas de promesse de stockage UE ni de non-entraînement inventée. |
 | Durées des comptes inactifs, historiques, signalements, logs et sauvegardes | Pas de durée universelle ; arbitrage proportionné puis purge et tests à prévoir. Le délai actuel jusqu’à suppression ne vaut pas justification de conservation indéfinie. |
 | Contact droits et traitement des signalements anonymes | Export/effacement self-service couverts, mais le contact RGPD doit fonctionner pour rectification/opposition/limitation et signalements hors compte. |
@@ -31,7 +31,7 @@ Les pages ne permettent pas de déclarer le service conforme tant que les champs
 | Vente future | CGV, prix, garanties numériques, médiation, rétractation, résiliation et information précontractuelle à définir avant ajout du paiement. |
 | Droits des contenus | Vérifier titularité des textes/logo/schémas, conditions des supports importés et divergence de licence BodyParts3D avec le fournisseur/juriste. |
 
-Un juriste doit relire les CGU, les bases légales, le régime mineurs/établissements, les contrats/transferts, la propriété et le futur modèle de vente. L’exploitant doit vérifier les faits et les procédures ; la rédaction ne remplace pas ces vérifications.
+Un juriste doit relire les CGU, les bases légales, le régime mineurs/établissements, les contrats/transferts, la propriété. Un éventuel modèle de vente serait un dossier ultérieur, hors du périmètre gratuit actuel. L’exploitant doit vérifier les faits et les procédures ; la rédaction ne remplace pas ces vérifications.
 
 ## Maintenance des documents
 
