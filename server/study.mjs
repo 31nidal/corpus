@@ -1,3 +1,4 @@
+import {touchAccount} from './retention.mjs'
 import {getOrResetStudyQuota, reserveGenerationQuota, releaseGenerationQuota} from './study/quota.mjs'
 export {computeNextMonthlyReset, getOrResetStudyQuota, checkGenerationQuota, reserveGenerationQuota, releaseGenerationQuota} from './study/quota.mjs'
 import { DatabaseSync } from 'node:sqlite'
@@ -124,8 +125,10 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
   const authenticate = (req, d) => {
     const token = cookieValue(req, 'mycorpus_session')
     if (!token) return null
-    return d.prepare('SELECT u.id, u.email, u.name FROM users u JOIN sessions s ON s.user_id = u.id WHERE s.token = ? AND s.expires > ?')
+    const user=d.prepare('SELECT u.id, u.email, u.name FROM users u JOIN sessions s ON s.user_id = u.id WHERE s.token = ? AND s.expires > ?')
       .get(digest(token), Date.now()) || null
+    if(user)touchAccount(d,user.id)
+    return user
   }
 
   const checkQuota = (userId, d, fileSize = 0) => {

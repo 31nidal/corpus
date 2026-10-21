@@ -80,12 +80,12 @@ export const medicalPlates: Record<string, MedicalPlate> = {
       'Coupe frontale schématique montrant les 4 cavités cardiaques, les valves atrioventriculaires et sigmoïdes, ainsi que la séparation stricte par les septums interatrial et interventriculaire.',
     category: 'Anatomie cardiovasculaire',
     attribution: {
-      author: 'Équipe MyCorpus',
+      author: 'MyCorpus3D — titularité à confirmer',
       title: 'Anatomie interne du cœur : cavités, valves et flux sanguin',
-      source: 'Conception vectorielle originale MyCorpus',
-      originalUrl: 'https://mycorpus.med',
-      license: 'Propriétaire MyCorpus / Libre pour les utilisateurs',
-      licenseUrl: 'https://mycorpus.med',
+      source: 'Schéma vectoriel MyCorpus3D — provenance à confirmer',
+      originalUrl: '/propriete-intellectuelle.html',
+      license: 'Conditions de réutilisation à préciser',
+      licenseUrl: '/propriete-intellectuelle.html',
       modifications:
         'Tracé vectoriel SVG haute fidélité représentant les 4 cavités, les trabécules, les piliers tendineux, les 4 valves cardiaques et la crosse aortique.'
     },
@@ -179,12 +179,12 @@ export const medicalPlates: Record<string, MedicalPlate> = {
       'Coupe frontale schématique montrant les 4 cavités cardiaques, les valves atrioventriculaires et sigmoïdes, ainsi que la séparation stricte par les septums interatrial et interventriculaire.',
     category: 'Anatomie cardiovasculaire',
     attribution: {
-      author: 'Équipe MyCorpus',
+      author: 'MyCorpus3D — titularité à confirmer',
       title: 'Anatomie interne du cœur : cavités, valves et flux sanguin',
-      source: 'Conception vectorielle originale MyCorpus',
-      originalUrl: 'https://mycorpus.med',
-      license: 'Propriétaire MyCorpus / Libre pour les utilisateurs',
-      licenseUrl: 'https://mycorpus.med',
+      source: 'Schéma vectoriel MyCorpus3D — provenance à confirmer',
+      originalUrl: '/propriete-intellectuelle.html',
+      license: 'Conditions de réutilisation à préciser',
+      licenseUrl: '/propriete-intellectuelle.html',
       modifications:
         'Tracé vectoriel SVG haute fidélité représentant les 4 cavités, les trabécules, les piliers tendineux, les 4 valves cardiaques et la crosse aortique.'
     },
@@ -333,12 +333,12 @@ export const medicalPlates: Record<string, MedicalPlate> = {
       'Coupe coronale schématique du parenchyme rénal montrant la disposition concentrique du cortex externe, des pyramides médullaires de Malpighi et de l’arbre caliciel conduisant l’urine au bassinet.',
     category: 'Anatomie urogénitale',
     attribution: {
-      author: 'Équipe MyCorpus',
+      author: 'MyCorpus3D — titularité à confirmer',
       title: 'Coupe coronale macroscopique du rein humain',
-      source: 'Conception vectorielle originale MyCorpus',
-      originalUrl: 'https://mycorpus.med',
-      license: 'Propriétaire MyCorpus / Libre pour les utilisateurs',
-      licenseUrl: 'https://mycorpus.med',
+      source: 'Schéma vectoriel MyCorpus3D — provenance à confirmer',
+      originalUrl: '/propriete-intellectuelle.html',
+      license: 'Conditions de réutilisation à préciser',
+      licenseUrl: '/propriete-intellectuelle.html',
       modifications:
         'Tracé vectoriel SVG haute fidélité détaillant le cortex rénal, les colonnes de Bertin, les pyramides de Malpighi striées, les papilles, l’arbre caliciel et le pédicule vasculaire.'
     },
@@ -467,7 +467,7 @@ export const medicalPlates: Record<string, MedicalPlate> = {
       license: 'CC BY 2.5 Generic',
       licenseUrl: 'https://creativecommons.org/licenses/by/2.5/',
       modifications:
-        'Vectorisation anatomique des scissures, lobation droite (3 lobes) et gauche (2 lobes avec incisure cardiaque), arbre bronchique et annotations en français par MyCorpus.'
+        'Schéma SVG et annotations françaises dans le code du projet ; référence déclarée conservée, filiation exacte du tracé à confirmer.'
     },
     points: [
       {
@@ -532,7 +532,7 @@ export const medicalPlates: Record<string, MedicalPlate> = {
       license: 'CC BY 2.5 Generic',
       licenseUrl: 'https://creativecommons.org/licenses/by/2.5/',
       modifications:
-        'Nettoyage vectoriel des textes anglais, adaptation sémantique des groupes interactifs, surbrillance bidirectionnelle et annotations pédagogiques en français par MyCorpus.'
+        'Schéma SVG interactif et annotations françaises dans le code du projet ; référence déclarée conservée, filiation exacte du tracé à confirmer.'
     },
     points: [
       {

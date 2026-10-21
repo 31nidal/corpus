@@ -132,3 +132,9 @@ Les tests techniques ne constituent pas une validation médicale ou clinique du 
 `npm run legal:check` vérifie les pages statiques par rapport au générateur et à la version des CGU. Le build lance aussi ce contrôle. `tests/legal.spec.ts` couvre les pages publiques à 320/375/768/1440 px, les liens, l’absence de consentement fictif et l’inscription explicite. `tests/accounts.test.mjs` vérifie la preuve e-mail/Google, les versions refusées, la non-rétroactivité, l’export isolé et la suppression des fichiers.
 
 Pour éviter de réutiliser un serveur de développement connecté à une IA distante : `PLAYWRIGHT_PORT=5175 npx playwright test tests/legal.spec.ts tests/accounts.spec.ts tests/my-courses.spec.ts tests/flashcard-menu.spec.ts`. Le nouveau serveur utilise les générateurs locaux déterministes. Ne pas pointer ces tests de création/suppression de comptes vers la production.
+
+### Conservation V1 et publication
+
+`npm run test:privacy` teste la politique de conservation sur des bases temporaires. `npm run privacy:retention` produit un aperçu dans la base configurée (aucun effacement de contenu ; création possible des métadonnées d’observation). L’application requiert `RETENTION_POLICY_APPROVED=1` et `--apply` ; ne pas exécuter sur la production avant validation opérationnelle et préavis réels. Le serveur préparé programme la maintenance quotidienne uniquement avec ce flag.
+
+`npm run legal:publication-check` est un contrôle de préparation distinct du build : il doit actuellement refuser les champs manquants, la version draft et la sélection de Gemini pour l’accueil des mineurs décidé par l’éditeur. La réussite future de ce contrôle n’atteste pas la conformité des contrats ni des configurations de production.

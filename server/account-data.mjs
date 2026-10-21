@@ -2,7 +2,7 @@ import {rmSync} from 'node:fs'
 import path from 'node:path'
 
 // Read only tables explicitly reviewed for the account access export. No authentication secrets.
-const tables=['entries','history','identities','account_terms_acceptances','study_documents','study_pdf_extractions','study_pdf_pages','study_sections','study_summaries','study_questions','study_quotas','flashcard_decks','flashcard_notes','flashcards','flashcard_reviews','flashcard_review_logs','flashcard_assets','flashcard_retired_content','flashcard_drafts','flashcard_generation_receipts','flashcard_save_requests','flashcard_legacy_reviews','ai_generation_usage']
+const tables=['account_retention','account_value_activity','entries','history','identities','account_terms_acceptances','study_documents','study_pdf_extractions','study_pdf_pages','study_sections','study_summaries','study_questions','study_quotas','flashcard_decks','flashcard_notes','flashcards','flashcard_reviews','flashcard_review_logs','flashcard_assets','flashcard_retired_content','flashcard_drafts','flashcard_generation_receipts','flashcard_save_requests','flashcard_legacy_reviews','ai_generation_usage']
 export function exportAccountData(db,userId){
  const data={}
  for(const table of tables){

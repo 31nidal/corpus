@@ -1,5 +1,7 @@
 # Préparation juridique — intégration et finalisation
 
+Dernière vérification : [accès de production, droits, Gemini et maintenance de conservation](verification-production-et-droits.md). Cette mise à jour remplace les points déclarés non implémentés dans le bilan initial ci-dessous.
+
 Branche : `chore/legal-readiness`. Ni fusion dans main ni déploiement. Le 21 octobre 2026, l’éditeur confirme que mycorpus3d.com est déjà public, indépendant, gratuit et en développement, sans paiement ni abonnement. Les textes sont adaptés à cette version actuelle, sans supposer l’existence ou la nécessité d’une société. Les renseignements réels manquants restent à compléter. Voir la [liste actuelle des blocages de publication](blocages-publication.md).
 
 ## Livré techniquement

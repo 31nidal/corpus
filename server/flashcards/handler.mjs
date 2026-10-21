@@ -1,3 +1,4 @@
+import {touchAccount} from '../retention.mjs'
 import {handleDraftReview} from './review/handler.mjs'
 import {generateWithQuota} from '../ai/generation.mjs'
 import {DatabaseSync} from 'node:sqlite'
@@ -81,6 +82,7 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
       const d = getDb(), token = cookieValue(req, 'mycorpus_session')
       const user = token && d.prepare('SELECT u.id,u.email,u.name FROM users u JOIN sessions s ON s.user_id=u.id WHERE s.token=? AND s.expires>?').get(digest(token), Date.now())
       if (!user) return send(401, {error: 'Connexion requise pour utiliser les flashcards.'})
+      touchAccount(d,user.id)
       const origin = (config.APP_ORIGIN || `${config.RAILWAY_ENVIRONMENT_ID ? 'https' : 'http'}://${req.headers.host || 'localhost:5173'}`).replace(/\/$/, '')
       if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method) && (req.headers['x-mycorpus-request'] !== '1' || (req.headers.origin && req.headers.origin !== origin))) return send(403, {error: 'Origine de la requête refusée.'})
       const assetsDir = getAssetsDir()

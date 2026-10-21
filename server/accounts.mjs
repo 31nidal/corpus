@@ -1,3 +1,4 @@
+import {touchAccount,touchValue} from './retention.mjs'
 import {TERMS_VERSION} from '../shared/legal.mjs'
 import {exportAccountData,removeAccountFiles} from './account-data.mjs'
 import {validAnatomyProgress, mergeAnatomyProgress} from '../shared/anatomyProgress.mjs'
@@ -148,12 +149,14 @@ export function createAccountHandler(config = process.env, dependencies = {}) {
       const redirectUri = config.GOOGLE_REDIRECT_URI || `${origin}/api/account/google/callback`
       const token = cookieValue(req, 'mycorpus_session')
       const user = d.prepare('SELECT u.id,u.email,u.name,u.password_enabled AS passwordEnabled FROM users u JOIN sessions s ON s.user_id=u.id WHERE s.token=? AND s.expires>?').get(digest(token), Date.now())
+      if(user)touchAccount(d,user.id)
       const state = id => Object.fromEntries(d.prepare('SELECT key,value FROM entries WHERE user_id=?').all(id).map(row => [row.key, row.value]))
       const googleLinked = id => Boolean(id && d.prepare("SELECT 1 FROM identities WHERE provider='google' AND user_id=?").get(id))
       const publicUser = account => account ? {id: account.id, email: account.email, name: account.name, hasPassword: Boolean(account.passwordEnabled ?? account.password_enabled), googleLinked: googleLinked(account.id)} : null
       const accountResponse = account => ({available: true, user: publicUser(account), state: account ? state(account.id) : {}, google: {available: googleAvailable, linked: googleLinked(account?.id)}})
       const addCookie = (name, value, maxAge) => responseCookies.push(`${name}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secure ? '; Secure' : ''}`)
       const session = account => {
+        touchAccount(d,account.id)
         const sessionToken = randomBytes(32).toString('base64url')
         d.prepare('DELETE FROM sessions WHERE expires<?').run(Date.now())
         d.prepare('INSERT INTO sessions VALUES(?,?,?)').run(digest(sessionToken), account.id, Date.now() + 2592000000)
@@ -381,6 +384,7 @@ export function createAccountHandler(config = process.env, dependencies = {}) {
           for (const operation of body.operations) {
             const inserted = d.prepare('INSERT OR IGNORE INTO history(user_id,id,kind,payload,created) VALUES(?,?,?,?,?)').run(user.id, operation.id, operation.kind, JSON.stringify(operation.payload), new Date().toISOString())
             if (inserted.changes && operation.kind === 'value') {
+              touchValue(d,user.id,operation.payload.key)
               if (operation.payload.value === null) d.prepare('DELETE FROM entries WHERE user_id=? AND key=?').run(user.id, operation.payload.key)
               else d.prepare('INSERT INTO entries VALUES(?,?,?) ON CONFLICT(user_id,key) DO UPDATE SET value=excluded.value').run(user.id, operation.payload.key, mergeValue(operation.payload.key, operation.payload.value, operation.payload.before, d.prepare('SELECT value FROM entries WHERE user_id=? AND key=?').get(user.id, operation.payload.key)?.value))
             }

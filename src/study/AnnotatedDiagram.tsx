@@ -482,11 +482,11 @@ export default function AnnotatedDiagram({plate, courseId, renderSvg}: Annotated
       {plate.attribution && (
         <div className="medical-attribution" role="contentinfo" aria-label="Attribution et crédits de l'illustration">
           <p>
-            Illustration adaptée de <strong>{plate.attribution.author}</strong> ({plate.attribution.title}) —{' '}
+            Crédits : <strong>{plate.attribution.author}</strong> ({plate.attribution.title}) —{' '}
             <a href={plate.attribution.licenseUrl} target="_blank" rel="noopener noreferrer">
               {plate.attribution.license}
             </a>
-            . Modifications et annotations : {plate.attribution.modifications}
+            . <a href={plate.attribution.originalUrl} target="_blank" rel="noopener noreferrer">Source et provenance</a>. Modifications et annotations : {plate.attribution.modifications}
           </p>
         </div>
       )}
