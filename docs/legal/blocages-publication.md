@@ -1,5 +1,7 @@
 # Publication des pages — décision en attente
 
+Actualisation : voir [les faits techniques vérifiés et les quatre dernières réponses attendues](v1-decisions.md). Cette synthèse réduit les questions restantes et remplace les demandes déjà résolues techniquement.
+
 État du 21 octobre 2026 : MyCorpus3D est déjà public, indépendant, gratuit et en développement, sans paiement ni abonnement (confirmation de l’éditeur). La branche `chore/legal-readiness` prépare les changements ; elle ne doit pas être fusionnée/déployée avec les documents incomplets. La gratuité ne supprime pas l’information due aux utilisateurs actuels.
 
 ## Éléments bloquants à fournir ou décider
