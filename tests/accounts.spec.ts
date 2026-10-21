@@ -42,7 +42,7 @@ test('Google : bouton français et politique de confidentialité accessibles',as
  await page.setViewportSize({width:393,height:852})
  await expect(google).toBeVisible()
  await page.goto('/confidentialite.html')
- await expect(page.getByRole('heading',{name:'Politique de confidentialité.'})).toBeVisible()
+ await expect(page.getByRole('heading',{name:'Politique de confidentialité',exact:true})).toBeVisible()
  await expect(page.getByRole('heading',{name:'Connexion avec Google'})).toBeVisible()
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(393)
 })

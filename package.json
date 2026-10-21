@@ -23,7 +23,12 @@
     "test:anatomy": "node --experimental-strip-types --experimental-loader=./scripts/ts-loader.mjs --test tests/anatomy-foundations.test.mjs tests/female-detailed.test.mjs",
     "audit:anatomy": "node scripts/audit-anatomy-assets.mjs",
     "import:anatomy-relations": "python3 scripts/build-anatomical-graph.py",
-    "import:female-detailed": "node scripts/build-female-detailed.mjs"
+    "import:female-detailed": "node scripts/build-female-detailed.mjs",
+    "legal:build": "node scripts/build-legal-pages.mjs",
+    "legal:check": "node scripts/build-legal-pages.mjs --check",
+    "legal:publication-check": "node scripts/check-legal-publication.mjs",
+    "prebuild": "npm run legal:check",
+    "test:legal": "node --test tests/legal-pages.test.mjs"
   },
   "dependencies": {
     "@fontsource-variable/dm-sans": "^5.3.0",

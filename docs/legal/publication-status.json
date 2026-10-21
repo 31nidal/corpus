@@ -1,0 +1,10 @@
+{
+  "editor_and_contact": {"status":"pending","evidence":""},
+  "production_providers_and_billing": {"status":"pending","evidence":""},
+  "minors_and_gemini_contract": {"status":"blocked","evidence":"Conditions Gemini API consultées le 21 octobre 2026 : interdiction des API Clients susceptibles d’être utilisés par des moins de 18 ans. https://ai.google.dev/gemini-api/terms"},
+  "hosting_transfers_and_backups": {"status":"pending","evidence":""},
+  "retention_and_rights_procedures": {"status":"pending","evidence":""},
+  "content_rights": {"status":"pending","evidence":""},
+  "terms_and_existing_accounts": {"status":"pending","evidence":""},
+  "production_cookies_inventory": {"status":"pending","evidence":""}
+}
