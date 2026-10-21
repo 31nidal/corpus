@@ -1,3 +1,4 @@
+import {V1_POLICY} from '../../../shared/v1-policy.mjs'
 import {DatabaseSync} from 'node:sqlite'
 import {existsSync} from 'node:fs'
 import path from 'node:path'
@@ -15,3 +16,6 @@ export function purgeRejectedDraftsOnStartup(config=process.env,{db,now=Date.now
       .run(now()-REJECTED_DRAFT_RETENTION_MS).changes
   }finally{if(!db)connection.close()}
 }
+
+// Public server startup: preserve rejected drafts while V1 content purges are off.
+export function runV1DraftMaintenance(config=process.env){return V1_POLICY.automaticRetention?purgeRejectedDraftsOnStartup(config):0}

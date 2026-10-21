@@ -1,9 +1,10 @@
+import {V1_POLICY} from '../shared/v1-policy.mjs'
 import {existsSync} from 'node:fs'
 import {DatabaseSync} from 'node:sqlite'
 import path from 'node:path'
 import {runRetention} from './retention.mjs'
 export function startRetentionMaintenance(config=process.env){
- if(config.RETENTION_POLICY_APPROVED!=='1')return null
+ if(!V1_POLICY.automaticRetention||config.RETENTION_POLICY_APPROVED!=='1')return null
  const directory=config.RAILWAY_VOLUME_MOUNT_PATH||config.ACCOUNT_DATA_DIR||path.resolve('.data')
  const filename=path.join(directory,'mycorpus.sqlite')
  const run=()=>{

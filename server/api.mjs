@@ -4,8 +4,7 @@ import {createFeedbackHandler} from './feedback.mjs'
 import {createStudyHandler} from './study.mjs'
 import {createFlashcardHandler} from './flashcards/handler.mjs'
 import path from 'node:path'
-import {createProvider, createStudyProvider} from './providers.mjs'
-import {createGeminiPedagogy} from './ai/pedagogy.mjs'
+import {V1_POLICY} from '../shared/v1-policy.mjs'
 import {validateAction} from '../shared/actions.mjs'
 const read=p=>JSON.parse(fs.readFileSync(path.resolve(process.cwd(),p.replace(/^\.\.\//,'')),'utf8'))
 const manifests={male:read('../public/models/manifest.json'),female:read('../public/models/female-regions/manifest.json')},labels={...read('../src/data/female-labels.json'),...read('../src/data/french-labels.json')},lessons=read('../src/data/learning.json'),profiles=read('../src/data/profiles.json')
@@ -44,11 +43,12 @@ function localReply(context){
 export function createApiHandler(config=process.env){
  const account=createAccountHandler(config)
  const feedback=createFeedbackHandler(config)
- const provider=createProvider(config)
- const pedagogy=createGeminiPedagogy(config)
- const studyProvider=pedagogy||createStudyProvider(config,{remoteProvider:provider})
+ // No environment value, leftover key, HTTP bridge or Ollama endpoint can select
+ // an external generation provider in this V1. Do not construct legacy clients.
+ const provider=null
+ const studyProvider=null
  const study=createStudyHandler(config,{provider:studyProvider})
- const flashcards=createFlashcardHandler(config,{provider:pedagogy||provider})
+ const flashcards=createFlashcardHandler(config,{provider:null})
  return async(req,res,next)=>{
   const path=req.url?.split('?')[0]
   if(!path?.startsWith('/api/'))return next?.()
@@ -57,7 +57,7 @@ export function createApiHandler(config=process.env){
   if(path.startsWith('/api/flashcards/'))return flashcards(req,res)
   if(path==='/api/feedback')return feedback(req,res)
   const send=(status,body)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(body))}
-  if(path==='/api/status'&&req.method==='GET')return send(200,{mode:provider?'connected':'local',label:provider?'Assistant connecté':'Ressources locales'})
+  if(path==='/api/status'&&req.method==='GET')return send(200,{mode:provider?'connected':'local',label:'Ressources locales',generationPolicy:V1_POLICY.generation,externalGeneration:V1_POLICY.externalGeneration})
   if(path!=='/api/chat')return send(404,{error:'Route inconnue.'})
   if(req.method!=='POST')return send(405,{error:'Méthode non autorisée.'})
   try{

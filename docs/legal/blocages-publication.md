@@ -1,5 +1,7 @@
 # Publication des pages — décision en attente
 
+La V1 préparée force désormais la génération locale et bloque les purges ; voir [le bilan courant](gemini-off-v1.md). Le choix d’IA pour l’accueil des mineurs n’est plus une décision à redemander pour cette préparation. Les informations d’éditeur/contact et Railway restent à compléter avant publication.
+
 Dernier état : [vérifications et quatre réponses personnelles restantes](verification-production-et-droits.md#dernières-réponses-personnelles-attendues). Les durées 24/12 mois et l’accueil des mineurs sont décidés ; la maintenance est préparée mais non activée, et la compatibilité contractuelle de Gemini avec ce public doit être résolue.
 
 Actualisation : voir [les faits techniques vérifiés et les quatre dernières réponses attendues](v1-decisions.md). Cette synthèse réduit les questions restantes et remplace les demandes déjà résolues techniquement.

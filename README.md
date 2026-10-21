@@ -119,3 +119,5 @@ Les bases locales, secrets, caches, builds et captures générées ne sont pas v
 ## Préparation juridique (branche dédiée)
 
 Les documents préparatoires et mécanismes de compte sont décrits dans [l’audit initial](docs/legal/audit-initial.md) et le [dossier de finalisation](docs/legal/finalisation.md). Les champs `[À COMPLÉTER]` et la validation humaine sont bloquants pour la publication de ces pages. Le site actuel est un projet indépendant, gratuit et en développement, sans paiement ni abonnement. La [liste des blocages](docs/legal/blocages-publication.md) distingue les informations indispensables des mentions professionnelles dépendant du statut réel. Aucun paiement ni CGV de vente fictive n’est ajouté.
+
+La [V1 préparée sans Gemini](docs/legal/gemini-off-v1.md) force les règles intégrées, ignore les anciens réglages de génération externe et garde les purges de contenus désactivées. Les limites mesurées et les sorties d’évaluation sont documentées ; aucune équivalence avec un modèle génératif ni aucun déploiement ne sont annoncés.

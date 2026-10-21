@@ -1,3 +1,4 @@
+import {V1_POLICY} from '../shared/v1-policy.mjs'
 import {DatabaseSync} from 'node:sqlite'
 import {existsSync} from 'node:fs'
 import path from 'node:path'
@@ -6,6 +7,7 @@ const directory=process.env.RAILWAY_VOLUME_MOUNT_PATH||process.env.ACCOUNT_DATA_
 const filename=path.join(directory,'mycorpus.sqlite')
 if(!existsSync(filename))throw new Error('Base absente : aucune base vide créée')
 const args=process.argv.slice(2),apply=args.includes('--apply')
+if(apply&&!V1_POLICY.automaticRetention)throw new Error('Les purges de conservation sont désactivées dans cette V1, même avec un ancien indicateur d’activation.')
 if(apply&&process.env.RETENTION_POLICY_APPROVED!=='1')throw new Error('RETENTION_POLICY_APPROVED=1 requis après validation de la politique et du préavis')
 const db=new DatabaseSync(filename)
 try{

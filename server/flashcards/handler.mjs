@@ -96,7 +96,7 @@ export function createFlashcardHandler(config = process.env, dependencies = {}) 
       if(req.method==='POST'&&regenerateMatch){
         const receipt=repo.getGenerationReceipt(user.id,regenerateMatch[1])
         if(!receipt)return send(404,{error:'Génération introuvable ou expirée.'})
-        if(provider?.name!=='gemini')return send(503,{error:'La régénération IA nécessite Gemini. Vous pouvez modifier la carte manuellement.'})
+        if(provider?.name!=='gemini')return send(503,{error:'La régénération par IA externe est indisponible dans cette V1. Vous pouvez modifier la carte manuellement.'})
         const body=await readJson(req),excerpt=cleanText(body.sourceExcerpt,2000,true)
         if(!excerpt||excerpt.length<15||!normalize(receipt.sourceText).includes(normalize(excerpt))||!['basic','reverse','bidirectional','cloze','typed'].includes(body.noteType))return send(400,{error:'Type ou passage source invalide.'})
         const fallback={text:excerpt,requestedCount:1,level:'standard',source:receipt.source}

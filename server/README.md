@@ -1,3 +1,5 @@
+> V1 préparée sur `chore/legal-readiness` : les adaptateurs externes décrits ci-dessous ne sont plus sélectionnés par l’API publique. Les anciennes variables ne réactivent pas Gemini, HTTP ou Ollama. Cette préparation n’est pas déployée. Voir [le bilan V1](../docs/legal/gemini-off-v1.md).
+
 # Conversation contextuelle
 
 `npm run dev` monte les routes sur Vite. Pour servir la compilation et l’API ensemble : `npm run build && npm start` (Node 22.13 minimum ; Node 24 LTS recommandé). Les secrets restent côté serveur. Copier `.env.example` vers `.env` pour configurer un adaptateur, puis redémarrer. Un simple hébergement de `dist/` conserve l’atlas mais ne fournit pas l’API.

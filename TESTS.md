@@ -138,3 +138,9 @@ Pour éviter de réutiliser un serveur de développement connecté à une IA dis
 `npm run test:privacy` teste la politique de conservation sur des bases temporaires. `npm run privacy:retention` produit un aperçu dans la base configurée (aucun effacement de contenu ; création possible des métadonnées d’observation). L’application requiert `RETENTION_POLICY_APPROVED=1` et `--apply` ; ne pas exécuter sur la production avant validation opérationnelle et préavis réels. Le serveur préparé programme la maintenance quotidienne uniquement avec ce flag.
 
 `npm run legal:publication-check` est un contrôle de préparation distinct du build : il doit actuellement refuser les champs manquants, la version draft et la sélection de Gemini pour l’accueil des mineurs décidé par l’éditeur. La réussite future de ce contrôle n’atteste pas la conformité des contrats ni des configurations de production.
+
+### V1 locale sans Gemini
+
+`npm run test:v1-local` exerce l’API publique avec des configurations Gemini/HTTP/Ollama volontairement laissées présentes et un piège réseau : une tentative cachée suivie d’un fallback ferait échouer le test. Les anciens adaptateurs sont encore testés isolément avec fournisseurs factices ; cela ne les active pas dans la V1 publique.
+
+`npm run evaluate:local` reproduit l’évaluation sur neuf cas synthétiques. `tests/v1-local-security.spec.ts` teste le rendu sûr d’anciennes cartes Cloze contenant du HTML malveillant. La politique de code bloque désormais le batch de conservation et sa maintenance automatique même si l’ancien flag est présent ; les commandes d’activation décrites dans les bilans précédents ne s’appliquent donc plus à cette V1.

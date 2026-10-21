@@ -1,3 +1,5 @@
+> V1 préparée sur `chore/legal-readiness` : les adaptateurs externes décrits ci-dessous ne sont plus sélectionnés par l’API publique. Les anciennes variables ne réactivent pas Gemini, HTTP ou Ollama. Cette préparation n’est pas déployée. Voir [le bilan V1](legal/gemini-off-v1.md).
+
 # Génération pédagogique Gemini
 
 ## P0 — Audit avant modification

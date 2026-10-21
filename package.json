@@ -29,7 +29,9 @@
     "prebuild": "npm run legal:check",
     "privacy:retention": "node --env-file-if-exists=.env scripts/privacy-retention.mjs",
     "test:privacy": "node --test tests/privacy-retention.test.mjs",
-    "legal:publication-check": "node --env-file-if-exists=.env scripts/check-legal-publication.mjs"
+    "legal:publication-check": "node --env-file-if-exists=.env scripts/check-legal-publication.mjs",
+    "test:v1-local": "node --test tests/v1-local-policy.test.mjs",
+    "evaluate:local": "node scripts/evaluate-local-v1.mjs"
   },
   "dependencies": {
     "@fontsource-variable/dm-sans": "^5.3.0",

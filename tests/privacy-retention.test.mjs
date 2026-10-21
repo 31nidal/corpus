@@ -89,3 +89,26 @@ test('anonymous-feedback-only database can purge closed reports before any accou
  const dir=mkdtempSync(path.join(tmpdir(),'corpus-feedback-only-'))
  try{assert.equal(runRetention(db,{now,apply:true,directory:dir}).counts.feedback,1)}finally{db.close();rmSync(dir,{recursive:true,force:true})}
 })
+
+test('V1 disables automatic purges even with the old approval flag set',async()=>{
+ const {startRetentionMaintenance}=await import('../server/retention-startup.mjs')
+ const dir=mkdtempSync(path.join(tmpdir(),'corpus-v1-no-purge-'))
+ try{assert.equal(startRetentionMaintenance({ACCOUNT_DATA_DIR:dir,RETENTION_POLICY_APPROVED:'1'}),null);assert.equal(existsSync(path.join(dir,'mycorpus.sqlite')),false)}finally{rmSync(dir,{recursive:true,force:true})}
+})
+
+test('V1 batch CLI cannot activate purges through old environment flags',async()=>{
+ const {spawnSync}=await import('node:child_process')
+ const dir=mkdtempSync(path.join(tmpdir(),'corpus-v1-cli-')),db=new DatabaseSync(path.join(dir,'mycorpus.sqlite'))
+ try{
+  db.exec("CREATE TABLE users(id TEXT PRIMARY KEY); INSERT INTO users VALUES('protected')")
+  const result=spawnSync(process.execPath,['scripts/privacy-retention.mjs','--apply'],{cwd:process.cwd(),env:{...process.env,ACCOUNT_DATA_DIR:dir,RAILWAY_VOLUME_MOUNT_PATH:'',RETENTION_POLICY_APPROVED:'1'},encoding:'utf8'})
+  assert.notEqual(result.status,0);assert.match(result.stderr,/désactivées dans cette V1/)
+  assert.equal(db.prepare('SELECT count(*) n FROM users').get().n,1)
+ }finally{db.close();rmSync(dir,{recursive:true,force:true})}
+})
+
+test('V1 startup also preserves old rejected drafts',async()=>{
+ const {runV1DraftMaintenance}=await import('../server/flashcards/review/startup.mjs')
+ const dir=mkdtempSync(path.join(tmpdir(),'corpus-v1-drafts-')),db=new DatabaseSync(path.join(dir,'mycorpus.sqlite'))
+ try{db.exec("CREATE TABLE flashcard_drafts(id TEXT,status TEXT,rejected_at INTEGER); INSERT INTO flashcard_drafts VALUES('keep','rejected',0)");assert.equal(runV1DraftMaintenance({ACCOUNT_DATA_DIR:dir}),0);assert.equal(db.prepare('SELECT count(*) n FROM flashcard_drafts').get().n,1)}finally{db.close();rmSync(dir,{recursive:true,force:true})}
+})

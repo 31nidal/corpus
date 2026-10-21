@@ -42,7 +42,8 @@ export function renderClozeCard(text, targetKey) {
     return body
   })
 
-  let back = text.replace(CLOZE_REGEX, (match, numStr, body) => {
+  const escaped=text.replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]))
+  let back = escaped.replace(CLOZE_REGEX, (match, numStr, body) => {
     const num = parseInt(numStr, 10)
     if (num === targetNum) {
       return `<span class="cloze-revealed" data-cloze="c${num}">${body}</span>`

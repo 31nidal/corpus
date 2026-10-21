@@ -3,7 +3,7 @@ import {generateWithQuota} from '../ai/generation.mjs'
 export async function transcribeMissingPages({extracted,buffer,db,userId,provider,config}) {
   const missing=extracted.pages.filter(page=>!page.text.trim())
   if(!missing.length)return {extracted,generation:null}
-  if(provider?.name!=='gemini')throw Object.assign(new Error('Configurez Gemini pour transcrire les pages scannées.'),{status:503,code:'AI_OCR_UNAVAILABLE'})
+  if(provider?.name!=='gemini')throw Object.assign(new Error('Ce PDF contient des pages sans texte sélectionnable. L’OCR n’est pas disponible dans cette V1 locale ; importez une version avec texte.'),{status:503,code:'AI_OCR_UNAVAILABLE'})
   const result=await generateWithQuota({db,userId,provider,config,task:'ocr',context:{buffer,pageCount:extracted.pageCount},local:()=>null})
   const uncertain=result.value.pages.filter(page=>page.uncertain).map(page=>page.pageNumber)
   const pages=extracted.pages.map(page=>{

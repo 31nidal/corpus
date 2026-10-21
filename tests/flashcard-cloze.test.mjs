@@ -39,3 +39,11 @@ test('cloze rendu recto / verso avec indices et masques multiples', () => {
   assert.equal(s1.back, '<span class="cloze-revealed" data-cloze="c1">A</span> et <span class="cloze-revealed" data-cloze="c1">B</span> sont masqués ensemble, pas C.')
 })
 
+
+test('Cloze HTML escapes untrusted markup before adding reveal spans',()=>{
+ const result=renderClozeCard('Texte <script>alert(1)</script> {{c1::<img src=x onerror=alert(2)>}}','c1')
+ assert.ok(!result.back.includes('<script>'))
+ assert.ok(!result.back.includes('<img'))
+ assert.ok(result.back.includes('&lt;img'))
+ assert.ok(result.back.includes('<span class="cloze-revealed"'))
+})

@@ -25,7 +25,7 @@ export async function regenerateReviewDraft({repo,userId,id,provider,config}) {
   if(row.status==='accepted')throw Object.assign(new Error('Un brouillon accepté ne peut plus être régénéré.'),{status:409})
   const section=repo.section(userId,row)
   if(!section)throw Object.assign(new Error('Le passage source est introuvable.'),{status:404})
-  if(provider?.name!=='gemini')throw Object.assign(new Error('La régénération IA nécessite Gemini. Vous pouvez modifier la carte manuellement.'),{status:503})
+  if(provider?.name!=='gemini')throw Object.assign(new Error('La régénération par IA externe est indisponible dans cette V1. Vous pouvez modifier la carte manuellement.'),{status:503})
   const result=await generateWithQuota({db:repo.db,userId,provider,config,task:'flashcards',
     context:{text:row.source_excerpt,requestedCount:1,level:'standard',noteType:row.note_type,source:{sectionId:section.id}},local:()=>null})
   if(!result.value)return {draft:repo.view(userId,row),generation:result.generation,unchanged:true}
