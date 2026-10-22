@@ -121,3 +121,15 @@ Les tests de lien/génération documentaire de cette préparation ne valident pa
 4. Résoudre responsable du traitement/contact effectif, durées et procédures de droits, puis approuver les textes et la recette. La décision 18+ ne lève pas ces blocages.
 
 Après validation : implémentation de la barrière centrale et du parcours, intégration du vérificateur et du contrôle d’exploitation, protections d’import/données, tests exhaustifs puis revue du diff. Toute fusion ou mise en production reste soumise à une validation explicite ultérieure.
+
+## Complément : branchement de l’assistant préparé
+
+L’adaptateur `server/ai/chat.mjs` relie désormais le dialogue au client Gemini existant dans cette branche. Avec une clé Gemini configurée, le dialogue sélectionne Gemini par défaut ; `CHAT_AI_PROVIDER=gemini` rend le choix explicite. Les modes explicites `local` et `http` restent disponibles pour les configurations historiques et les tests. Un ancien réglage explicite `CHAT_AI_PROVIDER=local` doit donc être repéré lors de la revue de production, sans afficher les secrets. Sans clé ni fournisseur, les ressources locales restent disponibles.
+
+Les fournisseurs de génération Study/Flashcards sont composés indépendamment ; le branchement du chat ne remplace pas leurs mécanismes, OCR ou régénérations. Le dialogue utilise le modèle Gemini existant et n’envoie que la question courante, le contexte anatomique nécessaire et la fiche serveur ; il n’ajoute ni données de compte, ni PDF, ni historique complet. Les identifiants des structures sélectionnée et reconnue dans la question proviennent de l’atlas serveur. Les actions sont validées par la liste serveur existante, les liens de sources sont issus de la fiche réelle. Les réponses passent par les limites, délais et validation JSON du client Gemini. Une panne Gemini est annoncée comme erreur de conversation, sans réponse locale présentée comme Gemini.
+
+L’interface identifie « Assistant Gemini » et annonce l’envoi de la question et du contexte à Google lorsque ce fournisseur est sélectionné. Les questions personnelles de santé sont déconseillées ; la limite pédagogique demeure dans les instructions du fournisseur.
+
+Ce branchement ne constitue pas la mise en œuvre du contrôle d’âge ou de la preuve de facturation décrit plus haut. Le chat public actuel exige encore les contrôles d’accès et de budget prévus avant toute publication de cette branche. Aucun appel réel ou facturé n’est effectué pendant la recette automatisée ; les vérifications utilisent des réponses simulées. Pas de fusion, push ni déploiement sans validation.
+
+Vérification de ce complément : 15 tests Node chat/client/Gemini-Study réussis, 3 tests liens/contrôle de publication/sécurité HTTP réussis, build réussi et un parcours navigateur sur la version compilée validé avec toutes les réponses API simulées (identification Gemini, envoi, affichage). Aucun succès d’un vrai appel Gemini ou d’un déploiement n’est revendiqué.

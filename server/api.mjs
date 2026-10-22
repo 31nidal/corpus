@@ -4,7 +4,7 @@ import {createFeedbackHandler} from './feedback.mjs'
 import {createStudyHandler} from './study.mjs'
 import {createFlashcardHandler} from './flashcards/handler.mjs'
 import path from 'node:path'
-import {createProvider, createStudyProvider} from './providers.mjs'
+import {createProvider, createChatProvider, createStudyProvider} from './providers.mjs'
 import {createGeminiPedagogy} from './ai/pedagogy.mjs'
 import {validateAction} from '../shared/actions.mjs'
 const read=p=>JSON.parse(fs.readFileSync(path.resolve(process.cwd(),p.replace(/^\.\.\//,'')),'utf8'))
@@ -44,9 +44,10 @@ function localReply(context){
 export function createApiHandler(config=process.env){
  const account=createAccountHandler(config)
  const feedback=createFeedbackHandler(config)
- const provider=createProvider(config)
+ const provider=createChatProvider(config)
+ const legacyProvider=createProvider(config)
  const pedagogy=createGeminiPedagogy(config)
- const studyProvider=pedagogy||createStudyProvider(config,{remoteProvider:provider})
+ const studyProvider=pedagogy||createStudyProvider(config,{remoteProvider:legacyProvider})
  const study=createStudyHandler(config,{provider:studyProvider})
  const flashcards=createFlashcardHandler(config,{provider:pedagogy||provider})
  return async(req,res,next)=>{
@@ -57,7 +58,7 @@ export function createApiHandler(config=process.env){
   if(path.startsWith('/api/flashcards/'))return flashcards(req,res)
   if(path==='/api/feedback')return feedback(req,res)
   const send=(status,body)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(body))}
-  if(path==='/api/status'&&req.method==='GET')return send(200,{mode:provider?'connected':'local',label:provider?'Assistant connecté':'Ressources locales'})
+  if(path==='/api/status'&&req.method==='GET')return send(200,{mode:provider?'connected':'local',provider:provider?.name|| (provider?'http':'local'),label:provider?.name==='gemini'?'Assistant Gemini':provider?'Assistant connecté':'Ressources locales'})
   if(path!=='/api/chat')return send(404,{error:'Route inconnue.'})
   if(req.method!=='POST')return send(405,{error:'Méthode non autorisée.'})
   try{
@@ -72,11 +73,12 @@ export function createApiHandler(config=process.env){
    const selected=manifest.structures.find(s=>s.id===body.selected_structure)
    const requestedLesson=typeof body.current_lesson==='string'?body.current_lesson.split(':')[0]:null
    const lesson=lessons.find(l=>l.id===requestedLesson)||lessons.find(l=>l.id===resolveStructure(body.message,manifest))||lessons.find(l=>l.id===selected?.id)||null
-   const context={body:reference,message:body.message,selected_structure:selected?.id??null,structure_name:selected?(labels[selected.name]||selected.name):null,system:lessons.find(l=>l.id===selected?.id)?.system??selected?.group??null,learning_level:body.learning_level,current_lesson:typeof body.current_lesson==='string'?body.current_lesson.slice(0,100):null,lesson,instructions:'Répondre en français à visée éducative, distinguer les informations connues et manquantes, ne pas poser de diagnostic personnel. Utiliser uniquement les actions structurées autorisées et les sources fournies.',allowed_actions:['focus_structure','hide_structure','show_structure','isolate_structure','show_system','hide_system','reset_camera','start_animation']}
+   const requested=manifest.structures.find(s=>s.id===resolveStructure(body.message,manifest))
+   const context={requested_structure:requested?{id:requested.id,name:labels[requested.name]||requested.name}:null,body:reference,message:body.message,selected_structure:selected?.id??null,structure_name:selected?(labels[selected.name]||selected.name):null,system:lessons.find(l=>l.id===selected?.id)?.system??selected?.group??null,learning_level:body.learning_level,current_lesson:typeof body.current_lesson==='string'?body.current_lesson.slice(0,100):null,lesson,instructions:'Répondre en français à visée éducative, distinguer les informations connues et manquantes, ne pas poser de diagnostic personnel. Utiliser uniquement les actions structurées autorisées et les sources fournies.',allowed_actions:['focus_structure','hide_structure','show_structure','isolate_structure','show_system','hide_system','reset_camera','start_animation']}
    const response=provider?await provider.respond(context):localReply(context)
    const actions=(Array.isArray(response.actions)?response.actions:[]).slice(0,8).map(a=>validateAction(a,ids,systemIds,['heartbeat','breathing'])).filter(Boolean)
    const sources=(Array.isArray(response.sources)?response.sources:[]).filter(s=>typeof s.label==='string'&&typeof s.url==='string'&&/^https:\/\//.test(s.url)).slice(0,8).map(s=>({label:s.label.slice(0,150),url:s.url.slice(0,2000)}))
-   return send(200,{message:response.message,actions,sources,mode:provider?'connected':'local'})
+   return send(200,{message:response.message,actions,sources,mode:provider?'connected':'local',provider:provider?.name|| (provider?'http':'local')})
   }catch{return send(503,{error:'Le service de conversation est indisponible. Réessayez dans un instant.'})}
  }
 }

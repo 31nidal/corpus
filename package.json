@@ -28,7 +28,8 @@
     "legal:check": "node scripts/build-legal-pages.mjs --check",
     "legal:publication-check": "node scripts/check-legal-publication.mjs",
     "prebuild": "npm run legal:check",
-    "test:legal": "node --test tests/legal-pages.test.mjs"
+    "test:legal": "node --test tests/legal-pages.test.mjs",
+    "test:gemini-chat": "node --test tests/gemini-chat.test.mjs tests/gemini-client.test.mjs tests/gemini-integration.test.mjs"
   },
   "dependencies": {
     "@fontsource-variable/dm-sans": "^5.3.0",

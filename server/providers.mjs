@@ -1,9 +1,10 @@
+import {GeminiChatProvider} from './ai/chat.mjs'
 // Provider contract:
 // 1) respond(context) -> { message, actions, sources }.
 // 2) generateStudySummary(context) -> structured summary object
 // 3) generateStudyQuestions(context) -> array of grounded questions
 // UI and study logic never depend on any vendor SDK (OpenAI, Anthropic, Gemini).
-// Everything passes through the generic upstream HTTP provider contract.
+// Chat can use Gemini directly; legacy HTTP study contracts remain independent.
 
 export { OllamaProvider, createStudyProvider } from './ollama-provider.mjs'
 
@@ -82,4 +83,13 @@ export class HttpProvider {
 
 export function createProvider(config) {
   return config.CHAT_UPSTREAM_URL ? new HttpProvider(config) : null
+}
+
+export function createChatProvider(config,dependencies={}) {
+  const selected=config.CHAT_AI_PROVIDER
+  if(selected==='local')return null
+  if(selected==='http')return createProvider(config)
+  if(selected && selected!=='gemini')throw new Error('CHAT_AI_PROVIDER invalide')
+  if(selected==='gemini'||config.GEMINI_API_KEY)return new GeminiChatProvider(config,dependencies)
+  return createProvider(config)
 }
