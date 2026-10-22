@@ -72,7 +72,7 @@ test('Cours importé : section complète et synthèse Gemini prévisualisée ave
   await page.route('**/api/study/documents/quality-document/supports',async route=>{
     const body=route.request().postDataJSON()
     if(body.action==='save'){saved++;await route.fulfill({json:{persisted:true}});return}
-    await route.fulfill({json:{previewId:'preview',task:'summary',persisted:false,generation:{mode:'gemini',model:'gemini-test',coverage:{sectionsTotal:2,sectionsAnalyzed:2,chunksTotal:1,chunksAnalyzed:1,sectionsSummarized:1,missingSections:[{id:'absent',title:'Limites du métabolisme'}]}},items:[{id:'point',text:'La glycolyse a lieu dans le cytoplasme.',sourceExcerpt:'La glycolyse se déroule dans le cytoplasme.',sectionId:'section',startPage:1,endPage:1,category:'Localisation'}]}})
+    await route.fulfill({json:{previewId:'preview',task:'summary',overview:'La glycolyse transforme le glucose dans le cytoplasme.',persisted:false,generation:{mode:'gemini',model:'gemini-test',coverage:{sectionsTotal:2,sectionsAnalyzed:2,chunksTotal:1,chunksAnalyzed:1,sectionsSummarized:1,missingSections:[{id:'absent',title:'Limites du métabolisme'}]}},items:[{id:'point',text:'La glycolyse a lieu dans le cytoplasme.',sourceExcerpt:'La glycolyse se déroule dans le cytoplasme.',sectionId:'section',startPage:1,endPage:1,category:'Localisation'}]}})
   })
   await page.goto('/#tab=mes-cours&doc=quality-document')
   await expect(page.getByRole('heading',{name:document.title,exact:true})).toBeVisible()
@@ -87,6 +87,8 @@ test('Cours importé : section complète et synthèse Gemini prévisualisée ave
   expect(await dialog.evaluate(element=>element.parentElement!.parentElement===window.document.body)).toBe(true)
   await dialog.getByRole('button',{name:'Générer la prévisualisation'}).click()
   await expect(dialog.getByRole('heading',{name:'Métabolisme',exact:true})).toBeVisible()
+  await expect(dialog.getByRole('region',{name:'Résumé en bref'})).toContainText('La glycolyse transforme le glucose dans le cytoplasme.')
+  await expect(dialog.getByRole('navigation',{name:'Plan du support'})).toContainText('Métabolisme')
   await expect(dialog.getByText(/1\/2 sections représentées/)).toBeVisible()
   await expect(dialog.getByText(/Sections sans point retenu : Limites du métabolisme/)).toBeVisible()
   await expect(dialog.getByLabel('Point 1')).toHaveValue('La glycolyse a lieu dans le cytoplasme.')
@@ -95,6 +97,7 @@ test('Cours importé : section complète et synthèse Gemini prévisualisée ave
   await page.screenshot({path:'tests/artifacts/design/pdf-quality/summary-mobile-390.png',fullPage:true})
   expect(saved).toBe(0)
   await dialog.getByLabel('Point 1').fill('La glycolyse cytoplasmique est à retenir.')
+  await expect(dialog.getByRole('region',{name:'Résumé en bref'})).toHaveCount(0)
   await dialog.getByRole('button',{name:'Valider et enregistrer le support'}).click()
   await expect(dialog).toBeHidden()
   expect(saved).toBe(1)

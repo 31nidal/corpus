@@ -67,7 +67,9 @@ export async function handleStudySupports({db,userId,doc,body,provider,config,lo
         for(const q of questions)insert.run(q.id,doc.id,userId,q.sourceSectionId,...q.sourcePages,q.prompt,JSON.stringify(q.options),JSON.stringify(q.correct),JSON.stringify(q.why),q.sourceExcerpt,q.difficulty,q.format,now)
         saved={questions,count:questions.length,replaced:original.replace,generation,persisted:true}
       }else{
-        const summary={title:doc.title,overview:`${preview.task==='revision'?'Fiche de révision':'Synthèse'} relue — ${doc.title}`,sectionCount:sections.length,kind:preview.task,generation,chapters:sections.flatMap(section=>{
+        const useOverview=original.overview&&!items.some(i=>i.edited)&&items.length===original.items.length
+        if(original.overview&&!useOverview){generation.overviewGenerated=false;generation.overviewError='OVERVIEW_INVALIDATED_BY_REVIEW'}
+        const summary={title:doc.title,...(useOverview?{overviewProofs:original.overviewProofs}:{}),overview:useOverview?original.overview:`${preview.task==='revision'?'Fiche de révision':'Synthèse'} relue — ${doc.title}`,sectionCount:sections.length,kind:preview.task,generation,chapters:sections.flatMap(section=>{
           const points=items.filter(i=>i.sectionId===section.id)
           const labels=[...new Set(points.map(point=>point.category).filter(Boolean))]
           return points.length?[{id:section.id,title:section.title,pages:`${section.startPage}–${section.endPage}`,keyPoints:points.map(i=>i.text),excerpt:points[0].sourceExcerpt,proofs:points.map(i=>({text:i.text,sourceExcerpt:i.sourceExcerpt,edited:i.edited})),categories:labels.map((label,index)=>({id:`category-${index}`,label,items:points.filter(point=>point.category===label).map(point=>point.text)}))}]:[]
@@ -87,13 +89,13 @@ export async function handleStudySupports({db,userId,doc,body,provider,config,lo
   if(body.sectionId!==undefined&&!sections.some(s=>s.id===body.sectionId))throw fail(404,'Section introuvable.')
   const selected=body.sectionId?sections.filter(s=>s.id===body.sectionId):sections
   const task=body.task
-  const result=await generateWithQuota({db,userId,provider:provider?.name==='gemini'?provider:null,config,task,context:{documentTitle:doc.title,kind:task,sections:selected,count:body.count||5},local:()=>task==='questions'?localQuestions(doc,selected,body.count||5,[]):localSummary(doc.title,selected)})
+  const result=await generateWithQuota({db,userId,provider:provider?.name==='gemini'?provider:null,config,task,context:{documentTitle:doc.title,kind:task,conciseOverview:task==='summary',sections:selected,count:body.count||5},local:()=>task==='questions'?localQuestions(doc,selected,body.count||5,[]):localSummary(doc.title,selected)})
   const rows=toRows(result.value,task,selected).filter(row=>{
     const section=selected.find(s=>s.id===row.sectionId)
     return section&&typeof row.sourceExcerpt==='string'&&row.sourceExcerpt.length>=15&&normalize(section.content).includes(normalize(row.sourceExcerpt))
   }).map(row=>({...row,startPage:sourcePage(db,userId,doc.id,row.sourceExcerpt,selected.find(s=>s.id===row.sectionId).startPage),endPage:selected.find(s=>s.id===row.sectionId).endPage}))
   if(!rows.length){result.refund?.();throw fail(422,'Aucun support suffisamment étayé n’a été généré. Essayez une autre section.')}
-  const payload={previewId:randomUUID(),task,sectionIds:selected.map(section=>section.id),items:rows,generation:result.generation,replace:body.replace===true,persisted:false}
+  const payload={previewId:randomUUID(),task,...(task==='summary'&&result.generation?.overviewGenerated?{overview:result.value.overview,overviewProofs:result.value.overviewProofs}:{}),sectionIds:selected.map(section=>section.id),items:rows,generation:result.generation,replace:body.replace===true,persisted:false}
   try {
     db.prepare('DELETE FROM study_generation_previews WHERE user_id=? AND expires_at<?').run(userId,Date.now())
     db.prepare('INSERT INTO study_generation_previews(id,user_id,document_id,task,payload_json,source_hash,created_at,expires_at) VALUES(?,?,?,?,?,?,?,?)').run(payload.previewId,userId,doc.id,task,JSON.stringify(payload),fingerprint(sections),Date.now(),Date.now()+2*3600000)

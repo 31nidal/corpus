@@ -438,6 +438,7 @@ export default function MyCoursesWorkspace(props: {
                   {currentDoc.summary.overview}
                 </p>
                 {currentDoc.summary.generation&&<GenerationNotice generation={currentDoc.summary.generation}/>}
+                <nav aria-label="Plan de la synthèse"><h3>Plan du cours</h3><ol>{currentDoc.summary.chapters.map((chapter,index)=><li key={chapter.id||index}>{chapter.title}{chapter.pages?` · p. ${chapter.pages}`:''}</li>)}</ol></nav>
                 {currentDoc.summary.chapters.map((chapter,index)=><SummaryChapter key={chapter.id||index} chapter={chapter} index={index} paragraphs={currentDoc.summary?.kind==='summary'}/>)}
 
               </div>

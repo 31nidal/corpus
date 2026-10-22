@@ -8,7 +8,7 @@ import './supports.css'
 
 export type SupportTask='summary'|'revision'|'questions'
 type Item={id:string;text:string;sourceExcerpt:string;sectionId:string;startPage:number;endPage:number;category?:string;options?:string[];correct?:number[]}
-type Preview={previewId:string;task:SupportTask;items:Item[];generation:GenerationInfo}
+type Preview={previewId:string;task:SupportTask;items:Item[];overview?:string;generation:GenerationInfo}
 async function request(documentId:string,body:unknown) {
   const response=await fetch(`/api/study/documents/${encodeURIComponent(documentId)}/supports`,{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json','x-mycorpus-request':'1'},body:JSON.stringify(body),signal:AbortSignal.timeout(210000)})
   const result=await response.json()
@@ -38,7 +38,7 @@ export function SupportPreview({document,task:initialTask,count=5,replace=false,
     }catch(e){setError(e instanceof Error?e.message:'Erreur réseau. Réessayez.');setMessage('La demande a échoué. Vos modifications restent affichées.')}
     finally{lock.current=false;setBusy(false)}
   }
-  const update=(id:string,patch:Partial<Item>)=>setPreview(value=>value?{...value,items:value.items.map(i=>i.id===id?{...i,...patch}:i)}:value)
+  const update=(id:string,patch:Partial<Item>)=>setPreview(value=>value?{...value,overview:undefined,items:value.items.map(i=>i.id===id?{...i,...patch}:i)}:value)
   return createPortal(<div className="support-preview-backdrop"><section ref={dialog} tabIndex={-1} className="support-preview" role="dialog" aria-modal="true" aria-label="Prévisualisation du support" onKeyDown={event=>{
     if(page!==null)return
     if(event.key==='Escape'&&!busy){event.stopPropagation();onClose()}
@@ -53,13 +53,15 @@ export function SupportPreview({document,task:initialTask,count=5,replace=false,
     <GenerationNotice provider={provider} generation={preview?.generation}/>
     <p role="status" aria-live="polite">{message}</p>
     {!preview&&<><label>Support<select value={task} disabled={busy} onChange={e=>setTask(e.target.value as SupportTask)}><option value="summary">Synthèse</option><option value="revision">Fiche de révision</option><option value="questions">QCM</option></select></label><p>Toutes les sections du cours seront analysées. Le nombre d’éléments dépend des notions réellement exploitables.</p><button className="study-primary" disabled={busy} onClick={()=>void run()}>{busy?'Génération en cours…':'Générer la prévisualisation'}</button></>}
+    {preview?.overview&&<section aria-label="Résumé en bref"><h3>En bref</h3><p>{preview.overview}</p><small>Le résumé court est recalculé lors d’une nouvelle génération. Si vous modifiez ou supprimez des points, il ne sera pas conservé à l’enregistrement.</small></section>}
+    {preview&&task!=='questions'&&<nav aria-label="Plan du support"><h3>Plan du cours</h3><ol>{[...new Set(preview.items.map(i=>i.sectionId))].map(id=><li key={id}>{document.sections?.find(s=>s.id===id)?.title||'Section du cours'}</li>)}</ol></nav>}
     {preview&&<div className="support-preview-items">{preview.items.map((item,index)=><article className="draft-review-card" key={item.id}>
       {task!=='questions'&&(index===0||preview.items[index-1].sectionId!==item.sectionId)&&<h3>{document.sections?.find(section=>section.id===item.sectionId)?.title||'Section du cours'}</h3>}
       {task!=='questions'&&item.category&&<p><strong>{item.category}</strong></p>}
       <label>{task==='questions'?`Question ${index+1}`:`Point ${index+1}`}<textarea disabled={busy} maxLength={2000} value={item.text} onChange={e=>update(item.id,{text:e.target.value})}/></label>
       {item.options?.map((option,i)=><label className="support-option" key={i}><input type="radio" disabled={busy} name={item.id} aria-label={`Bonne réponse ${i+1} de la question ${index+1}`} checked={item.correct?.[0]===i} onChange={()=>update(item.id,{correct:[i]})}/><input disabled={busy} aria-label={`Proposition ${i+1} de la question ${index+1}`} maxLength={1000} value={option} onChange={e=>update(item.id,{options:item.options!.map((v,j)=>j===i?e.target.value:v)})}/></label>)}
       <blockquote><strong>Preuve dans le cours</strong><p>{item.sourceExcerpt}</p></blockquote>
-      <div className="draft-review-actions"><button disabled={busy} onClick={event=>{proofButton.current=event.currentTarget;setPage(item.startPage)}}>Voir dans le cours · p. {item.startPage}</button><button disabled={busy} onClick={()=>setPreview(value=>value?{...value,items:value.items.filter(i=>i.id!==item.id)}:value)}>Supprimer cet élément</button></div>
+      <div className="draft-review-actions"><button disabled={busy} onClick={event=>{proofButton.current=event.currentTarget;setPage(item.startPage)}}>Voir dans le cours · p. {item.startPage}</button><button disabled={busy} onClick={()=>setPreview(value=>value?{...value,overview:undefined,items:value.items.filter(i=>i.id!==item.id)}:value)}>Supprimer cet élément</button></div>
     </article>)}</div>}
     {error&&<p role="alert" className="flash-error">{error}</p>}
     {preview&&<button className="study-primary" disabled={busy||!preview.items.length} onClick={()=>void run(true)}>{busy?'Enregistrement…':'Valider et enregistrer le support'}</button>}

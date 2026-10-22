@@ -1,3 +1,4 @@
+import {generateOverview} from './overview.mjs'
 import {AI_LIMITS, aiError} from './gemini-client.mjs'
 import {planChunks} from './chunks.mjs'
 import {collectUsage} from './usage.mjs'
@@ -80,7 +81,8 @@ export async function generateSummary(provider, context, schema, sourceRules) {
   generation.coverage.missingSections = chapters.filter(chapter => !chapter.keyPoints.length).map(chapter => ({id: chapter.id, title: chapter.title}))
   if (generation.coverage.missingSections.length) generation.message = 'Synthèse partielle : certaines sections ne contiennent aucun point retenu. Consultez les sections indiquées avant validation.'
   else if (generation.summaryRepairError) generation.message = 'Une partie des propositions refusées n’a pas pu être réparée. Relisez les preuves avant validation.'
-  return {title: context.documentTitle || 'Support de révision', kind: context.kind || 'summary',
-    overview: `${context.kind === 'revision' ? 'Fiche de révision' : 'Synthèse'} — ${generation.coverage.sectionsSummarized}/${result.sections.length} sections représentées. Vérifiez les extraits avant validation.`,
+  const overview=context.conciseOverview&&context.kind!=='revision'?await generateOverview(provider,{chapters,sections:result.sections,generation,signal:result.signal,schema,validate:validateSummary}):null
+  return {...(overview?{overviewProofs:overview.proofs}:{}),title: context.documentTitle || 'Support de révision', kind: context.kind || 'summary',
+    overview: overview?.text || `${context.kind === 'revision' ? 'Fiche de révision' : 'Synthèse'} — ${generation.coverage.sectionsSummarized}/${result.sections.length} sections représentées. Vérifiez les extraits avant validation.`,
     sectionCount: result.sections.length, chapters, generation}
 }
