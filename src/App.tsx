@@ -70,7 +70,7 @@ function readRoute() {
 
 export default function App() {
   const [accountStorage]=useState(storageScope)
-  const [dark, setDark] = useState(() => { try { return accountStorage.getItem('corpus-theme') === 'dark' } catch { return false } })
+  const [dark, setDark] = useState(() => { try { return accountStorage.getItem('corpus-theme') !== 'light' } catch { return true } })
   const [atlasOpen, setAtlasOpen] = useState(() => { const params = new URLSearchParams(location.hash.slice(1)); return params.get('tab') === 'atlas' && Boolean(params.get('sub')) })
   const [atlasSub, setAtlasSub] = useState<AtlasId | null>(() => (new URLSearchParams(location.hash.slice(1)).get('sub') as AtlasId) || null)
   const [atlasMode, setAtlasMode] = useState<AtlasMode>(() => (new URLSearchParams(location.hash.slice(1)).get('mode') as AtlasMode) || 'explore')
