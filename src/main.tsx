@@ -14,5 +14,6 @@ import './study/diagrams.css'
 import './study/spacedReview.css'
 import './study/flagship.css'
 import './study/catalog.css'
+import './visual-refresh.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><AccountRoot /></React.StrictMode>)
