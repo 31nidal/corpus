@@ -61,7 +61,7 @@ test('les cinq dessins permettent légendes et repérage au clavier',async({page
 test('dessin en thème sombre sur téléphone : repères accessibles après défilement',async({page})=>{
  await page.setViewportSize({width:390,height:844})
  await page.goto('/#tab=cours&cours=phys-gas-exchange')
- await page.getByRole('button',{name:'Activer le thème sombre'}).click()
+ if(await page.locator('html').getAttribute('data-theme')!=='dark')await page.getByRole('button',{name:'Activer le thème sombre'}).click()
  const plate=page.locator('.medical-plate')
  await plate.getByRole('button',{name:'Sang capillaire',exact:true}).click()
  await expect(plate.locator('.medical-detail')).toContainText('La perfusion apporte le sang')

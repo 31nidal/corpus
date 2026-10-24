@@ -65,7 +65,7 @@ test('mobile : matières séparées et quiz filtré, sans chargement 3D',async({
  page.on('request',r=>{if(r.url().endsWith('.glb'))glbs.push(r.url())});page.on('pageerror',e=>errors.push(e.message))
  await page.goto('/#tab=cours&matiere=chimie')
  await expect(page.locator('.course-tile')).toHaveCount(courses.filter(c=>c.category==='Chimie').length)
- await page.getByRole('button',{name:'Activer le thème sombre'}).click()
+ if(await page.locator('html').getAttribute('data-theme')!=='dark')await page.getByRole('button',{name:'Activer le thème sombre'}).click()
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(393)
  await page.screenshot({path:'tests/artifacts/catalog-mobile-chemistry.png'})
  await page.locator('.course-tile').first().click()

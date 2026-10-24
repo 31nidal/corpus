@@ -44,10 +44,10 @@ test('intégrité des 1663 structures et des assemblages, sans duplication de g�
   expect(manifest.source.excludedUnidentifiedFiles.length).toBeGreaterThan(0)
 })
 
-test('fond blanc, chargement initial et couches lourdes chargées à la demande',async({page})=>{
+test('fond bleu nuit par défaut, chargement initial et couches lourdes chargées à la demande',async({page})=>{
   const requested:string[]=[];page.on('request',r=>{if(r.url().endsWith('.glb'))requested.push(r.url())})
   await ready(page)
-  expect(await page.locator('.experience').evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgb(255, 255, 255)')
+  expect(await page.locator('.experience').evaluate(el=>getComputedStyle(el).backgroundColor)).toBe('rgb(6, 12, 25)')
   expect((await state(page)).visibleMeshes).toBe(initialCount)
   expect(requested.some(url=>url.includes('muscles'))).toBe(false)
   await page.getByRole('switch',{name:'Muscles',exact:true}).click();await loaded(page)
@@ -230,7 +230,7 @@ test('enveloppe du visage en vue musculaire et transparence à la sélection',as
 
 test('thème sombre mémorisé et visite guidée complète',async({page})=>{
   await ready(page)
-  await page.getByRole('button',{name:'Activer le thème sombre'}).click()
+  if(await page.locator('html').getAttribute('data-theme')!=='dark')await page.getByRole('button',{name:'Activer le thème sombre'}).click()
   await expect(page.locator('html')).toHaveAttribute('data-theme','dark')
   await page.reload();await loaded(page)
   await expect(page.locator('html')).toHaveAttribute('data-theme','dark')

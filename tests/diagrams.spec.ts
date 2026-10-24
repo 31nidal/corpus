@@ -33,7 +33,7 @@ test('chaque cours dispose d’un schéma cohérent et interactif',async({page})
 test('schémas mobiles : clavier, branches et cycle lisibles en thème sombre',async({page})=>{
  await page.setViewportSize({width:393,height:852})
  await page.goto('/#tab=cours&cours=FMA7198')
- await page.getByRole('button',{name:'Activer le thème sombre'}).click()
+ if(await page.locator('html').getAttribute('data-theme')!=='dark')await page.getByRole('button',{name:'Activer le thème sombre'}).click()
  await page.locator('.interactive-diagram').scrollIntoViewIfNeeded()
  await page.locator('.diagram-canvas button').nth(2).focus();await page.keyboard.press('Enter')
  await expect(page.locator('.diagram-explanation h3')).toHaveText('Endocrine')

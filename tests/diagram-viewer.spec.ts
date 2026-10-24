@@ -90,7 +90,7 @@ test.describe('DiagramViewer engine (Step 1)', () => {
     await page.goto('/#tab=cours&cours=phys-cardiac-cycle')
 
     // Dark mode
-    await page.getByRole('button', {name: 'Activer le thème sombre'}).click()
+    if(await page.locator('html').getAttribute('data-theme')!=='dark')await page.getByRole('button', {name: 'Activer le thème sombre'}).click()
 
     const plate = page.locator('.medical-plate')
     await expect(plate).toBeVisible()

@@ -158,7 +158,7 @@ test.describe('Atlas anatomique - Cerveau & Cœur', () => {
 
     // The specialized atlas returns directly to the 3D body.
     await page.locator('.atlas-nav-hub-btn').click()
-    await expect(page.locator('.region-blocks .region-block')).toHaveCount(3)
+    await expect(page.locator('.region-blocks .region-block')).toHaveCount(4)
   })
 
   test('7. Le shell des atlas respecte le thème sombre MyCorpus', async ({ page }) => {
@@ -166,11 +166,11 @@ test.describe('Atlas anatomique - Cerveau & Cœur', () => {
     await page.evaluate(() => document.documentElement.setAttribute('data-theme', 'dark'))
     await expect(page.locator('.atlas-workspace-container')).toBeVisible()
     const background = await page.locator('.atlas-workspace-container').evaluate(element => getComputedStyle(element).backgroundColor)
-    expect(background).toBe('rgb(16, 27, 29)')
+    expect(background).toBe('rgb(6, 12, 25)')
     await page.locator('.atlas-structure-menu > summary').click()
     await page.locator('.atlas-structure-menu-list button').first().click()
     const panelBackground = await page.locator('.atlas-context-panel').evaluate(element => getComputedStyle(element).backgroundColor)
-    expect(panelBackground).toContain('23, 38, 41')
+    expect(panelBackground).toContain('13, 23, 41')
   })
 })
 

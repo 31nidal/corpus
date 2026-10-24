@@ -55,7 +55,7 @@ test('examen blanc : fin automatique du temps imparti',async({page})=>{
 
 test('mobile : onglets, cours lisible, réponses et thème sombre',async({page})=>{
  await page.setViewportSize({width:375,height:667});await page.goto('/#tab=cours')
- await page.getByRole('button',{name:'Activer le thème sombre'}).click()
+ if(await page.locator('html').getAttribute('data-theme')!=='dark')await page.getByRole('button',{name:'Activer le thème sombre'}).click()
  await page.getByLabel('Rechercher un cours').fill('Les quatre familles de tissus');await page.getByRole('button',{name:/Les quatre familles de tissus/}).click();await expect(page.locator('.course-article')).toBeVisible()
  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBe(375)
  await page.getByRole('button',{name:'M’entraîner sur ce cours'}).click();await page.getByRole('button',{name:'Commencer la série'}).click();await answer(page)

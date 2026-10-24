@@ -20,7 +20,7 @@ test('Connexion depuis Mes cours : le moteur Gemini est rechargé après authent
 test('Téléchargement PDF direct : A4, texte sélectionnable, accents, formules et schéma en thème sombre',async({page})=>{
   await page.goto('/#tab=cours&cours=FMA7088')
   await expect(page.getByRole('button',{name:'Exporter en PDF',exact:true})).toBeVisible()
-  await page.getByRole('button',{name:'Activer le thème sombre',exact:true}).click()
+  if(await page.locator('html').getAttribute('data-theme')!=='dark')await page.getByRole('button',{name:'Activer le thème sombre',exact:true}).click()
   const title=await page.locator('.course-article h1').innerText()
   const initialTitle=await page.title()
   await page.evaluate(()=>{
