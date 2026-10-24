@@ -35,7 +35,7 @@ test('QCM : correction complète, erreur mémorisée et révision ciblée',async
  await page.getByRole('button',{name:'Nouvelle série'}).click();await expect(page.locator('.mistake-card strong')).toHaveText('1')
  await page.getByRole('button',{name:'Revoir mes erreurs'}).click();await expect(page.locator('.question-layout h1')).toHaveText(failed.prompt)
  await answer(page);await page.getByRole('button',{name:'Valider ma réponse'}).click();await page.getByRole('button',{name:'Terminer et voir mon bilan'}).click()
- await page.reload();await expect(page.locator('.mistake-card strong')).toHaveText('0')
+ await page.reload();await expect(page.locator('.mistake-card strong')).toHaveText('0',{timeout:30000})
 })
 
 test('examen blanc : correction différée, navigation et score exact',async({page})=>{

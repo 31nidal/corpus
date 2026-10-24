@@ -10,7 +10,7 @@ test('examen : timer configurable, navigation, édition, reload, soumission et s
  await page.getByRole('button',{name:'Question 1',exact:true}).click()
  await expect(page.locator('.answer-options button').first()).toHaveAttribute('aria-pressed','true')
  await page.reload()
- await expect(page.locator('.question-layout h1')).toHaveText(first)
+ await expect(page.locator('.question-layout h1')).toHaveText(first,{timeout:30000})
  await expect(page.locator('.answer-options button').first()).toHaveAttribute('aria-pressed','true')
  await expect(page.locator('.answer-correction')).toHaveCount(0)
  await page.locator('.answer-options button').first().click()
@@ -25,7 +25,8 @@ test('examen : timer configurable, navigation, édition, reload, soumission et s
  await expect(page.getByRole('region',{name:'Bilan par matière et chapitre'})).toBeVisible()
  await expect(page.locator('.exam-breakdown')).toContainText('5 bonnes · 0 mauvaises · 0 non répondues')
  await expect.poll(()=>page.evaluate(()=>Object.values(JSON.parse(localStorage.getItem('corpus-practice-v1')||'{}')).length)).toBe(5)
- await page.reload();await expect(page.locator('.result-score strong')).toHaveText('5/5')
+ // A reload reimports the question bank; CI can still display the lazy-loading shell after 5 s.
+ await page.reload();await expect(page.locator('.result-score strong')).toHaveText('5/5',{timeout:30000})
  expect(await page.evaluate(()=>Object.values(JSON.parse(localStorage.getItem('corpus-practice-v1')||'{}')).every((r:any)=>r.seen===1))).toBe(true)
 })
 test('examen : confirmation de fin anticipée et questions non répondues au carnet',async({page})=>{
