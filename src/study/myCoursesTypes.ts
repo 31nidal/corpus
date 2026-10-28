@@ -53,6 +53,7 @@ export type StudySummary = {
 }
 
 export type StudyQuestion = Question & {
+  sourceEvidence?: {verified:boolean;page:number|null}
   documentId: string
   sourceSectionId: string
   sourceSectionTitle?: string
@@ -67,4 +68,10 @@ export type StudyQuota = {
   maxFileSizeBytes: number
   monthlyGenerations: number
   generationsUsed: number
+}
+
+export type LearningOverview = {
+ metadata: {documentId:string;subject:string;lastOpenedAt:string|null}[]
+ questions: {id:string;documentId:string;sectionId:string;sectionTitle:string|null}[]
+ history: {id:string;documentId:string;questionId:string;sectionId:string;correct:number;createdAt:string}[]
 }

@@ -16,6 +16,7 @@ async function prepare(page:Page) {
   await page.getByRole('button',{name:'Choisir un PDF'}).click()
   await (await chooser).setFiles({name:'revision.pdf',mimeType:'application/pdf',buffer:pdf()})
   await expect(page.getByRole('heading',{name:'revision',exact:true})).toBeVisible()
+  await page.getByText('Outils du cours · Flashcards, QCM et synthèse',{exact:true}).click()
   const docs=(await (await page.request.get('/api/study/documents')).json()).documents
   return docs[0].id as string
 }

@@ -205,6 +205,7 @@ test('génération et persistance : PDF Study (front/back non vides, dialogue et
   })
 
   await expect(page.getByRole('heading', { name: 'respiration' })).toBeVisible({ timeout: 20000 })
+  await page.getByText('Outils du cours · Flashcards, QCM et synthèse',{exact:true}).click()
   await page.getByRole('button', { name: 'Générer des flashcards' }).click()
 
   const review = page.getByRole('region', {name:'Révision des brouillons',exact:true})

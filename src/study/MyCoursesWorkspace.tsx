@@ -1,9 +1,15 @@
+import {CourseLearningDashboard} from './CourseLearningDashboard'
+import {CourseTrainer} from './CourseTrainer'
+import {CourseReader,CourseWeaknesses} from './CourseLearningPanels'
+import {fetchLearningOverview,updateLearningDocument} from './myCoursesApi'
+import type {LearningOverview} from './myCoursesTypes'
+import './courseLearning.css'
 import {SummaryChapter} from './ai/SummaryChapter'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import {
   Crop, FileText, Upload, Trash2, ArrowRight, ArrowLeft, BookOpen,
-  CheckCircle2, Sparkles, AlertCircle, RefreshCw,
-  FileCheck, Clock3, Layers, Quote, X, Check
+  Sparkles, AlertCircle, RefreshCw,
+  FileCheck, Clock3, Layers, X, Check
 } from 'lucide-react'
 import type { StudyDocument, StudyQuota, StudyQuestion } from './myCoursesTypes'
 import {
@@ -12,7 +18,7 @@ import {
   fetchDocumentQuestions, fetchStudyQuotas
 } from './myCoursesApi'
 import { storageScope, useAccount } from '../account/store'
-import { isCorrect } from './questions'
+import { isCorrect } from './questionScoring'
 import { nextReview, validReview, type ReviewRecord } from './reviewSchedule'
 import './myCourses.css'
 import ReviewWorkspace from './review/ReviewWorkspace'
@@ -45,9 +51,18 @@ export default function MyCoursesWorkspace(props: {
   onNavigateAtlas?: () => void
 }) {
   const account = useAccount()
-  const [accountStorage] = useState(storageScope)
+  const accountStorage = useMemo(storageScope,[account.user?.id])
+  const identity=useRef(account.user?.id);identity.current=account.user?.id
+  const [overview,setOverview]=useState<LearningOverview>({metadata:[],questions:[],history:[]})
+  const [overviewError,setOverviewError]=useState('')
+  const refreshOverview=async()=>{const userId=identity.current;try{const value=await fetchLearningOverview();if(identity.current===userId){setOverview(value);setOverviewError('')}}catch{if(identity.current===userId)setOverviewError('Votre activité n’a pas pu être chargée. Réessayez pour afficher une progression à jour.')}}
+  const [subject,setSubject]=useState(''),[savingSubject,setSavingSubject]=useState(false)
+  const [trainerMode,setTrainerMode]=useState(0)
+  const [errorsOnly,setErrorsOnly]=useState(false)
+  const loadVersion=useRef(0)
   const [documents, setDocuments] = useState<StudyDocument[]>([])
   const [loading, setLoading] = useState(true)
+  const [documentLoading,setDocumentLoading]=useState(false)
   const [error, setError] = useState<string | null>(null)
   const [scannedAlert, setScannedAlert] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
@@ -58,13 +73,11 @@ export default function MyCoursesWorkspace(props: {
   // Document Detail
   const [selectedDocId, setSelectedDocId] = useState<string | null>(props.initialDocumentId || null)
   const [currentDoc, setCurrentDoc] = useState<StudyDocument | null>(null)
-  const [activeTab, setActiveTab] = useState<'summary' | 'questions' | 'sections' | 'practice'>('summary')
+  const activeDocument=useRef<string|null>(null);activeDocument.current=currentDoc?.id||null
+  const [activeTab, setActiveTab] = useState<'summary' | 'questions' | 'sections' | 'practice' | 'reader' | 'weaknesses'>('practice')
   const [questions, setQuestions] = useState<StudyQuestion[]>([])
   const [generatingSummary, setGeneratingSummary] = useState(false)
   const [generatingQcm, setGeneratingQcm] = useState(false)
-  const [targetPassage, setTargetPassage] = useState<{ title: string; pages: string; text: string } | null>(null)
-  const [questionAnswers, setQuestionAnswers] = useState<Record<string, number>>({})
-  const [revealedQuestions, setRevealedQuestions] = useState<Record<string, boolean>>({})
   const [flashReview,setFlashReview]=useState<'generate'|'review'|null>(null)
   const [supportTask,setSupportTask]=useState<SupportTask|null>(null)
   const [supportOptions,setSupportOptions]=useState({count:5,replace:false})
@@ -80,13 +93,15 @@ export default function MyCoursesWorkspace(props: {
   const [studyDecks, setStudyDecks] = useState<FlashcardDeck[]>([])
 
   const openVisualCrop = async (doc: StudyDocument) => {
+    const userId=identity.current
     try {
       const d = await listDecks()
+      if(userId!==identity.current||activeDocument.current!==doc.id)return
       setStudyDecks(d)
     } catch {
       // best effort
     }
-    setVisualCropDoc(doc)
+    if(userId===identity.current&&activeDocument.current===doc.id)setVisualCropDoc(doc)
   }
 
   const [toast, setToast] = useState('')
@@ -98,15 +113,7 @@ export default function MyCoursesWorkspace(props: {
 
   // In-session practice state
   const [records, setRecords] = useState<Records>(readRecords)
-  const [practiceSession, setPracticeSession] = useState<{
-    items: StudyQuestion[]
-    index: number
-    answers: Record<string, number[]>
-    validated: string[]
-    done: boolean
-    started: number
-  } | null>(null)
-
+  const recordsRef=useRef(records);recordsRef.current=records
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
 
@@ -114,7 +121,9 @@ export default function MyCoursesWorkspace(props: {
     try {
       setLoading(true)
       setError(null)
+      const userId=identity.current
       const docs = await fetchStudyDocuments()
+      if(userId!==identity.current)return
       setDocuments(docs)
       const q = await fetchStudyQuotas()
       setQuota(q)
@@ -126,41 +135,42 @@ export default function MyCoursesWorkspace(props: {
   }
 
   useEffect(() => {
-    refreshList()
+    loadVersion.current++;setDocumentLoading(false);setCurrentDoc(null);setSelectedDocId(props.initialDocumentId||null);setDocuments([]);setQuota(null);setQuestions([]);setFlashReview(null);setSupportTask(null);setVisualCropDoc(null);setCropResult(null);setRecords(readRecords());setOverview({metadata:[],questions:[],history:[]})
+    if(account.user){void refreshList();void refreshOverview()}else setLoading(false)
   }, [account.user?.id])
 
   useEffect(() => {
-    if (selectedDocId) {
+    if (selectedDocId&&account.user) {
       loadDoc(selectedDocId)
     } else {
-      setCurrentDoc(null)
+      loadVersion.current++;setDocumentLoading(false);setCurrentDoc(null)
       setQuestions([])
-      setPracticeSession(null)
     }
-  }, [selectedDocId])
+  }, [selectedDocId,account.user?.id])
 
   useEffect(()=>{if(!currentDoc||!props.initialSectionId)return;setActiveTab('sections');requestAnimationFrame(()=>document.getElementById('study-section-'+props.initialSectionId)?.scrollIntoView({behavior:'smooth',block:'center'}))},[currentDoc?.id,props.initialSectionId])
 
   const loadDoc = async (id: string) => {
+    const userId=identity.current
+    const version=++loadVersion.current
     try {
+      setDocumentLoading(true);setCurrentDoc(null);setQuestions([]);setError(null)
       setLoading(true)
       const doc = await fetchStudyDocument(id)
-      setCurrentDoc(doc)
+      if(userId!==identity.current)return
       const qList = await fetchDocumentQuestions(id)
-      setQuestions(qList)
-      if (doc.summary) {
-        setActiveTab('summary')
-      } else if (qList.length > 0) {
-        setActiveTab('questions')
-      } else {
-        setActiveTab('sections')
-      }
+      if(userId!==identity.current)return
+      if(version!==loadVersion.current)return
+      setCurrentDoc(doc);setErrorsOnly(false);setQuestions(qList);setActiveTab(props.initialSectionId?'sections':'practice')
+      setSubject(overview.metadata.find(m=>m.documentId===id)?.subject||'')
+      void updateLearningDocument(id,{opened:true}).then(refreshOverview).catch(()=>setOverviewError('La dernière consultation n’a pas pu être enregistrée.'))
     } catch (err: any) {
+      if(userId!==identity.current||version!==loadVersion.current)return
       setError(err.message || 'Impossible de charger ce document.')
       setSelectedDocId(null)
       props.onOpenDocument?.(null)
     } finally {
-      setLoading(false)
+      if(version===loadVersion.current){setLoading(false);setDocumentLoading(false)}
     }
   }
 
@@ -174,6 +184,7 @@ export default function MyCoursesWorkspace(props: {
       setError('Le fichier dépasse la taille maximale autorisée de 25 Mo.')
       return
     }
+    const userId=identity.current
     try {
       uploadLock.current=true
       setUploadFile({name:file.name,size:file.size})
@@ -181,7 +192,9 @@ export default function MyCoursesWorkspace(props: {
       setError(null)
       setScannedAlert(null)
       const doc = await uploadStudyDocument(file,undefined,{ocr:ocrRequested})
+      if(userId!==identity.current)return
       await refreshList()
+      if(userId!==identity.current)return
       setSelectedDocId(doc.id)
       setToast('Document importé')
       props.onOpenDocument?.(doc.id)
@@ -218,11 +231,13 @@ export default function MyCoursesWorkspace(props: {
   const handleGenerateSummary = async () => {
     if (!currentDoc) return
     if(generationProvider?.mode==='gemini'){setSupportTask('summary');return}
+    const userId=identity.current,documentId=currentDoc.id
     try {
       setError(null)
       setGeneratingSummary(true)
       const summary = await generateDocumentSummary(currentDoc.id)
-      setCurrentDoc(prev => prev ? { ...prev, summary, hasSummary: true } : null)
+      if(userId!==identity.current||activeDocument.current!==documentId)return
+      setCurrentDoc(prev => prev?.id===documentId ? { ...prev, summary, hasSummary: true } : prev)
       setActiveTab('summary')
       setToast('Synthèse générée')
     } catch (err: any) {
@@ -238,16 +253,16 @@ export default function MyCoursesWorkspace(props: {
     if (replace && questions.length > 0 && !window.confirm('Remplacer tous les QCM existants de ce cours par une nouvelle série ?')) return
     if(generationProvider?.mode==='gemini'){setSupportOptions({count,replace});setSupportTask('questions');return}
 
+    const userId=identity.current,documentId=currentDoc.id
     try {
       setError(null)
       setGeneratingQcm(true)
-      const newQ = await generateDocumentQuestions(currentDoc.id, count, undefined, replace)
-      setQuestions(prev => replace ? newQ : [...newQ, ...prev])
+      await generateDocumentQuestions(currentDoc.id, count, undefined, replace)
+      const refreshed=await fetchDocumentQuestions(currentDoc.id)
+      if(userId!==identity.current||activeDocument.current!==documentId)return
+      setQuestions(refreshed)
       if (replace) {
-        setQuestionAnswers({})
-        setRevealedQuestions({})
-        setPracticeSession(null)
-      }
+        }
       setActiveTab('questions')
       setToast('QCM généré')
     } catch (err: any) {
@@ -260,7 +275,7 @@ export default function MyCoursesWorkspace(props: {
 
   // SRS & Practice save
   const saveAnswers = (items: StudyQuestion[], answers: Record<string, number[]>) => {
-    const next = { ...records }
+    const next = { ...recordsRef.current }
     const stamp = Date.now()
     for (const q of items) {
       next[q.id] = nextReview(next[q.id], isCorrect(q, answers[q.id] ?? []), stamp)
@@ -268,21 +283,12 @@ export default function MyCoursesWorkspace(props: {
     try {
       accountStorage.setItem('corpus-practice-v1', JSON.stringify(next))
     } catch { /* storage scope */ }
-    setRecords(next)
+    recordsRef.current=next;setRecords(next)
   }
 
-  const startPractice = (itemsToPractice = questions) => {
-    if (!itemsToPractice.length) return
-    setPracticeSession({
-      items: itemsToPractice,
-      index: 0,
-      answers: {},
-      validated: [],
-      done: false,
-      started: Date.now()
-    })
-    setActiveTab('practice')
-  }
+  const startPractice = () => {setErrorsOnly(false);setTrainerMode(value=>value+1);setActiveTab('practice')}
+
+  if(documentLoading&&selectedDocId&&account.user&&!currentDoc)return <section className="study-workspace mycourses-workspace" role="status">Chargement du cours et de ses questions…</section>
 
   if (!account.user) {
     return (
@@ -290,10 +296,9 @@ export default function MyCoursesWorkspace(props: {
         <header className="mycourses-header">
           <div>
             <span className="study-eyebrow">MYCORPUS STUDY · ESPACE PERSONNEL</span>
-            <h1>Mes cours.<br /><em>Vos supports, prêts à être mémorisés.</em></h1>
+            <h1>Mes cours.<br /><em>Apprendre. S’entraîner. Maîtriser.</em></h1>
             <p className="mycourses-subtitle">
-              Transformez vos cours magistraux, polycopiés et présentations PDF en synthèses structurées,
-              QCM d’entraînement et flashcards à réviser.
+              Importez vos PDF, testez vos connaissances et retrouvez vos lacunes avec des corrections reliées au cours original.
             </p>
           </div>
         </header>
@@ -337,7 +342,7 @@ export default function MyCoursesWorkspace(props: {
             </div>
           </div>
 
-          <div className="mycourses-action-bar">
+          <details className="learning-tools"><summary>Outils du cours · Flashcards, QCM et synthèse</summary><div className="mycourses-action-bar">
             <a className="mycourses-action-btn" href={`/api/study/documents/${encodeURIComponent(currentDoc.id)}/pdf`} download={currentDoc.filename}>Télécharger le PDF original</a>
             <button className="mycourses-action-btn mycourses-action-primary" onClick={()=>{setFlashReview('generate');setGenerationRequest(value=>value+1)}}><Sparkles size={16}/>Générer des flashcards</button>
             <button className="mycourses-action-btn" onClick={()=>setFlashReview('review')}>Réviser les brouillons</button>
@@ -377,7 +382,7 @@ export default function MyCoursesWorkspace(props: {
             {questions.length > 0 && (
               <button
                 className="mycourses-action-btn mycourses-action-secondary"
-                onClick={() => startPractice(questions)}
+                onClick={() => startPractice()}
               >
                 <BookOpen size={16} />
                 S’entraîner
@@ -393,11 +398,17 @@ export default function MyCoursesWorkspace(props: {
             >
               <Trash2 size={18} />
             </button>
-          </div>
+          </div></details>
         </header>
+        <form className="learning-organisation" onSubmit={async event=>{event.preventDefault();if(savingSubject)return;setSavingSubject(true);try{await updateLearningDocument(currentDoc.id,{subject});await refreshOverview();setToast('Matière enregistrée')}catch(e){setError((e as Error).message)}finally{setSavingSubject(false)}}}><label>Matière<input value={subject} onChange={event=>setSubject(event.target.value)} maxLength={100} placeholder="Ex. Biologie cellulaire"/></label><button className="study-secondary" disabled={savingSubject}>{savingSubject?'Enregistrement…':'Enregistrer la matière'}</button></form>
 
         {/* Tab navigation */}
         <nav className="mycourses-tabs" aria-label="Vues du cours">
+          <button aria-pressed={activeTab==='reader'} className={`mycourses-tab ${activeTab==='reader'?'active':''}`} onClick={()=>setActiveTab('reader')}>Apprendre · PDF</button>
+          <button aria-pressed={activeTab==='practice'} className={`mycourses-tab ${activeTab==='practice'?'active':''}`} onClick={()=>setActiveTab('practice')}>S’entraîner · Interroge-moi</button>
+          <button aria-pressed={activeTab==='weaknesses'} className={`mycourses-tab ${activeTab==='weaknesses'?'active':''}`} onClick={()=>setActiveTab('weaknesses')}>Maîtriser · Mes lacunes</button>
+        </nav>
+        <details className="learning-secondary-tabs" open={['summary','questions','sections'].includes(activeTab)||undefined}><summary>Supports et texte extrait</summary><nav className="mycourses-tabs" aria-label="Supports complémentaires">
           <button
             className={`mycourses-tab ${activeTab === 'summary' ? 'active' : ''}`}
             onClick={() => setActiveTab('summary')}
@@ -416,18 +427,7 @@ export default function MyCoursesWorkspace(props: {
           >
             Découpage ({currentDoc.sections?.length || currentDoc.sectionCount} sections)
           </button>
-          {questions.length > 0 && (
-            <button
-              className={`mycourses-tab ${activeTab === 'practice' ? 'active' : ''}`}
-              onClick={() => {
-                if (!practiceSession) startPractice(questions)
-                setActiveTab('practice')
-              }}
-            >
-              Entraînement direct
-            </button>
-          )}
-        </nav>
+        </nav></details>
 
         {/* Tab 1: Structured Summary */}
         {activeTab === 'summary' && (
@@ -506,102 +506,7 @@ export default function MyCoursesWorkspace(props: {
                 </button>
               </div>
             ) : (
-              questions.map((q, idx) => (
-                <article key={q.id} className="mycourses-question-item">
-                  <div className="mycourses-question-header">
-                    <div>
-                      <span className="study-eyebrow">
-                        QUESTION {idx + 1} · PAGES {q.sourcePages?.join('–') || '1'}
-                      </span>
-                      <strong>{q.prompt}</strong>
-                    </div>
-                    {revealedQuestions[q.id] && q.sourceExcerpt && (
-                      <button
-                        className="mycourses-source-btn"
-                        onClick={() => setTargetPassage({
-                          title: q.sourceSectionTitle || currentDoc.title,
-                          pages: `Pages ${q.sourcePages?.join('–') || '1'}`,
-                          text: q.sourceExcerpt!
-                        })}
-                      >
-                        <Quote size={13} /> Voir le passage source
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="answer-options" style={{ marginTop: '1rem' }}>
-                    {q.options.map((opt, oIdx) => {
-                      const revealed = Boolean(revealedQuestions[q.id])
-                      const selected = questionAnswers[q.id] === oIdx
-                      const correct = q.correct.includes(oIdx)
-                      const optionClass = revealed
-                        ? (correct ? 'correct-option' : (selected ? 'incorrect-option' : ''))
-                        : ''
-
-                      return (
-                        <button
-                          key={oIdx}
-                          type="button"
-                          className={optionClass}
-                          disabled={revealed}
-                          onClick={() => setQuestionAnswers(prev => ({ ...prev, [q.id]: oIdx }))}
-                          style={{
-                            width: '100%',
-                            padding: '0.7rem 1rem',
-                            borderRadius: '0.5rem',
-                            marginBottom: '0.45rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.75rem',
-                            fontSize: '0.92rem',
-                            textAlign: 'left',
-                            cursor: revealed ? 'default' : 'pointer',
-                            border: selected && !revealed ? '2px solid #0284c7' : undefined,
-                            background: selected && !revealed ? 'rgba(2, 132, 199, 0.06)' : undefined
-                          }}
-                        >
-                          <strong>{String.fromCharCode(65 + oIdx)}</strong>
-                          <span style={{ flex: 1 }}>{opt}</span>
-                          {revealed && correct && <Check size={16} color="#059669" />}
-                          {revealed && selected && !correct && <X size={16} color="#dc2626" />}
-                        </button>
-                      )
-                    })}
-                  </div>
-
-                  {!revealedQuestions[q.id] ? (
-                    <button
-                      className="mycourses-action-btn mycourses-action-primary"
-                      disabled={questionAnswers[q.id] == null}
-                      onClick={() => setRevealedQuestions(prev => ({ ...prev, [q.id]: true }))}
-                      style={{ marginTop: '0.65rem' }}
-                    >
-                      <CheckCircle2 size={16} />
-                      Valider ma réponse
-                    </button>
-                  ) : (
-                    <div style={{ marginTop: '0.8rem' }}>
-                      <p style={{
-                        fontSize: '0.9rem',
-                        margin: 0,
-                        color: q.correct.includes(questionAnswers[q.id]) ? '#047857' : '#b91c1c',
-                        fontWeight: 700
-                      }}>
-                        {q.correct.includes(questionAnswers[q.id]) ? 'Bonne réponse.' : 'Réponse incorrecte.'}
-                      </p>
-                      <p style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '0.35rem' }}>
-                        <strong>Explication :</strong>{' '}
-                        {q.correct.map(correctIdx => q.why[correctIdx]).filter(Boolean).join(' ') || 'La réponse est justifiée par le passage source.'}
-                      </p>
-                      {!q.correct.includes(questionAnswers[q.id]) && q.why[questionAnswers[q.id]] && (
-                        <p style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '0.35rem' }}>
-                          <strong>Votre choix :</strong> {q.why[questionAnswers[q.id]]}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </article>
-              ))
+              <><button className="study-primary" onClick={startPractice}>Travailler ces QCM</button>{questions.map((q,idx)=><article key={q.id} className="mycourses-question-item"><span className="study-eyebrow">QUESTION {idx+1} · {q.sourceEvidence?.page?`PAGE ${q.sourceEvidence.page}`:'PAGE EXACTE NON CONFIRMÉE'}</span><h3>{q.prompt}</h3><p>{q.sourceEvidence?.verified?'Citation retrouvée dans votre cours.':'Source non vérifiée : cette question est exclue des interrogations.'}</p></article>)}</>
             )}
           </div>
         )}
@@ -616,154 +521,10 @@ export default function MyCoursesWorkspace(props: {
           </div>
         )}
 
-        {/* Tab 4: Interactive Practice Runner */}
-        {activeTab === 'practice' && practiceSession && (
-          <div className="mycourses-practice-runner">
-            {practiceSession.done ? (
-              <div style={{ textAlign: 'center', padding: '2rem 1rem' }}>
-                <CheckCircle2 size={48} color="#059669" style={{ margin: '0 auto 1rem' }} />
-                <h2>Session d’entraînement terminée</h2>
-                <p style={{ fontSize: '1.25rem', margin: '0.5rem 0 1.5rem' }}>
-                  Score : <strong>{practiceSession.items.filter(q => isCorrect(q, practiceSession.answers[q.id] ?? [])).length}</strong> / {practiceSession.items.length}
-                </p>
-                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-                  {practiceSession.items.some(q => !isCorrect(q, practiceSession.answers[q.id] ?? [])) && (
-                    <button
-                      className="mycourses-action-btn mycourses-action-primary"
-                      onClick={() => startPractice(practiceSession.items.filter(q => !isCorrect(q, practiceSession.answers[q.id] ?? [])))}
-                    >
-                      Revoir mes erreurs ({practiceSession.items.filter(q => !isCorrect(q, practiceSession.answers[q.id] ?? [])).length})
-                    </button>
-                  )}
-                  <button
-                    className="mycourses-action-btn mycourses-action-secondary"
-                    onClick={() => startPractice(questions)}
-                  >
-                    Recommencer la série
-                  </button>
-                </div>
-              </div>
-            ) : (
-              (() => {
-                const currentQ = practiceSession.items[practiceSession.index]
-                const currAnswers = practiceSession.answers[currentQ.id] ?? []
-                const isVal = practiceSession.validated.includes(currentQ.id)
+        {activeTab==='reader'&&<CourseReader key={currentDoc.id} document={currentDoc}/>}
+        {activeTab==='practice'&&<CourseTrainer key={currentDoc.id+'-'+trainerMode} document={currentDoc} questions={questions} records={records} initialMode={errorsOnly?'errors':'adaptive'} onQuestions={items=>{if(identity.current===account.user?.id&&activeDocument.current===currentDoc.id)setQuestions(items)}} onAnswer={(q,answers)=>{if(identity.current===account.user?.id)saveAnswers([q],{[q.id]:answers})}} onActivity={()=>void refreshOverview()}/>}
+        {activeTab==='weaknesses'&&<CourseWeaknesses document={currentDoc} questions={questions} records={records} onPractice={()=>{setErrorsOnly(true);setTrainerMode(value=>value+1);setActiveTab('practice')}}/>}
 
-                const toggleOption = (idx: number) => {
-                  if (isVal) return
-                  const nextAns = currentQ.format === 'boolean' || currentQ.format === 'single'
-                    ? [idx]
-                    : currAnswers.includes(idx) ? currAnswers.filter(i => i !== idx) : [...currAnswers, idx]
-                  setPracticeSession({
-                    ...practiceSession,
-                    answers: { ...practiceSession.answers, [currentQ.id]: nextAns }
-                  })
-                }
-
-                const handleValidate = () => {
-                  if (isVal) return
-                  saveAnswers([currentQ], practiceSession.answers)
-                  setPracticeSession({
-                    ...practiceSession,
-                    validated: [...practiceSession.validated, currentQ.id]
-                  })
-                }
-
-                const handleNext = () => {
-                  if (practiceSession.index >= practiceSession.items.length - 1) {
-                    setPracticeSession({ ...practiceSession, done: true })
-                  } else {
-                    setPracticeSession({ ...practiceSession, index: practiceSession.index + 1 })
-                  }
-                }
-
-                return (
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                      <span className="study-eyebrow">
-                        QUESTION {practiceSession.index + 1} / {practiceSession.items.length} · PAGES {currentQ.sourcePages?.join('–') || '1'}
-                      </span>
-                      {currentQ.sourceExcerpt && (
-                        <button
-                          className="mycourses-source-btn"
-                          onClick={() => setTargetPassage({
-                            title: currentQ.sourceSectionTitle || currentDoc.title,
-                            pages: `Pages ${currentQ.sourcePages?.join('–') || '1'}`,
-                            text: currentQ.sourceExcerpt!
-                          })}
-                        >
-                          <Quote size={13} /> Source
-                        </button>
-                      )}
-                    </div>
-                    <h2 style={{ fontSize: '1.35rem', marginBottom: '1.25rem' }}>{currentQ.prompt}</h2>
-
-                    <div className="answer-options">
-                      {currentQ.options.map((opt, oIdx) => (
-                        <button
-                          key={oIdx}
-                          aria-pressed={currAnswers.includes(oIdx)}
-                          disabled={isVal}
-                          onClick={() => toggleOption(oIdx)}
-                        >
-                          <span className="option-letter">{String.fromCharCode(65 + oIdx)}</span>
-                          <span>{opt}</span>
-                          <span className="option-check">{currAnswers.includes(oIdx) && <Check size={15} />}</span>
-                        </button>
-                      ))}
-                    </div>
-
-                    {isVal && (
-                      <div className="question-feedback" style={{ marginTop: '1.5rem' }}>
-                        <h3>{isCorrect(currentQ, currAnswers) ? '✓ Bonne réponse !' : 'À retravailler'}</h3>
-                        <p>{currentQ.why[0] || 'Conforme au cours.'}</p>
-                      </div>
-                    )}
-
-                    <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem' }}>
-                      {!isVal ? (
-                        <button
-                          className="mycourses-action-btn mycourses-action-primary"
-                          disabled={!currAnswers.length}
-                          onClick={handleValidate}
-                        >
-                          Valider ma réponse
-                        </button>
-                      ) : (
-                        <button
-                          className="mycourses-action-btn mycourses-action-primary"
-                          onClick={handleNext}
-                        >
-                          {practiceSession.index >= practiceSession.items.length - 1 ? 'Voir le bilan' : 'Question suivante'} <ArrowRight size={15} />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )
-              })()
-            )}
-          </div>
-        )}
-
-        {/* Source Passage Modal */}
-        {targetPassage && (
-          <div className="mycourses-passage-modal" onClick={() => setTargetPassage(null)}>
-            <div className="mycourses-passage-box" onClick={e => e.stopPropagation()}>
-              <button className="mycourses-passage-close" onClick={() => setTargetPassage(null)}>
-                <X size={20} />
-              </button>
-              <span className="study-eyebrow">TRAÇABILITÉ MYCORPUS STUDY</span>
-              <h2 style={{ fontSize: '1.25rem', margin: '0.25rem 0' }}>{targetPassage.title}</h2>
-              <p style={{ color: '#0284c7', fontSize: '0.85rem', fontWeight: 600 }}>{targetPassage.pages}</p>
-              <blockquote className="mycourses-passage-quote">
-                « {targetPassage.text} »
-              </blockquote>
-              <p style={{ fontSize: '0.82rem', color: '#64748b' }}>
-                Ce passage provient directement du texte extrait de votre document. Aucune notion extérieure n’a été inventée.
-              </p>
-            </div>
-          </div>
-        )}
         {visualCropDoc && (
           <PdfCropSelector
             documentId={visualCropDoc.id}
@@ -809,9 +570,9 @@ export default function MyCoursesWorkspace(props: {
       <header className="mycourses-header">
         <div>
           <span className="study-eyebrow">MYCORPUS STUDY · VOS DOCUMENTS PERSONNELS</span>
-          <h1>Mes cours.<br /><em>Vos supports, prêts à être mémorisés.</em></h1>
+          <h1>Mes cours.</h1>
           <p className="mycourses-subtitle">
-            Importez votre support, lisez-le puis créez vos outils de révision. Chaque synthèse et question renvoie au cours original.
+            Votre espace de révision active : des questions sur vos PDF, des corrections sourcées et une progression fondée sur vos réponses.
           </p>
         </div>
 
@@ -823,7 +584,9 @@ export default function MyCoursesWorkspace(props: {
         )}
       </header>
 
-      <ol className="mycourses-workflow" aria-label="De votre cours à la révision">{['Importer','Lire','Synthèse','QCM','Flashcards','Réviser'].map((step,index)=><li key={step}><span>{index+1}</span>{step}</li>)}</ol>
+      <button className="study-secondary learning-import-shortcut" disabled={uploading} onClick={()=>fileInputRef.current?.click()}><Upload size={17}/>Importer un PDF</button>
+      <ol className="mycourses-workflow" aria-label="De votre cours à la révision">{['Apprendre','S’entraîner','Maîtriser'].map((step,index)=><li key={step}><span>{index+1}</span>{step}</li>)}</ol>
+      {overviewError?<div className="mycourses-alert mycourses-alert-error" role="alert"><p>{overviewError}</p><button className="study-secondary" onClick={()=>void refreshOverview()}>Recharger ma progression</button></div>:!loading&&<CourseLearningDashboard documents={documents} overview={overview} records={records} onImport={()=>fileInputRef.current?.click()} onOpen={id=>{setSelectedDocId(id);props.onOpenDocument?.(id)}}/>}
       {/* Scanned PDF warning alert */}
       {scannedAlert && (
         <div className="mycourses-alert mycourses-alert-error" role="alert">
@@ -875,7 +638,7 @@ export default function MyCoursesWorkspace(props: {
           Glissez-déposez votre support de cours ou sélectionnez un fichier PDF contenant du texte sélectionnable (jusqu’à 25 Mo).
         </p>
 
-        <ul className="mycourses-import-benefits"><li><Check size={15}/>Résumer votre cours</li><li><Check size={15}/>Créer des QCM</li><li><Check size={15}/>Générer des flashcards</li></ul>
+        <ul className="mycourses-import-benefits"><li><Check size={15}/>Comprendre votre cours</li><li><Check size={15}/>Créer des QCM</li><li><Check size={15}/>Générer des flashcards</li></ul>
         {generationProvider?.mode==='gemini'&&<label><input type="checkbox" checked={ocrRequested} disabled={uploading} onChange={event=>setOcrRequested(event.target.checked)}/>Transcrire aussi les pages scannées avec Gemini (40 pages / 10 Mo maximum). Le PDF sera transmis à Google.</label>}
         {uploadFile&&<div className="mycourses-upload-status" role="status"><strong>{uploadFile.name}</strong><span>{new Intl.NumberFormat('fr-FR',{maximumFractionDigits:1}).format(uploadFile.size/1024)} Ko · extraction en cours</span><progress aria-label="Extraction du PDF"/><small>Votre document s’ouvrira quand l’extraction sera terminée.</small></div>}
         <div className="mycourses-upload-controls">

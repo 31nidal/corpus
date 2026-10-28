@@ -91,7 +91,8 @@ export async function generateDocumentQuestions(
   id: string,
   count = 5,
   sectionId?: string,
-  replace = false
+  replace = false,
+  onGeneration?: (info: import('./ai/GenerationNotice').GenerationInfo) => void
 ): Promise<StudyQuestion[]> {
   const res = await fetch(`/api/study/documents/${encodeURIComponent(id)}/questions`, {
     method: 'POST',
@@ -100,10 +101,12 @@ export async function generateDocumentQuestions(
       'x-mycorpus-request': '1'
     },
     credentials: 'same-origin',
+    signal: AbortSignal.timeout(210000),
     body: JSON.stringify({ count, sectionId, replace })
   })
   const body = await res.json()
   if (!res.ok) throw new Error(body.error || 'Échec de la génération du QCM.')
+  if(body.generation)onGeneration?.(body.generation)
   return body.questions || []
 }
 
@@ -115,3 +118,13 @@ export async function fetchDocumentQuestions(id: string): Promise<StudyQuestion[
   if (!res.ok) throw new Error(body.error || 'Échec du chargement des questions.')
   return body.questions || []
 }
+
+async function learningRequest(path:string,body?:unknown){
+ const res=await fetch('/api/study/'+path,{credentials:'same-origin',signal:AbortSignal.timeout(20000),...(body===undefined?{}:{method:'POST',headers:{'content-type':'application/json','x-mycorpus-request':'1'},body:JSON.stringify(body)})})
+ const result=await res.json()
+ if(!res.ok)throw new Error(result.error||'Impossible d’enregistrer votre activité. Réessayez.')
+ return result
+}
+export function fetchLearningOverview():Promise<import('./myCoursesTypes').LearningOverview>{return learningRequest('learning')}
+export function updateLearningDocument(id:string,body:{subject?:string;opened?:boolean}):Promise<{ok:boolean}>{return learningRequest(`documents/${encodeURIComponent(id)}/learning`,body)}
+export function saveLearningAttempt(documentId:string,id:string,questionId:string,answers:number[]):Promise<{id:string;correct:boolean;createdAt:string}>{return learningRequest(`documents/${encodeURIComponent(documentId)}/attempts`,{id,questionId,answers})}

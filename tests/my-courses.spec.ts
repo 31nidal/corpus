@@ -71,6 +71,8 @@ test('parcours complet Mes cours : connexion → upload PDF → extraction → s
   await expect(page.locator('.mycourses-detail-meta')).toContainText('1 pages')
   await expect(page.locator('.mycourses-detail-meta')).toContainText('chapitres détectés')
 
+  await page.getByText('Outils du cours · Flashcards, QCM et synthèse',{exact:true}).click()
+
   // 6. Génération de la synthèse
   await page.getByRole('button', { name: /Générer la synthèse/ }).click()
   await expect(page.locator('.mycourses-summary-card')).toBeVisible({ timeout: 25000 })

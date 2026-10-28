@@ -1,3 +1,4 @@
+import {learningOverview,updateLearningDocument,saveLearningAttempt,questionEvidence} from './study/learning.mjs'
 import {getOrResetStudyQuota, reserveGenerationQuota, releaseGenerationQuota} from './study/quota.mjs'
 export {computeNextMonthlyReset, getOrResetStudyQuota, checkGenerationQuota, reserveGenerationQuota, releaseGenerationQuota} from './study/quota.mjs'
 import { DatabaseSync } from 'node:sqlite'
@@ -191,6 +192,8 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
         })
       }
 
+      if(req.method==='GET'&&subpath==='learning')return send(200,learningOverview(d,user.id))
+
       // GET /api/study/documents
       if (req.method === 'GET' && subpath === 'documents') {
         const docs = d.prepare(`
@@ -382,6 +385,13 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
 
         if (!doc) {
           return send(404, { error: 'Document introuvable ou accès non autorisé.' })
+        }
+
+        if(req.method==='POST'&&['learning','attempts'].includes(action)){
+          let raw=''
+          for await(const chunk of req){raw+=chunk;if(Buffer.byteLength(raw)>10000)return send(413,{error:'Requête trop volumineuse.'})}
+          let body;try{body=JSON.parse(raw)}catch{return send(400,{error:'Requête JSON invalide.'})}
+          return send(200,action==='learning'?updateLearningDocument(d,user.id,documentId,body):saveLearningAttempt(d,user.id,documentId,body))
         }
 
         if(req.method==='POST'&&(action==='supports'||provider?.name==='gemini'&&['summarize','questions'].includes(action))){
@@ -756,7 +766,7 @@ export function createStudyHandler(config = process.env, dependencies = {}) {
             createdAt: r.createdAt
           }))
 
-          return send(200, { questions })
+          return send(200, { questions:questions.map(q=>({...q,sourceEvidence:questionEvidence(d,user.id,documentId,q)})) })
         }
 
         // GET /documents/:id/anki

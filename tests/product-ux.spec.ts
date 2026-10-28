@@ -134,9 +134,9 @@ test('Mes cours : import identifié, erreur de génération lisible et document 
   let releaseUpload=()=>{}
   try {
     await page.goto('/#tab=mes-cours')
-    await expect(page.getByRole('button',{name:'Choisir un PDF',exact:true})).toBeInViewport()
+    await expect(page.getByRole('button',{name:'Importer un PDF',exact:true})).toBeInViewport()
     await expect(page.getByRole('button',{name:'Ajouter mon premier cours'})).toBeVisible()
-    await expect(page.getByRole('list',{name:'De votre cours à la révision'}).getByRole('listitem')).toHaveCount(6)
+    await expect(page.getByRole('list',{name:'De votre cours à la révision'}).getByRole('listitem')).toHaveCount(3)
     const gate=new Promise<void>(resolve=>{releaseUpload=resolve})
     await page.route('**/api/study/documents/upload',async route=>{
       const response=await route.fetch()
@@ -149,6 +149,7 @@ test('Mes cours : import identifié, erreur de génération lisible et document 
     await expect(page.getByRole('progressbar',{name:'Extraction du PDF'})).not.toHaveAttribute('value',/\d/)
     releaseUpload()
     await expect(page.getByRole('heading',{name:'cours-ux',exact:true})).toBeVisible({timeout:20000})
+    await page.getByText('Outils du cours · Flashcards, QCM et synthèse',{exact:true}).click()
     await page.route('**/summarize',route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Error 500: internal provider failure'})}))
     let alerts=0
     page.on('dialog',dialog=>{alerts++;void dialog.dismiss()})
