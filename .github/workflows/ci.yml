@@ -84,6 +84,12 @@ jobs:
       - name: End-to-end tests
         run: npm test -- --shard=${{ matrix.shard }}/3
 
+      - name: Production navigation without imported courses
+        if: matrix.shard == 1
+        env:
+          CORPUS_TEST_HIDDEN_COURSES: '1'
+        run: npm test -- tests/my-courses-navigation.spec.ts
+
       - name: Upload Playwright diagnostics
         if: failure()
         uses: actions/upload-artifact@v4

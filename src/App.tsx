@@ -1,3 +1,4 @@
+import {createPortal} from 'react-dom'
 import {dailyPlan,advanceDailySession} from './dashboard/session'
 import {storageScope,profileRequested} from './account/store'
 import { useCallback, useEffect, useRef, useState, lazy, Suspense } from 'react'
@@ -8,6 +9,13 @@ const AccountPanel = lazy(() => import('./account/AccountPanel'))
 const DashboardWorkspace = lazy(() => import('./dashboard/DashboardWorkspace'))
 const CoursesWorkspace = lazy(() => import('./study/CoursesWorkspace'))
 const PracticeWorkspace = lazy(() => import('./study/PracticeWorkspace'))
+const myCoursesEnabled = import.meta.env.VITE_MY_COURSES_ENABLED === 'true'
+function normalizeStudyTab(params:URLSearchParams){
+ if(!myCoursesEnabled&&params.get('tab')==='mes-cours'){history.replaceState(null,'','#tab=flashcards');return 'flashcards'}
+ return params.get('tab')
+}
+normalizeStudyTab(new URLSearchParams(location.hash.slice(1)))
+const StudyPdfViewer=lazy(()=>import('./flashcards/PdfCropSelector').then(module=>({default:module.PdfCropSelector})))
 const MyCoursesWorkspace = lazy(() => import('./study/MyCoursesWorkspace'))
 const FlashcardsWorkspace = lazy(() => import('./flashcards/FlashcardsWorkspace'))
 import courses from './study/courseIndex.json'
@@ -78,7 +86,8 @@ export default function App() {
   const [atlasStructure, setAtlasStructure] = useState<string | null>(() => new URLSearchParams(location.hash.slice(1)).get('structure'))
   const [dashboardOpen,setDashboardOpen]=useState(()=>new URLSearchParams(location.hash.slice(1)).get('tab')==='aujourdhui')
   const [learningOpen,setLearningOpen]=useState(()=>new URLSearchParams(location.hash.slice(1)).get('tab')==='cours')
-  const [myCoursesOpen,setMyCoursesOpen]=useState(()=>new URLSearchParams(location.hash.slice(1)).get('tab')==='mes-cours')
+  const [myCoursesOpen,setMyCoursesOpen]=useState(()=>myCoursesEnabled&&new URLSearchParams(location.hash.slice(1)).get('tab')==='mes-cours')
+  const [sourcePdf,setSourcePdf]=useState<string|null>(null)
   const [flashcardsOpen,setFlashcardsOpen]=useState(()=>new URLSearchParams(location.hash.slice(1)).get('tab')==='flashcards')
   const [myCourseDocId,setMyCourseDocId]=useState<string|null>(()=>new URLSearchParams(location.hash.slice(1)).get('doc'))
   const [myCourseSectionId,setMyCourseSectionId]=useState<string|null>(()=>new URLSearchParams(location.hash.slice(1)).get('section'))
@@ -194,7 +203,7 @@ export default function App() {
   useEffect(() => {
     const restore = () => {
       const params=new URLSearchParams(location.hash.slice(1))
-      const tab = params.get('tab')
+      const tab = normalizeStudyTab(params)
       // The bare Atlas route now opens the main 3D atlas; specialized atlases
       // keep their shareable tab=atlas&sub=... routes.
       const isAtlas = tab === 'atlas' && Boolean(params.get('sub'))
@@ -411,7 +420,7 @@ export default function App() {
     location.hash = new URLSearchParams({ tab: 'atlas', sub: atlasId }).toString()
   }
   const openStudy=(tab:'cours'|'entrainement',id:string|null=null,section?:string|null)=>{setDashboardOpen(false);setAnimation(null);setChatOpen(false);setAtlasOpen(false);setLearningOpen(tab==='cours');setPracticeOpen(tab==='entrainement');setMyCoursesOpen(false);setFlashcardsOpen(false);setCourseToOpen(id);setPracticeCourse(tab==='entrainement'?id:null);setToolsOpen(false);setProfileOpen(false);setQuiz(null);setCatalogOpen(false);const params=new URLSearchParams(location.hash.slice(1));params.delete('view');params.set('tab',tab);if(id)params.set('cours',id);else params.delete('cours');if(section)params.set('section',section);else params.delete('section');history.pushState(null,'','#'+params.toString())}
-  const openMyCourses=(docId:string|null=null,sectionId:string|null=null)=>{setAnimation(null);setChatOpen(false);setAtlasOpen(false);setDashboardOpen(false);setLearningOpen(false);setPracticeOpen(false);setMyCoursesOpen(true);setFlashcardsOpen(false);setMyCourseDocId(docId);setMyCourseSectionId(sectionId);setToolsOpen(false);setProfileOpen(false);setQuiz(null);setCatalogOpen(false);const params=new URLSearchParams(location.hash.slice(1));params.delete('view');params.set('tab','mes-cours');if(docId)params.set('doc',docId);else params.delete('doc');if(sectionId)params.set('section',sectionId);else params.delete('section');history.pushState(null,'','#'+params.toString())}
+  const openMyCourses=(docId:string|null=null,sectionId:string|null=null)=>{if(!myCoursesEnabled){if(docId)setSourcePdf(docId);else openFlashcards();return}setAnimation(null);setChatOpen(false);setAtlasOpen(false);setDashboardOpen(false);setLearningOpen(false);setPracticeOpen(false);setMyCoursesOpen(true);setFlashcardsOpen(false);setMyCourseDocId(docId);setMyCourseSectionId(sectionId);setToolsOpen(false);setProfileOpen(false);setQuiz(null);setCatalogOpen(false);const params=new URLSearchParams(location.hash.slice(1));params.delete('view');params.set('tab','mes-cours');if(docId)params.set('doc',docId);else params.delete('doc');if(sectionId)params.set('section',sectionId);else params.delete('section');history.pushState(null,'','#'+params.toString())}
   const openFlashcards=()=>{setAnimation(null);setChatOpen(false);setAtlasOpen(false);setDashboardOpen(false);setLearningOpen(false);setPracticeOpen(false);setMyCoursesOpen(false);setFlashcardsOpen(true);setToolsOpen(false);setProfileOpen(false);setQuiz(null);setCatalogOpen(false);history.pushState(null,'','#tab=flashcards')}
   const femaleCourse=selected?.meshNames.some(n=>breastMeshIds.includes(n))?'anat-breast':'anat-female-pelvis'
   const courseForSelectedStructure=()=>{
@@ -463,7 +472,7 @@ export default function App() {
         <a href="#tab=aujourdhui" onClick={event=>{event.preventDefault();openDashboard()}} aria-current={!profileOpen&&dashboardOpen?"page":undefined}><CalendarDays size={15}/>Aujourd’hui</a>
         <button aria-current={!profileOpen && !dashboardOpen && !learningOpen && !practiceOpen && !myCoursesOpen && !flashcardsOpen ? "page" : undefined} aria-pressed={!profileOpen && !dashboardOpen && !learningOpen && !practiceOpen && !myCoursesOpen && !flashcardsOpen} className={!profileOpen && !dashboardOpen && !atlasOpen && !learningOpen && !practiceOpen && !myCoursesOpen && !flashcardsOpen ? "nav-active" : ""} onClick={() => { setChatOpen(false); setAtlasOpen(false); setDashboardOpen(false);setLearningOpen(false); setPracticeOpen(false); setMyCoursesOpen(false); setFlashcardsOpen(false); setToolsOpen(false); setQuiz(null); setProfileOpen(false); writeRoute(selectedId); }}><Box size={15}/>Atlas 3D</button>
         <button onClick={() => openStudy('cours')} aria-current={!profileOpen && (learningOpen) ? "page" : undefined} aria-pressed={!profileOpen&&learningOpen}><BookOpen size={15}/>Cours</button>
-        <button onClick={() => openMyCourses()} aria-current={!profileOpen && (myCoursesOpen) ? "page" : undefined} aria-pressed={!profileOpen&&myCoursesOpen}><FileText size={15}/>Mes cours</button>
+        {myCoursesEnabled&&<button onClick={() => openMyCourses()} aria-current={!profileOpen && (myCoursesOpen) ? "page" : undefined} aria-pressed={!profileOpen&&myCoursesOpen}><FileText size={15}/>Mes cours</button>}
         <button onClick={openFlashcards} aria-current={!profileOpen && (flashcardsOpen) ? "page" : undefined} aria-pressed={!profileOpen&&flashcardsOpen}><Brain size={16}/>Flashcards</button>
         <button onClick={openPractice} aria-current={!profileOpen && (practiceOpen || Boolean(quiz)) ? "page" : undefined} aria-pressed={!profileOpen&&(practiceOpen || Boolean(quiz))}><GraduationCap size={16}/>Entraînement</button>
         <button aria-label="Mon compte" aria-current={profileOpen ? "page" : undefined} aria-pressed={profileOpen} onClick={() => { setChatOpen(false); setProfileOpen(v => !v); setToolsOpen(false); setQuiz(null); setCatalogOpen(false); }}>Compte</button>
@@ -482,11 +491,11 @@ export default function App() {
         {searchOpen && <div className="search-results" id="search-results" role="listbox" aria-label="Structures anatomiques">{searchLoading && <p role="status">Recherche dans l’atlas complet…</p>}{searchError && <div className="search-index-error" role="status">La recherche complète est indisponible. Les structures chargées restent accessibles. <button onClick={()=>setSearchAttempt(value=>value+1)}>Réessayer</button></div>}<p className="eyebrow">{query ? `${filtered.length}${filtered.length === 35 ? '+' : ''} résultats` : 'À explorer'}</p>{filtered.length ? filtered.map((s, index) => <button key={s.id} role="option" aria-selected={index === searchIndex} id={`result-${s.id}`} onPointerMove={() => setSearchIndex(index)} onClick={() => selectSearchResult(s.id)}><span className="result-dot" style={{ background: groupMeta[s.group].color }} /><span>{describeStructure(s.name, s.group).name}<small>{s.name} · {groupMeta[s.group].name}</small></span><ArrowUpRight size={15} /></button>) : <div className="empty-search">Aucune structure trouvée dans les modèles disponibles.<br />Essayez « cœur », « rein » ou « fémur ».<button onClick={()=>{setQuery('');searchRef.current?.focus()}}>Effacer la recherche</button></div>}{matchingCourses.length>0&&<div className="search-course-results"><p className="eyebrow">À retrouver dans les cours</p>{matchingCourses.map(course=><button key={course.id} onClick={()=>{setSearchOpen(false);setQuery('');openStudy('cours',course.id)}}>Voir le cours : {course.title}<ArrowRight size={14}/></button>)}</div>}</div>}
       </div>
     </header>
-    {<nav className="mobile-study-nav" aria-label="Navigation pédagogique mobile">
+    {<nav style={myCoursesEnabled?undefined:{gridTemplateColumns:'repeat(6,minmax(0,1fr))'}} className="mobile-study-nav" aria-label="Navigation pédagogique mobile">
       <a href="#tab=aujourdhui" onClick={event=>{event.preventDefault();openDashboard()}} aria-current={!profileOpen&&dashboardOpen?"page":undefined}><CalendarDays size={17}/><span>Aujourd’hui</span></a>
       <button aria-current={!profileOpen&&!dashboardOpen&&!learningOpen&&!myCoursesOpen&&!flashcardsOpen&&!practiceOpen ? "page" : undefined} aria-pressed={!profileOpen&&!dashboardOpen&&!learningOpen&&!myCoursesOpen&&!flashcardsOpen&&!practiceOpen} onClick={()=>{setAtlasOpen(false);setDashboardOpen(false);setLearningOpen(false);setPracticeOpen(false);setMyCoursesOpen(false);setFlashcardsOpen(false);writeRoute(selectedId)}}><Box size={17}/><span>Atlas 3D</span></button>
       <button aria-current={!profileOpen&&learningOpen ? "page" : undefined} aria-pressed={!profileOpen&&learningOpen} onClick={()=>openStudy('cours')}><BookOpen size={17}/><span>Cours</span></button>
-      <button aria-current={!profileOpen&&myCoursesOpen ? "page" : undefined} aria-pressed={!profileOpen&&myCoursesOpen} onClick={()=>openMyCourses()}><FileText size={17}/><span>Mes cours</span></button>
+      {myCoursesEnabled&&<button aria-current={!profileOpen&&myCoursesOpen ? "page" : undefined} aria-pressed={!profileOpen&&myCoursesOpen} onClick={()=>openMyCourses()}><FileText size={17}/><span>Mes cours</span></button>}
       <button aria-current={!profileOpen&&flashcardsOpen ? "page" : undefined} aria-pressed={!profileOpen&&flashcardsOpen} onClick={openFlashcards}><Brain size={17}/><span>Flashcards</span></button>
       <button aria-current={!profileOpen&&practiceOpen ? "page" : undefined} aria-pressed={!profileOpen&&practiceOpen} onClick={openPractice}><GraduationCap size={17}/><span>Entraînement</span></button>
       <button aria-label="Mon compte" aria-current={profileOpen ? "page" : undefined} aria-pressed={profileOpen} onClick={()=>{setProfileOpen(v=>!v);setChatOpen(false);setToolsOpen(false);setCatalogOpen(false)}}><UserRound size={17}/><span>Compte</span></button>
@@ -499,7 +508,7 @@ export default function App() {
       <h1>{body==='female'?'Anatomie féminine.':'Le corps humain.'}<br /><em>{body==='female'?(femaleDetailed?'Explorer les structures.':'Explorer par région.'):'Une autre dimension.'}</em></h1>
       <p className="intro-text">Votre laboratoire d’anatomie personnel.</p>
       {body==='male'?<button className="female-specialty" onClick={()=>openFemaleRegion('HRA-region-pelvis')}>Anatomie féminine <ArrowUpRight size={14}/></button>:<div className="female-reference-controls"><button className="return-main-atlas" onClick={()=>changeBody('male')}><ArrowLeft size={14}/>Revenir au corps entier</button><select aria-label="Référence anatomique féminine" value={femaleDetailed?'detail':'regions'} onChange={event=>changeFemaleReference(event.target.value==='detail')}><option value="regions">Régions</option><option value="detail">Atlas détaillé</option></select></div>}
-      {body==='male'&&<div className="atlas-mode" aria-label="Niveau de détail"><button title="Structures regroupées pour découvrir les principaux repères" aria-pressed={!detailMode} onClick={() => changeMode(false)}>Vue d’ensemble</button><button title="Structures anatomiques séparées et sélectionnables" aria-pressed={detailMode} onClick={() => changeMode(true)}>Atlas détaillé</button></div>}<p className="mode-explanation">{manifest?structures.filter(s=>!s.aggregate).length.toLocaleString('fr-FR')+(body==='female'?(femaleDetailed?' structures · référence féminine partielle':' structures · explorations régionales'):' structures · référence masculine'):'Chargement de la référence…'}</p>{body==='female'&&<p className="female-coverage"><span className="coverage-full">{femaleDetailed?'Référence féminine HRA : structures disponibles du corps, du cœur et des reins. Couverture partielle, issue des seuls maillages VH_F.':'Modèles féminins HRA : bassin, appareil reproducteur et sein. Une sélection régionale, sans ajout de maillages masculins.'}</span><span className="coverage-compact">{femaleDetailed?'HRA · référence féminine détaillée, partielle':'HRA · explorations féminines régionales'}</span></p>}<button className="mobile-learn" onClick={()=>openStudy('cours')}>Cours</button><button className="mobile-learn" onClick={()=>openMyCourses()}>Mes cours</button><button className="mobile-start-quiz" onClick={openPractice}>Entraînement</button><button className="mobile-profile" onClick={()=>{setChatOpen(false);setProfileOpen(true);setToolsOpen(false);setQuiz(null)}}>Profil</button><button className="mobile-start-tour" onClick={()=>visitStep(0)}>Visite guidée <ArrowRight size={13}/></button>
+      {body==='male'&&<div className="atlas-mode" aria-label="Niveau de détail"><button title="Structures regroupées pour découvrir les principaux repères" aria-pressed={!detailMode} onClick={() => changeMode(false)}>Vue d’ensemble</button><button title="Structures anatomiques séparées et sélectionnables" aria-pressed={detailMode} onClick={() => changeMode(true)}>Atlas détaillé</button></div>}<p className="mode-explanation">{manifest?structures.filter(s=>!s.aggregate).length.toLocaleString('fr-FR')+(body==='female'?(femaleDetailed?' structures · référence féminine partielle':' structures · explorations régionales'):' structures · référence masculine'):'Chargement de la référence…'}</p>{body==='female'&&<p className="female-coverage"><span className="coverage-full">{femaleDetailed?'Référence féminine HRA : structures disponibles du corps, du cœur et des reins. Couverture partielle, issue des seuls maillages VH_F.':'Modèles féminins HRA : bassin, appareil reproducteur et sein. Une sélection régionale, sans ajout de maillages masculins.'}</span><span className="coverage-compact">{femaleDetailed?'HRA · référence féminine détaillée, partielle':'HRA · explorations féminines régionales'}</span></p>}<button className="mobile-learn" onClick={()=>openStudy('cours')}>Cours</button>{myCoursesEnabled&&<button className="mobile-learn" onClick={()=>openMyCourses()}>Mes cours</button>}<button className="mobile-start-quiz" onClick={openPractice}>Entraînement</button><button className="mobile-profile" onClick={()=>{setChatOpen(false);setProfileOpen(true);setToolsOpen(false);setQuiz(null)}}>Profil</button><button className="mobile-start-tour" onClick={()=>visitStep(0)}>Visite guidée <ArrowRight size={13}/></button>
     </aside>
 
     {body==='female'?<div className="view-presets female-region-presets" aria-label="Régions féminines">{[{id:'pelvis',name:'Bassin'},{id:'reproductive',name:'Reproduction'},{id:'breast',name:'Sein'}].map(r=><button key={r.id} aria-pressed={selectedId==='HRA-region-'+r.id} onClick={()=>openFemaleRegion('HRA-region-'+r.id)}>{r.name}</button>)}</div>:<div className="view-presets" aria-label="Vues rapides"><span>Vues rapides</span>{([
@@ -552,7 +561,7 @@ export default function App() {
     {dashboardOpen&&<Suspense fallback={<div className="study-workspace mc-loading" role="status">Chargement de votre journée…</div>}><DashboardWorkspace/></Suspense>}
     {learningOpen&&<Suspense fallback={<div className="study-workspace mc-loading" role="status">Chargement du cours…</div>}><CoursesWorkspace initial={courseToOpen} completed={completed} complete={completeCourse} explore={id=>{const reference=id.startsWith('HRA-')?'female':'male';setBody(reference);setSelectedId(id);setDetailMode(true);setDashboardOpen(false);setLearningOpen(false);setPracticeOpen(false);setMyCoursesOpen(false);writeRoute(id,true,reference)}} practice={id=>openStudy('entrainement',id)} navigate={id=>openStudy('cours',id)}/></Suspense>}
     {practiceOpen&&<Suspense fallback={<div className="study-workspace mc-loading" role="status">Chargement de l’entraînement…</div>}><PracticeWorkspace course={practiceCourse} navigate={id=>openStudy('entrainement',id)} learn={id=>openStudy('cours',id)} start3D={startQuiz}/></Suspense>}
-    {myCoursesOpen&&(
+    {myCoursesEnabled&&myCoursesOpen&&(
       <Suspense fallback={<div className="study-workspace mc-loading" role="status">Chargement de vos cours…</div>}>
         <MyCoursesWorkspace
           onOpenAccount={()=>setProfileOpen(true)}
@@ -574,6 +583,7 @@ export default function App() {
       </Suspense>
     )}
     {flashcardsOpen&&<Suspense fallback={<div className="study-workspace flash-loading" role="status">Chargement des flashcards…</div>}><FlashcardsWorkspace openAccount={()=>setProfileOpen(true)} openCourse={(id,section)=>openStudy('cours',id,section)} openDocument={(id,section)=>openMyCourses(id,section)}/></Suspense>}
+    {sourcePdf&&createPortal(<Suspense fallback={<div role="status">Chargement du PDF source…</div>}><StudyPdfViewer documentId={sourcePdf} documentTitle="Document source" readOnly onCancel={()=>setSourcePdf(null)}/></Suspense>,document.body)}
     {atlasOpen && (
       <Suspense fallback={<div className="study-workspace mc-loading" role="status">Chargement de l’atlas…</div>}><AtlasWorkspace
         initialAtlasId={atlasSub}

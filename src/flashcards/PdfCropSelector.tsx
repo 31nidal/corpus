@@ -1,3 +1,4 @@
+import './pdfSource.css'
 import React, {useEffect, useRef, useState} from 'react'
 import * as pdfjsLib from '../pdf/pdfjs'
 import {ChevronLeft, ChevronRight, Crop, Check, Loader2, AlertCircle} from 'lucide-react'
